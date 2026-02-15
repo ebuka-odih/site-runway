@@ -17,7 +17,7 @@ interface LandingAuthModalProps {
   resetEmail: string;
   resetOtp: string;
   resetPassword: string;
-  countries: readonly string[];
+  currencies: readonly string[];
   authNotice: string | null;
   currentError: string | null;
   debugOtp: string | null;
@@ -54,7 +54,7 @@ const LandingAuthModal: React.FC<LandingAuthModalProps> = ({
   resetEmail,
   resetOtp,
   resetPassword,
-  countries,
+  currencies,
   authNotice,
   currentError,
   debugOtp,
@@ -172,14 +172,6 @@ const LandingAuthModal: React.FC<LandingAuthModalProps> = ({
                 <input
                   type="text"
                   required
-                  placeholder="Username"
-                  className="w-full bg-[#0a0a0a] border border-white/5 rounded-2xl py-4 px-4 text-sm font-bold text-white focus:outline-none focus:border-emerald-500/40 transition-all placeholder:text-zinc-700"
-                  value={signupForm.username}
-                  onChange={(event) => setSignupField('username', event.target.value)}
-                />
-                <input
-                  type="text"
-                  required
                   placeholder="Full name"
                   className="w-full bg-[#0a0a0a] border border-white/5 rounded-2xl py-4 px-4 text-sm font-bold text-white focus:outline-none focus:border-emerald-500/40 transition-all placeholder:text-zinc-700"
                   value={signupForm.name}
@@ -196,12 +188,12 @@ const LandingAuthModal: React.FC<LandingAuthModalProps> = ({
                 <select
                   required
                   className="w-full bg-[#0a0a0a] border border-white/5 rounded-2xl py-4 px-4 text-sm font-bold text-white focus:outline-none focus:border-emerald-500/40 transition-all"
-                  value={signupForm.country}
-                  onChange={(event) => setSignupField('country', event.target.value)}
+                  value={signupForm.currency}
+                  onChange={(event) => setSignupField('currency', event.target.value)}
                 >
-                  {countries.map((country) => (
-                    <option key={country} value={country}>
-                      {country}
+                  {currencies.map((currency) => (
+                    <option key={currency} value={currency}>
+                      {currency}
                     </option>
                   ))}
                 </select>

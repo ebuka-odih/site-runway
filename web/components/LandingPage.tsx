@@ -16,7 +16,7 @@ interface LandingPageProps {
   authError: string | null;
 }
 
-const BASE_COUNTRIES = ['United States', 'United Kingdom', 'Canada'] as const;
+const BASE_CURRENCIES = ['USD', 'EUR', 'GBP'] as const;
 
 const LandingPage: React.FC<LandingPageProps> = ({ onLogin, authError }) => {
   const [showLogin, setShowLogin] = useState(false);
@@ -25,10 +25,9 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLogin, authError }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [signupForm, setSignupForm] = useState<SignupFormState>({
-    username: '',
     name: '',
     email: '',
-    country: BASE_COUNTRIES[0],
+    currency: BASE_CURRENCIES[0],
     phone: '',
     password: '',
   });
@@ -63,6 +62,17 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLogin, authError }) => {
   };
 
   const getErrorMessage = (error: unknown, fallback: string) => error instanceof Error ? error.message : fallback;
+
+  const buildAutoUsername = (name: string, emailAddress: string): string => {
+    const firstName = name.trim().split(/\s+/)[0] ?? '';
+    const emailPrefix = emailAddress.trim().split('@')[0] ?? '';
+    const baseSeed = firstName || emailPrefix || 'user';
+    const base = baseSeed.toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 16) || 'user';
+    const paddedBase = base.length >= 3 ? base : `${base}user`.slice(0, 3);
+    const hash = Array.from(emailAddress.toLowerCase()).reduce((acc, char) => (acc * 31 + char.charCodeAt(0)) % 1000, 0);
+    const suffix = hash.toString().padStart(3, '0');
+    return `${paddedBase}${suffix}`;
+  };
 
   const submitLabel = useMemo(() => {
     if (authView === 'signup') return 'Creating account';
@@ -102,11 +112,15 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLogin, authError }) => {
     setIsSubmitting(true);
 
     try {
+      const normalizedName = signupForm.name.trim();
+      const normalizedEmail = signupForm.email.trim().toLowerCase();
+      const generatedUsername = buildAutoUsername(normalizedName, normalizedEmail);
+
       const payload = await apiRegister({
-        username: signupForm.username.trim(),
-        name: signupForm.name.trim(),
-        email: signupForm.email.trim().toLowerCase(),
-        country: signupForm.country,
+        username: generatedUsername,
+        name: normalizedName,
+        email: normalizedEmail,
+        country: signupForm.currency,
         phone: signupForm.phone.trim(),
         password: signupForm.password,
       });
@@ -230,7 +244,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLogin, authError }) => {
         resetEmail={resetEmail}
         resetOtp={resetOtp}
         resetPassword={resetPassword}
-        countries={BASE_COUNTRIES}
+        currencies={BASE_CURRENCIES}
         authNotice={authNotice}
         currentError={currentError}
         debugOtp={debugOtp}

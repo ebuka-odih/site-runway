@@ -88,7 +88,7 @@ const LandingMarketing: React.FC<LandingMarketingProps> = ({ onOpenAuth }) => (
           onClick={() => onOpenAuth('login')}
           className="group bg-emerald-500 text-black px-10 py-5 rounded-full font-black text-sm uppercase tracking-[0.2em] shadow-2xl shadow-emerald-500/20 hover:bg-emerald-400 transition-all flex items-center gap-2 hover:translate-x-1"
         >
-          Enter Dashboard <ArrowRight size={20} className="group-hover:translate-x-1 transition-transform" />
+          Access Terminal <ArrowRight size={20} className="group-hover:translate-x-1 transition-transform" />
         </button>
         <button className="bg-zinc-900 border border-white/5 text-white px-10 py-5 rounded-full font-black text-sm uppercase tracking-[0.2em] hover:bg-zinc-800 transition-all">
           View Markets
