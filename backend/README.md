@@ -44,6 +44,11 @@ Use the returned bearer token for authenticated routes.
 
 ## API Surface
 
+- `POST /auth/register`
+- `POST /auth/verify-otp`
+- `POST /auth/resend-otp`
+- `POST /auth/forgot-password`
+- `POST /auth/reset-password`
 - `POST /auth/login`
 - `GET /auth/me`
 - `POST /auth/logout`

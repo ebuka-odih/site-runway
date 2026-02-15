@@ -24,9 +24,11 @@ class UserFactory extends Factory
     public function definition(): array
     {
         return [
+            'username' => fake()->unique()->userName(),
             'name' => fake()->name(),
             'email' => fake()->unique()->safeEmail(),
             'phone' => fake()->optional()->phoneNumber(),
+            'country' => fake()->randomElement(['United States', 'United Kingdom', 'Canada']),
             'membership_tier' => fake()->randomElement(['free', 'pro']),
             'kyc_status' => fake()->randomElement(['pending', 'verified']),
             'notification_email_alerts' => fake()->boolean(85),

@@ -51,8 +51,10 @@ function toNullableString(value: unknown): string | null {
 function mapAuthUser(raw: any): AuthUser {
   return {
     id: String(raw.id),
+    username: toNullableString(raw.username) ?? undefined,
     name: String(raw.name),
     email: String(raw.email),
+    country: toNullableString(raw.country),
     membershipTier: String(raw.membership_tier ?? raw.membershipTier ?? 'free'),
     kycStatus: String(raw.kyc_status ?? raw.kycStatus ?? 'pending'),
     phone: toNullableString(raw.phone),
@@ -264,6 +266,86 @@ export async function apiLogin(email: string, password: string, deviceName = 'we
     token: String(payload.token),
     user: mapAuthUser(payload.user),
   };
+}
+
+export async function apiRegister(input: {
+  username: string;
+  name: string;
+  email: string;
+  country: string;
+  phone: string;
+  password: string;
+}): Promise<{ email: string; debugOtp?: string }> {
+  const payload = await request<any>('/auth/register', {
+    method: 'POST',
+    authenticated: false,
+    body: JSON.stringify({
+      username: input.username,
+      name: input.name,
+      email: input.email,
+      country: input.country,
+      phone: input.phone,
+      password: input.password,
+    }),
+  });
+
+  return {
+    email: String(payload.email),
+    debugOtp: toNullableString(payload.debug_otp) ?? undefined,
+  };
+}
+
+export async function apiVerifyEmailOtp(email: string, otp: string, deviceName = 'web-client'): Promise<{ token: string; user: AuthUser }> {
+  const payload = await request<any>('/auth/verify-otp', {
+    method: 'POST',
+    authenticated: false,
+    body: JSON.stringify({
+      email,
+      otp,
+      device_name: deviceName,
+    }),
+  });
+
+  return {
+    token: String(payload.token),
+    user: mapAuthUser(payload.user),
+  };
+}
+
+export async function apiResendEmailOtp(email: string): Promise<{ debugOtp?: string }> {
+  const payload = await request<any>('/auth/resend-otp', {
+    method: 'POST',
+    authenticated: false,
+    body: JSON.stringify({ email }),
+  });
+
+  return {
+    debugOtp: toNullableString(payload.debug_otp) ?? undefined,
+  };
+}
+
+export async function apiForgotPassword(email: string): Promise<{ debugOtp?: string }> {
+  const payload = await request<any>('/auth/forgot-password', {
+    method: 'POST',
+    authenticated: false,
+    body: JSON.stringify({ email }),
+  });
+
+  return {
+    debugOtp: toNullableString(payload.debug_otp) ?? undefined,
+  };
+}
+
+export async function apiResetPasswordWithOtp(email: string, otp: string, password: string): Promise<void> {
+  await request('/auth/reset-password', {
+    method: 'POST',
+    authenticated: false,
+    body: JSON.stringify({
+      email,
+      otp,
+      password,
+    }),
+  });
 }
 
 export async function apiMe(): Promise<AuthUser> {

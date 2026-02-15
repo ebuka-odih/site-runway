@@ -54,10 +54,12 @@ class DemoDataSeeder extends Seeder
         });
 
         $user = User::query()->create([
+            'username' => 'franklin',
             'name' => 'Franklin',
             'email' => 'tommygreymassey@yahoo.com',
             'password' => Hash::make('password'),
             'phone' => '+1 (555) 013-9302',
+            'country' => 'United States',
             'membership_tier' => 'free',
             'kyc_status' => 'pending',
             'notification_email_alerts' => true,

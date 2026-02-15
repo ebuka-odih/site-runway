@@ -12,7 +12,7 @@ const Header: React.FC = () => {
           </svg>
         </div>
         <div>
-          <h1 className="text-lg font-bold tracking-tight text-white leading-none">EliteAlgoX</h1>
+          <h1 className="text-lg font-bold tracking-tight text-white leading-none">RunwayAlgo</h1>
           <p className="text-[10px] text-zinc-500 font-medium">Happy Holidays</p>
         </div>
       </div>

@@ -21,14 +21,21 @@ class User extends Authenticatable
      * @var list<string>
      */
     protected $fillable = [
+        'username',
         'name',
         'email',
         'password',
         'phone',
+        'country',
         'membership_tier',
         'kyc_status',
         'notification_email_alerts',
         'timezone',
+        'email_verified_at',
+        'email_otp_code',
+        'email_otp_expires_at',
+        'password_reset_otp_code',
+        'password_reset_otp_expires_at',
     ];
 
     /**
@@ -39,6 +46,8 @@ class User extends Authenticatable
     protected $hidden = [
         'password',
         'remember_token',
+        'email_otp_code',
+        'password_reset_otp_code',
     ];
 
     /**
@@ -52,6 +61,8 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'notification_email_alerts' => 'boolean',
+            'email_otp_expires_at' => 'datetime',
+            'password_reset_otp_expires_at' => 'datetime',
         ];
     }
 

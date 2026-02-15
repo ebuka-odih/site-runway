@@ -80,8 +80,10 @@ export interface DashboardData {
 
 export interface AuthUser {
   id: string;
+  username?: string;
   name: string;
   email: string;
+  country?: string | null;
   membershipTier: string;
   kycStatus: string;
   phone?: string | null;
