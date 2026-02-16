@@ -42,6 +42,13 @@ curl -X POST http://127.0.0.1:8000/api/v1/auth/login \
 
 Use the returned bearer token for authenticated routes.
 
+Quick health checks:
+
+```bash
+curl -H "Accept: application/json" http://127.0.0.1:8000/
+curl -H "Accept: application/json" http://127.0.0.1:8000/api/v1
+```
+
 ## API Surface
 
 - `POST /auth/register`
