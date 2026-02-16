@@ -20,6 +20,33 @@ const TradePage: React.FC<TradePageProps> = ({ onOpenTradingDesk, onAssetClick }
     });
   }, [refreshMarketAssets, refreshOrders]);
 
+  useEffect(() => {
+    const refreshPrices = () => {
+      void refreshMarketAssets().catch(() => {
+        // Keep last known market data if refresh fails.
+      });
+    };
+
+    const intervalId = window.setInterval(() => {
+      if (document.visibilityState === 'visible') {
+        refreshPrices();
+      }
+    }, 30_000);
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        refreshPrices();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      window.clearInterval(intervalId);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [refreshMarketAssets]);
+
   const currentAssets = useMemo(() => {
     const sortedBySymbol = (assets: SelectableAsset[]) => (
       [...assets].sort((a, b) => a.symbol.localeCompare(b.symbol))
