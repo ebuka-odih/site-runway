@@ -80,7 +80,19 @@ const AssetList: React.FC<AssetListProps> = ({ onAssetClick }) => {
     marketValue: position.marketValue,
     dayChangeValue: position.dayChangeValue,
     dayChangePercent: position.dayChangePercent,
-  }));
+    openedAt: position.openedAt,
+    updatedAt: position.updatedAt,
+  }))
+    .sort((a, b) => {
+      const aTimestamp = new Date((a.updatedAt ?? a.openedAt ?? '') as string).getTime();
+      const bTimestamp = new Date((b.updatedAt ?? b.openedAt ?? '') as string).getTime();
+
+      if (Number.isFinite(aTimestamp) && Number.isFinite(bTimestamp) && aTimestamp !== bTimestamp) {
+        return bTimestamp - aTimestamp;
+      }
+
+      return b.symbol.localeCompare(a.symbol);
+    });
 
   return (
     <div className="px-4 py-2 space-y-8">

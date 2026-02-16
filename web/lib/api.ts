@@ -101,6 +101,8 @@ function mapPosition(raw: any): PositionItem {
     dayChangePercent: raw.day_change_percent == null
       ? toNumber(raw.change_percent, undefined as unknown as number)
       : toNumber(raw.day_change_percent, undefined as unknown as number),
+    openedAt: raw.opened_at ?? null,
+    updatedAt: raw.updated_at ?? null,
   };
 }
 

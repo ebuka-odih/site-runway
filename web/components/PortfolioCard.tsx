@@ -153,6 +153,22 @@ const PortfolioCard: React.FC = () => {
 
     return span < minVisibleSpan;
   }, [history]);
+  const isRecentFlat = useMemo(() => {
+    if (history.length < 4) {
+      return true;
+    }
+
+    const recentPoints = history.slice(-12);
+    const values = recentPoints.map((point) => point.value);
+    const min = Math.min(...values);
+    const max = Math.max(...values);
+    const span = max - min;
+    const average = values.reduce((total, value) => total + value, 0) / values.length;
+    const minVisibleSpan = Math.max(Math.abs(average) * 0.00045, 0.55);
+
+    return span < minVisibleSpan;
+  }, [history]);
+  const shouldAnimateLive = isFlatHistory || isRecentFlat;
   const activePeriodLabel = useMemo(
     () => RANGE_OPTIONS.find((option) => option.value === activeRange)?.periodLabel ?? 'Today',
     [activeRange],
@@ -175,7 +191,7 @@ const PortfolioCard: React.FC = () => {
   }, [activeRange, refreshDashboard]);
 
   useEffect(() => {
-    if (!isFlatHistory) {
+    if (!shouldAnimateLive) {
       setMicroPhase(0);
       return;
     }
@@ -187,10 +203,10 @@ const PortfolioCard: React.FC = () => {
     return () => {
       window.clearInterval(intervalId);
     };
-  }, [isFlatHistory]);
+  }, [shouldAnimateLive]);
 
   const renderedHistory = useMemo<ChartPoint[]>(() => {
-    if (!isFlatHistory || history.length < 3) {
+    if (!shouldAnimateLive || history.length < 3) {
       return history;
     }
 
@@ -203,15 +219,18 @@ const PortfolioCard: React.FC = () => {
         return point;
       }
 
-      const envelope = Math.sin((Math.PI * index) / lastIndex);
-      const oscillation = Math.sin((index * 0.72) + microPhase) * amplitude * envelope;
+      const progress = index / lastIndex;
+      const tailEnvelope = isRecentFlat
+        ? Math.pow(progress, 1.6)
+        : Math.sin((Math.PI * index) / lastIndex);
+      const oscillation = Math.sin((index * 0.72) + microPhase) * amplitude * tailEnvelope;
 
       return {
         ...point,
         value: roundMoney(point.rawValue + oscillation),
       };
     });
-  }, [chartEndValue, history, isFlatHistory, microPhase]);
+  }, [chartEndValue, history, isRecentFlat, microPhase, shouldAnimateLive]);
 
   const yDomain = useMemo(() => {
     const values = renderedHistory.map((item) => item.value);

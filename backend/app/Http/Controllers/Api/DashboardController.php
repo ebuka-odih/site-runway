@@ -142,18 +142,7 @@ class DashboardController extends Controller
                     'asset_count' => $positions->count(),
                 ],
                 'positions' => $positions->map(fn (Position $position) => [
-                    'id' => $position->id,
-                    'asset_id' => $position->asset_id,
-                    'symbol' => $position->asset->symbol,
-                    'name' => $position->asset->name,
-                    'type' => $position->asset->type,
-                    'quantity' => (float) $position->quantity,
-                    'average_price' => (float) $position->average_price,
-                    'price' => (float) $position->asset->current_price,
-                    'change_percent' => (float) $position->asset->change_percent,
-                    'change_value' => (float) $position->asset->change_value,
-                    'day_change_value' => round((float) $position->quantity * (float) $position->asset->change_value, 2),
-                    'market_value' => round((float) $position->quantity * (float) $position->asset->current_price, 2),
+                    ...$this->mapPositionForDashboard($position),
                 ]),
                 'watchlist' => $watchlist,
                 'top_gainers' => $topGainers,
@@ -436,5 +425,46 @@ class DashboardController extends Controller
     private function isEffectivelyZero(float $value): bool
     {
         return abs($value) < 0.00000001;
+    }
+
+    /**
+     * @return array<string, float|string|null>
+     */
+    private function mapPositionForDashboard(Position $position): array
+    {
+        $quantity = (float) $position->quantity;
+        $averagePrice = (float) $position->average_price;
+        $currentPrice = (float) $position->asset->current_price;
+        $assetChangeValue = (float) $position->asset->change_value;
+        $openedAt = $position->opened_at;
+        $isOpenedToday = $openedAt !== null && $openedAt->isToday();
+        $previousClosePrice = $currentPrice - $assetChangeValue;
+
+        $referencePrice = $isOpenedToday
+            ? max(0.00000001, $averagePrice)
+            : max(0.00000001, $previousClosePrice > 0 ? $previousClosePrice : $averagePrice);
+
+        $dayChangeUnit = $currentPrice - $referencePrice;
+        $dayChangePercent = $referencePrice > 0
+            ? ($dayChangeUnit / $referencePrice) * 100
+            : 0.0;
+
+        return [
+            'id' => $position->id,
+            'asset_id' => $position->asset_id,
+            'symbol' => $position->asset->symbol,
+            'name' => $position->asset->name,
+            'type' => $position->asset->type,
+            'quantity' => $quantity,
+            'average_price' => $averagePrice,
+            'price' => $currentPrice,
+            'change_percent' => (float) $position->asset->change_percent,
+            'change_value' => $assetChangeValue,
+            'day_change_value' => round($quantity * $dayChangeUnit, 2),
+            'day_change_percent' => round($dayChangePercent, 2),
+            'market_value' => round($quantity * $currentPrice, 2),
+            'opened_at' => optional($openedAt)->toIso8601String(),
+            'updated_at' => optional($position->updated_at)->toIso8601String(),
+        ];
     }
 }

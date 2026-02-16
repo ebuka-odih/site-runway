@@ -320,4 +320,39 @@ class BackendFlowTest extends TestCase
 
         $this->assertNotNull($detailResponse->json('data.last_price_update_at'));
     }
+
+    public function test_newly_opened_position_day_change_uses_purchase_reference_price(): void
+    {
+        $this->seed();
+
+        $token = $this->postJson('/api/v1/auth/login', [
+            'email' => 'tommygreymassey@yahoo.com',
+            'password' => 'password',
+            'device_name' => 'phpunit',
+        ])->json('token');
+
+        $asset = Asset::query()->where('symbol', 'AAPL')->firstOrFail();
+
+        $this->withToken($token)
+            ->postJson('/api/v1/orders', [
+                'asset_id' => $asset->id,
+                'side' => 'buy',
+                'quantity' => 1,
+                'order_type' => 'market',
+            ])
+            ->assertCreated();
+
+        $dashboardResponse = $this
+            ->withToken($token)
+            ->getJson('/api/v1/dashboard?range=24h');
+
+        $position = collect($dashboardResponse->json('data.positions'))
+            ->firstWhere('symbol', 'AAPL');
+
+        $this->assertIsArray($position);
+        $this->assertArrayHasKey('day_change_value', $position);
+        $this->assertArrayHasKey('day_change_percent', $position);
+        $this->assertArrayHasKey('updated_at', $position);
+        $this->assertEqualsWithDelta(0.0, (float) data_get($position, 'day_change_value'), 0.01);
+    }
 }
