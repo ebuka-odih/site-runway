@@ -325,14 +325,14 @@ export const MarketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     );
     const token = getAuthToken();
     const appKey = String(import.meta.env.VITE_REVERB_APP_KEY ?? '').trim();
+    const configuredHost = normalizeHost(String(import.meta.env.VITE_REVERB_HOST ?? ''));
 
-    if (!realtimeEnabled || !user || !token || !appKey) {
+    if (!realtimeEnabled || !user || !token || !appKey || !configuredHost) {
       return;
     }
 
     const apiBase = String(API_BASE_URL).replace(/\/$/, '');
     const currentHost = window.location.hostname;
-    const configuredHost = normalizeHost(String(import.meta.env.VITE_REVERB_HOST ?? ''));
     const configuredScheme = String(import.meta.env.VITE_REVERB_SCHEME ?? '').trim().toLowerCase();
     const scheme = configuredScheme === 'http' || configuredScheme === 'https'
       ? configuredScheme
@@ -340,15 +340,7 @@ export const MarketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     const defaultPort = scheme === 'https' ? 443 : 80;
     const configuredPortValue = Number(String(import.meta.env.VITE_REVERB_PORT ?? '').trim());
 
-    const hostFromApiBase = (() => {
-      try {
-        return new URL(apiBase, window.location.origin).hostname;
-      } catch {
-        return '';
-      }
-    })();
-
-    const hostCandidate = configuredHost || hostFromApiBase || currentHost;
+    const hostCandidate = configuredHost || currentHost;
     const shouldUseCurrentHost = isLoopbackHost(hostCandidate) && !isLoopbackHost(currentHost);
     const wsHost = shouldUseCurrentHost ? currentHost : hostCandidate;
 
