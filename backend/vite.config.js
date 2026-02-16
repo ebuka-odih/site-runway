@@ -4,14 +4,34 @@ import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 
 const trimTrailingSlash = (value = '') => value.replace(/\/+$/, '');
+const ensureLeadingSlash = (value = '') => (value.startsWith('/') ? value : `/${value}`);
+
+const inferBaseFromAppUrl = (appUrl = '') => {
+    try {
+        const parsed = new URL(appUrl);
+        const appPath = trimTrailingSlash(parsed.pathname || '');
+
+        if (!appPath || appPath === '/') {
+            return './';
+        }
+
+        return `${ensureLeadingSlash(appPath)}/build/`;
+    } catch {
+        return './';
+    }
+};
 
 export default defineConfig(({ mode }) => {
     const env = loadEnv(mode, process.cwd(), '');
     const assetUrl = trimTrailingSlash(env.ASSET_URL || process.env.ASSET_URL || '');
-    const buildBase = assetUrl ? `${assetUrl}/build/` : '/build/';
+    const appUrl = trimTrailingSlash(env.APP_URL || process.env.APP_URL || '');
+    const buildBase = assetUrl ? `${assetUrl}/build/` : inferBaseFromAppUrl(appUrl);
 
     return {
         base: buildBase,
+        build: {
+            emptyOutDir: false,
+        },
         plugins: [
             react(),
             laravel({
