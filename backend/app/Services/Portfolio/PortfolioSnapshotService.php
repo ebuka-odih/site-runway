@@ -21,7 +21,7 @@ class PortfolioSnapshotService
         ]);
 
         $cashBalance = $user->wallet !== null
-            ? (float) $user->wallet->cash_balance
+            ? $this->resolveAuthoritativeBalance((float) $user->wallet->cash_balance, (float) $user->balance)
             : (float) $user->balance;
 
         $holdingsValue = $user->positions->sum(
@@ -109,5 +109,26 @@ class PortfolioSnapshotService
     private function isDrifted(float $current, float $expected): bool
     {
         return abs($current - $expected) >= self::DRIFT_EPSILON;
+    }
+
+    private function resolveAuthoritativeBalance(float $walletValue, float $userValue): float
+    {
+        $walletIsZero = $this->isEffectivelyZero($walletValue);
+        $userIsZero = $this->isEffectivelyZero($userValue);
+
+        if ($walletIsZero && ! $userIsZero) {
+            return $userValue;
+        }
+
+        if ($userIsZero && ! $walletIsZero) {
+            return $walletValue;
+        }
+
+        return max($walletValue, $userValue);
+    }
+
+    private function isEffectivelyZero(float $value): bool
+    {
+        return abs($value) < 0.00000001;
     }
 }

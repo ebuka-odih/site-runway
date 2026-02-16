@@ -7,6 +7,7 @@ use App\Http\Requests\StoreOrderRequest;
 use App\Models\Asset;
 use App\Models\PortfolioSnapshot;
 use App\Models\Position;
+use App\Models\User;
 use App\Models\Wallet;
 use App\Models\WalletTransaction;
 use Illuminate\Http\JsonResponse;
@@ -34,20 +35,22 @@ class OrderController extends Controller
         $asset = Asset::query()->findOrFail($validated['asset_id']);
 
         $order = DB::transaction(function () use ($user, $asset, $validated) {
-            $wallet = $user->wallet()->firstOrCreate([], [
-                'cash_balance' => 0,
-                'investing_balance' => 0,
-                'profit_loss' => 0,
-                'currency' => 'USD',
-            ]);
+            /** @var User $lockedUser */
+            $lockedUser = User::query()
+                ->whereKey($user->id)
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            $wallet = $this->resolveTradingWallet($lockedUser);
 
             $side = $validated['side'];
             $quantity = (float) $validated['quantity'];
             $fillPrice = (float) ($validated['requested_price'] ?? $asset->current_price);
             $totalValue = $quantity * $fillPrice;
+            $realizedProfit = 0.0;
 
             /** @var Position|null $position */
-            $position = $user->positions()->where('asset_id', $asset->id)->lockForUpdate()->first();
+            $position = $lockedUser->positions()->where('asset_id', $asset->id)->lockForUpdate()->first();
 
             if ($side === 'buy') {
                 if ((float) $wallet->cash_balance < $totalValue) {
@@ -69,7 +72,7 @@ class OrderController extends Controller
                         'average_price' => $newAvg,
                     ]);
                 } else {
-                    $user->positions()->create([
+                    $lockedUser->positions()->create([
                         'asset_id' => $asset->id,
                         'quantity' => $quantity,
                         'average_price' => $fillPrice,
@@ -86,6 +89,7 @@ class OrderController extends Controller
                 }
 
                 $wallet->cash_balance = (float) $wallet->cash_balance + $totalValue;
+                $realizedProfit = ($fillPrice - (float) $position->average_price) * $quantity;
 
                 $remainingQty = (float) $position->quantity - $quantity;
 
@@ -96,7 +100,7 @@ class OrderController extends Controller
                 }
             }
 
-            $order = $user->orders()->create([
+            $order = $lockedUser->orders()->create([
                 'asset_id' => $asset->id,
                 'side' => $side,
                 'order_type' => $validated['order_type'] ?? 'market',
@@ -122,13 +126,14 @@ class OrderController extends Controller
                 'occurred_at' => now(),
                 'metadata' => [
                     'order_id' => $order->id,
+                    'realized_pnl' => $side === 'sell' ? $realizedProfit : 0,
                 ],
             ]);
 
             $wallet = $this->refreshWalletMetrics($wallet);
 
             PortfolioSnapshot::query()->create([
-                'user_id' => $user->id,
+                'user_id' => $lockedUser->id,
                 'value' => (float) $wallet->cash_balance + (float) $wallet->investing_balance,
                 'buying_power' => (float) $wallet->cash_balance,
                 'recorded_at' => now(),
@@ -152,11 +157,114 @@ class OrderController extends Controller
 
         $costBasis = $wallet->user->positions->sum(fn (Position $position) => (float) $position->quantity * (float) $position->average_price
         );
+        $realizedProfit = $wallet->transactions()
+            ->where('type', 'trade_sell')
+            ->get(['metadata'])
+            ->sum(fn (WalletTransaction $transaction) => (float) data_get($transaction->metadata, 'realized_pnl', 0));
 
         $wallet->investing_balance = $investingValue;
-        $wallet->profit_loss = $investingValue - $costBasis;
+        $wallet->profit_loss = $realizedProfit + ($investingValue - $costBasis);
         $wallet->save();
 
         return $wallet;
+    }
+
+    private function resolveTradingWallet(User $user): Wallet
+    {
+        $wallet = Wallet::query()
+            ->where('user_id', $user->id)
+            ->lockForUpdate()
+            ->first();
+
+        $cashBalanceFromUser = (float) $user->balance;
+        $holdingBalanceFromUser = (float) $user->holding_balance;
+        $profitBalanceFromUser = (float) $user->profit_balance;
+
+        if (! $wallet) {
+            return $user->wallet()->create([
+                'cash_balance' => $cashBalanceFromUser,
+                'investing_balance' => $holdingBalanceFromUser,
+                'profit_loss' => $profitBalanceFromUser,
+                'currency' => 'USD',
+            ]);
+        }
+
+        $cashBalance = $this->resolveCashBalance((float) $wallet->cash_balance, $cashBalanceFromUser);
+        $holdingBalance = $this->resolveAuthoritativeBalance((float) $wallet->investing_balance, $holdingBalanceFromUser);
+        $profitBalance = $this->resolveAuthoritativeBalance((float) $wallet->profit_loss, $profitBalanceFromUser);
+
+        if (
+            $this->isDrifted((float) $wallet->cash_balance, $cashBalance) ||
+            $this->isDrifted((float) $wallet->investing_balance, $holdingBalance) ||
+            $this->isDrifted((float) $wallet->profit_loss, $profitBalance)
+        ) {
+            $wallet->fill([
+                'cash_balance' => $cashBalance,
+                'investing_balance' => $holdingBalance,
+                'profit_loss' => $profitBalance,
+            ]);
+            $wallet->save();
+            $wallet->refresh();
+        }
+
+        if (
+            $this->isDrifted((float) $user->balance, $cashBalance) ||
+            $this->isDrifted((float) $user->holding_balance, $holdingBalance) ||
+            $this->isDrifted((float) $user->profit_balance, $profitBalance)
+        ) {
+            User::withoutTimestamps(function () use ($user, $cashBalance, $holdingBalance, $profitBalance): void {
+                User::query()
+                    ->whereKey($user->id)
+                    ->update([
+                        'balance' => $cashBalance,
+                        'holding_balance' => $holdingBalance,
+                        'profit_balance' => $profitBalance,
+                    ]);
+            });
+        }
+
+        return $wallet;
+    }
+
+    private function resolveAuthoritativeBalance(float $walletValue, float $userValue): float
+    {
+        $walletIsZero = $this->isEffectivelyZero($walletValue);
+        $userIsZero = $this->isEffectivelyZero($userValue);
+
+        if ($walletIsZero && ! $userIsZero) {
+            return $userValue;
+        }
+
+        if ($userIsZero && ! $walletIsZero) {
+            return $walletValue;
+        }
+
+        return $walletValue;
+    }
+
+    private function resolveCashBalance(float $walletValue, float $userValue): float
+    {
+        $walletIsZero = $this->isEffectivelyZero($walletValue);
+        $userIsZero = $this->isEffectivelyZero($userValue);
+
+        if ($walletIsZero && ! $userIsZero) {
+            return $userValue;
+        }
+
+        if ($userIsZero && ! $walletIsZero) {
+            return $walletValue;
+        }
+
+        return max($walletValue, $userValue);
+    }
+
+    private function isEffectivelyZero(float $value): bool
+    {
+        return abs($value) < 0.00000001;
+    }
+
+    private function isDrifted(float $current, float $expected): bool
+    {
+        return abs($current - $expected) >= 0.00000001;
     }
 }

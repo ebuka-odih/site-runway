@@ -7,6 +7,8 @@ use App\Http\Requests\StoreDepositRequest;
 use App\Http\Requests\SubmitDepositProofRequest;
 use App\Models\Asset;
 use App\Models\DepositRequest;
+use App\Models\User;
+use App\Models\Wallet;
 use App\Models\WalletTransaction;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -16,12 +18,7 @@ class WalletController extends Controller
 {
     public function summary(Request $request): JsonResponse
     {
-        $wallet = $request->user()->wallet()->firstOrCreate([], [
-            'cash_balance' => 0,
-            'investing_balance' => 0,
-            'profit_loss' => 0,
-            'currency' => 'USD',
-        ]);
+        $wallet = $this->resolveUserWallet($request->user());
 
         $wallet->load([
             'transactions' => fn ($query) => $query->with('asset:id,symbol')->latest('occurred_at')->limit(10),
@@ -64,7 +61,7 @@ class WalletController extends Controller
 
     public function transactions(Request $request): JsonResponse
     {
-        $wallet = $request->user()->wallet()->firstOrFail();
+        $wallet = $this->resolveUserWallet($request->user());
 
         $validated = $request->validate([
             'type' => ['sometimes', 'string'],
@@ -84,7 +81,7 @@ class WalletController extends Controller
     public function storeDeposit(StoreDepositRequest $request): JsonResponse
     {
         $validated = $request->validated();
-        $wallet = $request->user()->wallet()->firstOrFail();
+        $wallet = $this->resolveUserWallet($request->user());
 
         $asset = Asset::query()
             ->where('symbol', $validated['currency'])
@@ -108,7 +105,7 @@ class WalletController extends Controller
 
     public function submitProof(SubmitDepositProofRequest $request, DepositRequest $depositRequest): JsonResponse
     {
-        $wallet = $request->user()->wallet()->firstOrFail();
+        $wallet = $this->resolveUserWallet($request->user());
 
         if ($depositRequest->wallet_id !== $wallet->id) {
             abort(403, 'You are not allowed to modify this deposit request.');
@@ -161,5 +158,100 @@ class WalletController extends Controller
             'message' => 'Deposit proof submitted.',
             'data' => $depositRequest->fresh(),
         ]);
+    }
+
+    private function resolveUserWallet(User $user): Wallet
+    {
+        $wallet = $user->wallet()->first();
+        $cashBalanceFromUser = (float) $user->balance;
+        $holdingBalanceFromUser = (float) $user->holding_balance;
+        $profitBalanceFromUser = (float) $user->profit_balance;
+
+        if (! $wallet) {
+            return $user->wallet()->create([
+                'cash_balance' => $cashBalanceFromUser,
+                'investing_balance' => $holdingBalanceFromUser,
+                'profit_loss' => $profitBalanceFromUser,
+                'currency' => 'USD',
+            ]);
+        }
+
+        $cashBalance = $this->resolveCashBalance((float) $wallet->cash_balance, $cashBalanceFromUser);
+        $holdingBalance = $this->resolveAuthoritativeBalance((float) $wallet->investing_balance, $holdingBalanceFromUser);
+        $profitBalance = $this->resolveAuthoritativeBalance((float) $wallet->profit_loss, $profitBalanceFromUser);
+
+        if (
+            $this->isDrifted((float) $wallet->cash_balance, $cashBalance) ||
+            $this->isDrifted((float) $wallet->investing_balance, $holdingBalance) ||
+            $this->isDrifted((float) $wallet->profit_loss, $profitBalance)
+        ) {
+            $wallet->fill([
+                'cash_balance' => $cashBalance,
+                'investing_balance' => $holdingBalance,
+                'profit_loss' => $profitBalance,
+            ]);
+            $wallet->save();
+            $wallet->refresh();
+        }
+
+        if (
+            $this->isDrifted((float) $user->balance, $cashBalance) ||
+            $this->isDrifted((float) $user->holding_balance, $holdingBalance) ||
+            $this->isDrifted((float) $user->profit_balance, $profitBalance)
+        ) {
+            User::withoutTimestamps(function () use ($user, $cashBalance, $holdingBalance, $profitBalance): void {
+                User::query()
+                    ->whereKey($user->id)
+                    ->update([
+                        'balance' => $cashBalance,
+                        'holding_balance' => $holdingBalance,
+                        'profit_balance' => $profitBalance,
+                    ]);
+            });
+        }
+
+        return $wallet;
+    }
+
+    private function resolveAuthoritativeBalance(float $walletValue, float $userValue): float
+    {
+        $walletIsZero = $this->isEffectivelyZero($walletValue);
+        $userIsZero = $this->isEffectivelyZero($userValue);
+
+        if ($walletIsZero && ! $userIsZero) {
+            return $userValue;
+        }
+
+        if ($userIsZero && ! $walletIsZero) {
+            return $walletValue;
+        }
+
+        return $walletValue;
+    }
+
+    private function resolveCashBalance(float $walletValue, float $userValue): float
+    {
+        $walletIsZero = $this->isEffectivelyZero($walletValue);
+        $userIsZero = $this->isEffectivelyZero($userValue);
+
+        if ($walletIsZero && ! $userIsZero) {
+            return $userValue;
+        }
+
+        if ($userIsZero && ! $walletIsZero) {
+            return $walletValue;
+        }
+
+        return max($walletValue, $userValue);
+    }
+
+    private function isEffectivelyZero(float $value): bool
+    {
+        return abs($value) < 0.00000001;
+    }
+
+    private function isDrifted(float $current, float $expected): bool
+    {
+        return abs($current - $expected) >= 0.00000001;
     }
 }

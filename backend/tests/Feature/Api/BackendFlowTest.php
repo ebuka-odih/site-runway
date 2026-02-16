@@ -67,6 +67,87 @@ class BackendFlowTest extends TestCase
         $this->assertGreaterThan(0, $user->orders()->count());
     }
 
+    public function test_order_uses_wallet_buying_power_when_user_balance_is_stale(): void
+    {
+        $this->seed();
+
+        $user = User::query()->where('email', 'tommygreymassey@yahoo.com')->firstOrFail();
+        $wallet = Wallet::query()->where('user_id', $user->id)->firstOrFail();
+
+        $this->assertGreaterThan(0, (float) $wallet->cash_balance);
+
+        $user->update([
+            'balance' => 0,
+            'profit_balance' => 0,
+            'holding_balance' => 0,
+        ]);
+
+        $token = $this->postJson('/api/v1/auth/login', [
+            'email' => 'tommygreymassey@yahoo.com',
+            'password' => 'password',
+            'device_name' => 'phpunit',
+        ])->json('token');
+
+        $asset = Asset::query()->where('symbol', 'AAPL')->firstOrFail();
+
+        $this->withToken($token)
+            ->postJson('/api/v1/orders', [
+                'asset_id' => $asset->id,
+                'side' => 'buy',
+                'quantity' => 1,
+                'order_type' => 'market',
+            ])
+            ->assertCreated();
+
+        $user->refresh();
+
+        $this->assertGreaterThan(0, (float) $user->balance);
+    }
+
+    public function test_order_uses_user_balance_when_wallet_is_missing(): void
+    {
+        $asset = Asset::query()->create([
+            'symbol' => 'SYNC',
+            'name' => 'Sync Asset',
+            'type' => 'stock',
+            'current_price' => 100,
+            'change_percent' => 0,
+            'change_value' => 0,
+            'is_active' => true,
+        ]);
+
+        $user = User::factory()->create([
+            'email' => 'walletless@example.com',
+            'balance' => 1000,
+            'profit_balance' => 0,
+            'holding_balance' => 0,
+        ]);
+
+        $token = $this->postJson('/api/v1/auth/login', [
+            'email' => 'walletless@example.com',
+            'password' => 'password',
+            'device_name' => 'phpunit',
+        ])->json('token');
+
+        $this->withToken($token)
+            ->postJson('/api/v1/orders', [
+                'asset_id' => $asset->id,
+                'side' => 'buy',
+                'quantity' => 2,
+                'order_type' => 'market',
+            ])
+            ->assertCreated();
+
+        $wallet = Wallet::query()->where('user_id', $user->id)->first();
+
+        $this->assertNotNull($wallet);
+        $this->assertEqualsWithDelta(800, (float) $wallet->cash_balance, 0.00000001);
+
+        $user->refresh();
+
+        $this->assertEqualsWithDelta((float) $wallet->cash_balance, (float) $user->balance, 0.00000001);
+    }
+
     public function test_dashboard_syncs_user_and_wallet_balances_from_positions(): void
     {
         $this->seed();

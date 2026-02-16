@@ -205,4 +205,33 @@ class UserManagementTest extends TestCase
             ])
             ->assertSessionHasErrors(['target', 'amount']);
     }
+
+    public function test_admin_funding_preserves_existing_user_balances_when_wallet_is_missing(): void
+    {
+        $admin = User::factory()->admin()->create();
+        $customer = User::factory()->create([
+            'balance' => 5000,
+            'profit_balance' => 120,
+            'holding_balance' => 700,
+        ]);
+
+        $this->assertDatabaseMissing('wallets', ['user_id' => $customer->id]);
+
+        $this->actingAs($admin)
+            ->post(route('admin.users.fund', $customer), [
+                'target' => 'balance',
+                'amount' => 50,
+            ])
+            ->assertRedirect(route('admin.users.edit', $customer));
+
+        $wallet = Wallet::query()->where('user_id', $customer->id)->firstOrFail();
+        $customer->refresh();
+
+        $this->assertSame(5050.0, (float) $wallet->cash_balance);
+        $this->assertSame(700.0, (float) $wallet->investing_balance);
+        $this->assertSame(120.0, (float) $wallet->profit_loss);
+        $this->assertSame(5050.0, (float) $customer->balance);
+        $this->assertSame(700.0, (float) $customer->holding_balance);
+        $this->assertSame(120.0, (float) $customer->profit_balance);
+    }
 }

@@ -7,6 +7,7 @@ use App\Models\Asset;
 use App\Models\Position;
 use App\Models\User;
 use App\Models\Wallet;
+use App\Models\WalletTransaction;
 use App\Services\Portfolio\PortfolioSnapshotService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -49,12 +50,18 @@ class DashboardController extends Controller
         );
         $positionsCostBasis = $positions->sum(fn (Position $position) => (float) $position->quantity * (float) $position->average_price
         );
+        $realizedProfit = $wallet instanceof Wallet
+            ? $wallet->transactions()
+                ->where('type', 'trade_sell')
+                ->get(['metadata'])
+                ->sum(fn (WalletTransaction $transaction) => (float) data_get($transaction->metadata, 'realized_pnl', 0))
+            : 0.0;
 
         $cashBalance = $wallet instanceof Wallet
-            ? (float) $wallet->cash_balance
+            ? $this->resolveAuthoritativeBalance((float) $wallet->cash_balance, (float) $user->balance)
             : (float) $user->balance;
         $holdingBalance = round($positionsMarketValue, 8);
-        $profitBalance = round($positionsMarketValue - $positionsCostBasis, 8);
+        $profitBalance = round($realizedProfit + ($positionsMarketValue - $positionsCostBasis), 8);
 
         $this->syncAccountBalances($user, $cashBalance, $holdingBalance, $profitBalance);
 
@@ -386,5 +393,26 @@ class DashboardController extends Controller
     private function isDrifted(float $current, float $expected): bool
     {
         return abs($current - $expected) >= 0.00000001;
+    }
+
+    private function resolveAuthoritativeBalance(float $walletValue, float $userValue): float
+    {
+        $walletIsZero = $this->isEffectivelyZero($walletValue);
+        $userIsZero = $this->isEffectivelyZero($userValue);
+
+        if ($walletIsZero && ! $userIsZero) {
+            return $userValue;
+        }
+
+        if ($userIsZero && ! $walletIsZero) {
+            return $walletValue;
+        }
+
+        return max($walletValue, $userValue);
+    }
+
+    private function isEffectivelyZero(float $value): bool
+    {
+        return abs($value) < 0.00000001;
     }
 }

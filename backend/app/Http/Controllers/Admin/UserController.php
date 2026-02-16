@@ -184,9 +184,9 @@ class UserController extends Controller
             $wallet = Wallet::query()->firstOrCreate(
                 ['user_id' => $lockedUser->id],
                 [
-                    'cash_balance' => 0,
-                    'investing_balance' => 0,
-                    'profit_loss' => 0,
+                    'cash_balance' => (float) $lockedUser->balance,
+                    'investing_balance' => (float) $lockedUser->holding_balance,
+                    'profit_loss' => (float) $lockedUser->profit_balance,
                     'currency' => 'USD',
                 ],
             );
