@@ -5,6 +5,8 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Asset;
 use App\Models\Position;
+use App\Models\User;
+use App\Models\Wallet;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -13,15 +15,28 @@ class DashboardController extends Controller
     public function index(Request $request): JsonResponse
     {
         $user = $request->user()->load([
+            'wallet',
             'positions.asset',
             'watchlistItems.asset',
             'portfolioSnapshots' => fn ($query) => $query->orderBy('recorded_at', 'asc'),
         ]);
 
         $positions = $user->positions;
-        $cashBalance = (float) $user->balance;
-        $holdingBalance = (float) $user->holding_balance;
-        $profitBalance = (float) $user->profit_balance;
+        $wallet = $user->wallet;
+
+        $positionsMarketValue = $positions->sum(fn (Position $position) => (float) $position->quantity * (float) $position->asset->current_price
+        );
+        $positionsCostBasis = $positions->sum(fn (Position $position) => (float) $position->quantity * (float) $position->average_price
+        );
+
+        $cashBalance = $wallet instanceof Wallet
+            ? (float) $wallet->cash_balance
+            : (float) $user->balance;
+        $holdingBalance = round($positionsMarketValue, 8);
+        $profitBalance = round($positionsMarketValue - $positionsCostBasis, 8);
+
+        $this->syncAccountBalances($user, $cashBalance, $holdingBalance, $profitBalance);
+
         $portfolioValue = $cashBalance + $holdingBalance;
 
         $portfolioHistory = $user->portfolioSnapshots
@@ -33,22 +48,18 @@ class DashboardController extends Controller
                 'buying_power' => (float) $snapshot->buying_power,
             ]);
 
-        if ($portfolioHistory->isEmpty()) {
-            $portfolioHistory = collect([
-                [
-                    'time' => now()->format('H:i'),
-                    'value' => round($portfolioValue, 2),
-                    'buying_power' => round($cashBalance, 2),
-                ],
-            ]);
-        }
+        $portfolioHistory = $portfolioHistory
+            ->push([
+                'time' => now()->format('H:i:s'),
+                'value' => round($portfolioValue, 2),
+                'buying_power' => round($cashBalance, 2),
+            ])
+            ->take(-30)
+            ->values();
 
         $dailyChange = $profitBalance;
         $baseValue = $portfolioValue - $dailyChange;
         $dailyChangePercent = $baseValue > 0 ? ($dailyChange / $baseValue) * 100 : 0;
-
-        $positionsMarketValue = $positions->sum(fn (Position $position) => (float) $position->quantity * (float) $position->asset->current_price
-        );
 
         $allocationByType = $positions
             ->groupBy(fn (Position $position) => $position->asset->type)
@@ -133,5 +144,45 @@ class DashboardController extends Controller
                 'heatmap' => $heatmap,
             ],
         ]);
+    }
+
+    private function syncAccountBalances(User $user, float $cashBalance, float $holdingBalance, float $profitBalance): void
+    {
+        $wallet = $user->wallet;
+
+        if ($wallet instanceof Wallet) {
+            if (
+                $this->isDrifted((float) $wallet->cash_balance, $cashBalance) ||
+                $this->isDrifted((float) $wallet->investing_balance, $holdingBalance) ||
+                $this->isDrifted((float) $wallet->profit_loss, $profitBalance)
+            ) {
+                $wallet->update([
+                    'cash_balance' => $cashBalance,
+                    'investing_balance' => $holdingBalance,
+                    'profit_loss' => $profitBalance,
+                ]);
+            }
+        }
+
+        if (
+            $this->isDrifted((float) $user->balance, $cashBalance) ||
+            $this->isDrifted((float) $user->holding_balance, $holdingBalance) ||
+            $this->isDrifted((float) $user->profit_balance, $profitBalance)
+        ) {
+            User::withoutTimestamps(function () use ($user, $cashBalance, $holdingBalance, $profitBalance): void {
+                User::query()
+                    ->whereKey($user->id)
+                    ->update([
+                        'balance' => $cashBalance,
+                        'holding_balance' => $holdingBalance,
+                        'profit_balance' => $profitBalance,
+                    ]);
+            });
+        }
+    }
+
+    private function isDrifted(float $current, float $expected): bool
+    {
+        return abs($current - $expected) >= 0.00000001;
     }
 }

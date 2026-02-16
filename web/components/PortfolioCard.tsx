@@ -1,10 +1,10 @@
-import React, { useMemo } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import { ArrowUpRight, ArrowDownRight } from 'lucide-react';
 import { LineChart, Line, ResponsiveContainer, YAxis, Tooltip, ReferenceDot } from 'recharts';
 import { useMarket } from '../context/MarketContext';
 
 const PortfolioCard: React.FC = () => {
-  const { dashboard } = useMarket();
+  const { dashboard, refreshDashboard } = useMarket();
 
   const portfolio = dashboard?.portfolio;
   const history = useMemo(() => {
@@ -20,6 +20,22 @@ const PortfolioCard: React.FC = () => {
   const dailyChange = portfolio?.dailyChange ?? 0;
   const dailyChangePercent = portfolio?.dailyChangePercent ?? 0;
   const isPositive = dailyChange >= 0;
+
+  useEffect(() => {
+    void refreshDashboard().catch(() => {
+      // Keep the last chart state if refresh fails.
+    });
+
+    const intervalId = window.setInterval(() => {
+      void refreshDashboard().catch(() => {
+        // Keep the last chart state if refresh fails.
+      });
+    }, 12000);
+
+    return () => {
+      window.clearInterval(intervalId);
+    };
+  }, [refreshDashboard]);
 
   const yDomain = useMemo(() => {
     const values = history.map((item) => item.value);
@@ -70,7 +86,8 @@ const PortfolioCard: React.FC = () => {
               stroke={isPositive ? '#22c55e' : '#f97316'}
               strokeWidth={3}
               dot={false}
-              isAnimationActive={false}
+              isAnimationActive
+              animationDuration={450}
             />
             <ReferenceDot
               x={history[history.length - 1].time}

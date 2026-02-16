@@ -4,6 +4,7 @@ namespace Tests\Feature\Api;
 
 use App\Models\Asset;
 use App\Models\User;
+use App\Models\Wallet;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -66,16 +67,25 @@ class BackendFlowTest extends TestCase
         $this->assertGreaterThan(0, $user->orders()->count());
     }
 
-    public function test_dashboard_portfolio_uses_user_account_balance_fields(): void
+    public function test_dashboard_syncs_user_and_wallet_balances_from_positions(): void
     {
         $this->seed();
 
         $user = User::query()->where('email', 'tommygreymassey@yahoo.com')->firstOrFail();
+        $wallet = Wallet::query()->where('user_id', $user->id)->firstOrFail();
+        $positions = $user->positions()->with('asset')->get();
+
+        $expectedHolding = round($positions->sum(
+            fn ($position) => (float) $position->quantity * (float) $position->asset->current_price
+        ), 8);
+        $expectedProfit = round($positions->sum(
+            fn ($position) => ((float) $position->asset->current_price - (float) $position->average_price) * (float) $position->quantity
+        ), 8);
+        $expectedPortfolioValue = round((float) $wallet->cash_balance + $expectedHolding, 2);
 
         $user->update([
-            'balance' => 1234.56,
-            'holding_balance' => 789.01,
-            'profit_balance' => 45.67,
+            'holding_balance' => 0,
+            'profit_balance' => 0,
         ]);
 
         $loginResponse = $this->postJson('/api/v1/auth/login', [
@@ -92,9 +102,17 @@ class BackendFlowTest extends TestCase
 
         $dashboardResponse
             ->assertOk()
-            ->assertJsonPath('data.portfolio.value', 2023.57)
-            ->assertJsonPath('data.portfolio.buying_power', 1234.56)
-            ->assertJsonPath('data.portfolio.daily_change', 45.67)
-            ->assertJsonPath('data.portfolio.daily_change_percent', 2.31);
+            ->assertJsonPath('data.portfolio.value', $expectedPortfolioValue)
+            ->assertJsonPath('data.portfolio.buying_power', round((float) $wallet->cash_balance, 2))
+            ->assertJsonPath('data.portfolio.daily_change', round($expectedProfit, 2));
+
+        $user->refresh();
+        $wallet->refresh();
+
+        $this->assertEqualsWithDelta((float) $wallet->cash_balance, (float) $user->balance, 0.00000001);
+        $this->assertEqualsWithDelta($expectedHolding, (float) $user->holding_balance, 0.00000001);
+        $this->assertEqualsWithDelta($expectedProfit, (float) $user->profit_balance, 0.00000001);
+        $this->assertEqualsWithDelta($expectedHolding, (float) $wallet->investing_balance, 0.00000001);
+        $this->assertEqualsWithDelta($expectedProfit, (float) $wallet->profit_loss, 0.00000001);
     }
 }
