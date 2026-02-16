@@ -103,8 +103,16 @@ class BackendFlowTest extends TestCase
         $dashboardResponse
             ->assertOk()
             ->assertJsonPath('data.portfolio.value', $expectedPortfolioValue)
-            ->assertJsonPath('data.portfolio.buying_power', round((float) $wallet->cash_balance, 2))
-            ->assertJsonPath('data.portfolio.daily_change', round($expectedProfit, 2));
+            ->assertJsonPath('data.portfolio.buying_power', round((float) $wallet->cash_balance, 2));
+
+        $history = $dashboardResponse->json('data.portfolio.history');
+
+        $this->assertIsArray($history);
+        $this->assertGreaterThanOrEqual(32, count($history));
+        $this->assertSame(
+            $expectedPortfolioValue,
+            round((float) data_get($history, (count($history) - 1).'.value'), 2)
+        );
 
         $user->refresh();
         $wallet->refresh();

@@ -9,16 +9,20 @@ use App\Models\User;
 use App\Models\Wallet;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 
 class DashboardController extends Controller
 {
+    private const HISTORY_POINTS = 64;
+
+    private const HISTORY_INTERVAL_MINUTES = 5;
+
     public function index(Request $request): JsonResponse
     {
         $user = $request->user()->load([
             'wallet',
             'positions.asset',
             'watchlistItems.asset',
-            'portfolioSnapshots' => fn ($query) => $query->orderBy('recorded_at', 'asc'),
         ]);
 
         $positions = $user->positions;
@@ -38,27 +42,10 @@ class DashboardController extends Controller
         $this->syncAccountBalances($user, $cashBalance, $holdingBalance, $profitBalance);
 
         $portfolioValue = $cashBalance + $holdingBalance;
+        $portfolioHistory = $this->buildPortfolioHistory($positions, $cashBalance, $portfolioValue);
 
-        $portfolioHistory = $user->portfolioSnapshots
-            ->take(-30)
-            ->values()
-            ->map(fn ($snapshot) => [
-                'time' => $snapshot->recorded_at->format('H:i'),
-                'value' => (float) $snapshot->value,
-                'buying_power' => (float) $snapshot->buying_power,
-            ]);
-
-        $portfolioHistory = $portfolioHistory
-            ->push([
-                'time' => now()->format('H:i:s'),
-                'value' => round($portfolioValue, 2),
-                'buying_power' => round($cashBalance, 2),
-            ])
-            ->take(-30)
-            ->values();
-
-        $dailyChange = $profitBalance;
-        $baseValue = $portfolioValue - $dailyChange;
+        $baseValue = (float) ($portfolioHistory->first()['value'] ?? $portfolioValue);
+        $dailyChange = $portfolioValue - $baseValue;
         $dailyChangePercent = $baseValue > 0 ? ($dailyChange / $baseValue) * 100 : 0;
 
         $allocationByType = $positions
@@ -144,6 +131,60 @@ class DashboardController extends Controller
                 'heatmap' => $heatmap,
             ],
         ]);
+    }
+
+    private function buildPortfolioHistory($positions, float $cashBalance, float $currentPortfolioValue): Collection
+    {
+        $points = self::HISTORY_POINTS;
+        $intervalMinutes = self::HISTORY_INTERVAL_MINUTES;
+        $now = now();
+
+        $history = collect(range(0, $points - 1))
+            ->map(function (int $index) use ($positions, $cashBalance, $points, $intervalMinutes, $now) {
+                $progress = $points > 1 ? $index / ($points - 1) : 1.0;
+
+                $holdingsValue = $positions->sum(function (Position $position) use ($progress) {
+                    $quantity = (float) $position->quantity;
+                    $currentPrice = (float) $position->asset->current_price;
+
+                    if ($quantity <= 0 || $currentPrice <= 0) {
+                        return 0.0;
+                    }
+
+                    $changePercent = (float) $position->asset->change_percent;
+                    $denominator = 1 + ($changePercent / 100);
+                    $openingPrice = abs($denominator) < 0.0001 ? $currentPrice : ($currentPrice / $denominator);
+                    $basePrice = $openingPrice + (($currentPrice - $openingPrice) * $progress);
+
+                    $phase = deg2rad((float) (crc32((string) $position->asset->symbol) % 360));
+                    $waveOne = sin(($progress * M_PI * 4) + $phase) * $currentPrice * 0.0025;
+                    $waveTwo = cos(($progress * M_PI * 8) + $phase) * $currentPrice * 0.0015;
+                    $simulatedPrice = max(0.00000001, $basePrice + $waveOne + $waveTwo);
+
+                    return $quantity * $simulatedPrice;
+                });
+
+                return [
+                    'time' => $now->copy()->subMinutes(($points - 1 - $index) * $intervalMinutes)->format('H:i'),
+                    'value' => round($cashBalance + $holdingsValue, 2),
+                    'buying_power' => round($cashBalance, 2),
+                ];
+            })
+            ->values();
+
+        if ($history->isNotEmpty()) {
+            $lastIndex = $history->count() - 1;
+            $lastPoint = $history->get($lastIndex);
+
+            $history->put($lastIndex, [
+                ...$lastPoint,
+                'time' => $now->format('H:i'),
+                'value' => round($currentPortfolioValue, 2),
+                'buying_power' => round($cashBalance, 2),
+            ]);
+        }
+
+        return $history;
     }
 
     private function syncAccountBalances(User $user, float $cashBalance, float $holdingBalance, float $profitBalance): void
