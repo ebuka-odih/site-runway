@@ -27,6 +27,7 @@ class User extends Authenticatable
         'password',
         'phone',
         'country',
+        'is_admin',
         'membership_tier',
         'kyc_status',
         'notification_email_alerts',
@@ -60,6 +61,7 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            'is_admin' => 'boolean',
             'notification_email_alerts' => 'boolean',
             'email_otp_expires_at' => 'datetime',
             'password_reset_otp_expires_at' => 'datetime',

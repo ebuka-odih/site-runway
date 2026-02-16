@@ -41,6 +41,7 @@ class AuthFlowTest extends TestCase
         Notification::assertSentTo($user, AuthOtpNotification::class);
 
         $this->assertNull($user->email_verified_at);
+        $this->assertSame('USD', $user->wallet?->currency);
 
         $this->postJson('/api/v1/auth/login', [
             'email' => 'algo@example.com',
@@ -67,6 +68,28 @@ class AuthFlowTest extends TestCase
             'email' => 'algo@example.com',
             'password' => 'strong-pass-123',
         ])->assertOk();
+    }
+
+    public function test_user_can_register_without_country_when_currency_is_provided(): void
+    {
+        Notification::fake();
+
+        $registerResponse = $this->postJson('/api/v1/auth/register', [
+            'username' => 'currency_user',
+            'name' => 'Currency User',
+            'email' => 'currency@example.com',
+            'currency' => 'GBP',
+            'phone' => '+1 555 000 6677',
+            'password' => 'strong-pass-456',
+        ]);
+
+        $registerResponse->assertCreated();
+
+        /** @var User $user */
+        $user = User::query()->where('email', 'currency@example.com')->firstOrFail();
+
+        $this->assertSame('United States', $user->country);
+        $this->assertSame('GBP', $user->wallet?->currency);
     }
 
     public function test_user_can_reset_password_with_otp(): void

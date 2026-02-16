@@ -16,13 +16,17 @@ class AuthController extends Controller
 {
     private const OTP_EXPIRY_MINUTES = 10;
 
+    private const DEFAULT_COUNTRY = 'United States';
+
+    private const DEFAULT_CURRENCY = 'USD';
+
     /**
      * @var array<int, string>
      */
-    private const BASE_COUNTRIES = [
-        'United States',
-        'United Kingdom',
-        'Canada',
+    private const ALLOWED_SIGNUP_CURRENCIES = [
+        'USD',
+        'EUR',
+        'GBP',
     ];
 
     public function login(LoginRequest $request): JsonResponse
@@ -57,16 +61,20 @@ class AuthController extends Controller
             'username' => ['required', 'string', 'alpha_dash', 'min:3', 'max:30', Rule::unique('users', 'username')],
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'email', 'max:255', Rule::unique('users', 'email')],
-            'country' => ['required', 'string', Rule::in(self::BASE_COUNTRIES)],
+            'country' => ['nullable', 'string', 'max:120'],
+            'currency' => ['nullable', 'string', Rule::in(self::ALLOWED_SIGNUP_CURRENCIES)],
             'phone' => ['required', 'string', 'max:30'],
             'password' => ['required', 'string', 'min:8', 'max:100'],
         ]);
+
+        $normalizedCountry = $this->normalizeCountry($validated['country'] ?? null);
+        $normalizedCurrency = $this->normalizeCurrency($validated['currency'] ?? null);
 
         $user = User::query()->create([
             'username' => $validated['username'],
             'name' => $validated['name'],
             'email' => strtolower($validated['email']),
-            'country' => $validated['country'],
+            'country' => $normalizedCountry,
             'phone' => $validated['phone'],
             'password' => $validated['password'],
             'membership_tier' => 'free',
@@ -74,6 +82,10 @@ class AuthController extends Controller
             'notification_email_alerts' => true,
             'timezone' => null,
             'email_verified_at' => null,
+        ]);
+
+        $user->wallet()->firstOrCreate([], [
+            'currency' => $normalizedCurrency,
         ]);
 
         $otp = $this->issueOtp($user, 'email_verification');
@@ -298,5 +310,35 @@ class AuthController extends Controller
         }
 
         return [];
+    }
+
+    private function normalizeCountry(?string $country): string
+    {
+        $normalized = trim((string) $country);
+
+        if ($normalized === '') {
+            return self::DEFAULT_COUNTRY;
+        }
+
+        if (in_array(strtoupper($normalized), self::ALLOWED_SIGNUP_CURRENCIES, true)) {
+            return self::DEFAULT_COUNTRY;
+        }
+
+        return substr($normalized, 0, 120);
+    }
+
+    private function normalizeCurrency(?string $currency): string
+    {
+        $normalized = strtoupper(trim((string) $currency));
+
+        if ($normalized === '') {
+            return self::DEFAULT_CURRENCY;
+        }
+
+        if (! in_array($normalized, self::ALLOWED_SIGNUP_CURRENCIES, true)) {
+            return self::DEFAULT_CURRENCY;
+        }
+
+        return $normalized;
     }
 }

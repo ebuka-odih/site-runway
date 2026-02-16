@@ -1,5 +1,11 @@
 <?php
 
+use App\Http\Controllers\Admin\AuthController;
+use App\Http\Controllers\Admin\DashboardController;
+use App\Http\Controllers\Admin\PaymentMethodController;
+use App\Http\Controllers\Admin\SettingController;
+use App\Http\Controllers\Admin\TransactionController;
+use App\Http\Controllers\Admin\UserController;
 use Illuminate\Support\Facades\Route;
 
 Route::any('/', function () {
@@ -8,4 +14,41 @@ Route::any('/', function () {
         'status' => 'ok',
         'version' => 'v1',
     ]);
+});
+
+Route::prefix('admin')->name('admin.')->group(function () {
+    Route::get('/login', [AuthController::class, 'create'])->name('login');
+    Route::post('/login', [AuthController::class, 'store'])->name('login.store');
+
+    Route::middleware('admin')->group(function () {
+        Route::get('/', [DashboardController::class, 'index'])->name('dashboard');
+        Route::post('/logout', [AuthController::class, 'destroy'])->name('logout');
+
+        Route::get('/transactions', [TransactionController::class, 'index'])->name('transactions.index');
+        Route::get('/transactions/deposits/{depositRequest}/receipt', [TransactionController::class, 'showDepositReceipt'])->name('transactions.deposits.receipt');
+        Route::post('/transactions/deposits/{depositRequest}/approve', [TransactionController::class, 'approveDepositRequest'])->name('transactions.deposits.approve');
+        Route::post('/transactions/deposits/{depositRequest}/decline', [TransactionController::class, 'declineDepositRequest'])->name('transactions.deposits.decline');
+        Route::delete('/transactions/deposits/{depositRequest}', [TransactionController::class, 'destroyDepositRequest'])->name('transactions.deposits.destroy');
+        Route::post('/transactions/withdrawals/{walletTransaction}/approve', [TransactionController::class, 'approveWithdrawalTransaction'])->name('transactions.withdrawals.approve');
+        Route::post('/transactions/withdrawals/{walletTransaction}/decline', [TransactionController::class, 'declineWithdrawalTransaction'])->name('transactions.withdrawals.decline');
+        Route::delete('/transactions/withdrawals/{walletTransaction}', [TransactionController::class, 'destroyWithdrawalTransaction'])->name('transactions.withdrawals.destroy');
+        Route::get('/payment-methods', [PaymentMethodController::class, 'index'])->name('payment-methods.index');
+        Route::get('/payment-methods/create', [PaymentMethodController::class, 'create'])->name('payment-methods.create');
+        Route::post('/payment-methods', [PaymentMethodController::class, 'store'])->name('payment-methods.store');
+        Route::get('/payment-methods/{paymentMethod}/edit', [PaymentMethodController::class, 'edit'])->name('payment-methods.edit');
+        Route::put('/payment-methods/{paymentMethod}', [PaymentMethodController::class, 'update'])->name('payment-methods.update');
+        Route::delete('/payment-methods/{paymentMethod}', [PaymentMethodController::class, 'destroy'])->name('payment-methods.destroy');
+
+        Route::get('/settings', [SettingController::class, 'index'])->name('settings.index');
+        Route::post('/settings', [SettingController::class, 'update'])->name('settings.update');
+        Route::get('/settings/export/database', [SettingController::class, 'exportSiteDatabaseDetails'])->name('settings.export.database');
+        Route::get('/settings/export/users', [SettingController::class, 'exportUserDatabaseDetails'])->name('settings.export.users');
+
+        Route::get('/users', [UserController::class, 'index'])->name('users.index');
+        Route::get('/users/create', [UserController::class, 'create'])->name('users.create');
+        Route::post('/users', [UserController::class, 'store'])->name('users.store');
+        Route::get('/users/{user}/edit', [UserController::class, 'edit'])->name('users.edit');
+        Route::put('/users/{user}', [UserController::class, 'update'])->name('users.update');
+        Route::delete('/users/{user}', [UserController::class, 'destroy'])->name('users.destroy');
+    });
 });

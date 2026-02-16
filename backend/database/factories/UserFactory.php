@@ -29,6 +29,7 @@ class UserFactory extends Factory
             'email' => fake()->unique()->safeEmail(),
             'phone' => fake()->optional()->phoneNumber(),
             'country' => fake()->randomElement(['United States', 'United Kingdom', 'Canada']),
+            'is_admin' => false,
             'membership_tier' => fake()->randomElement(['free', 'pro']),
             'kyc_status' => fake()->randomElement(['pending', 'verified']),
             'notification_email_alerts' => fake()->boolean(85),
@@ -46,6 +47,16 @@ class UserFactory extends Factory
     {
         return $this->state(fn (array $attributes) => [
             'email_verified_at' => null,
+        ]);
+    }
+
+    /**
+     * Indicate that the user has admin access.
+     */
+    public function admin(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'is_admin' => true,
         ]);
     }
 }

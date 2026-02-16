@@ -60,6 +60,7 @@ class DemoDataSeeder extends Seeder
             'password' => Hash::make('password'),
             'phone' => '+1 (555) 013-9302',
             'country' => 'United States',
+            'is_admin' => false,
             'membership_tier' => 'free',
             'kyc_status' => 'pending',
             'notification_email_alerts' => true,
