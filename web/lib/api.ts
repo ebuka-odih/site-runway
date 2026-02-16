@@ -377,12 +377,18 @@ export async function apiDashboard(range?: DashboardRange): Promise<DashboardDat
     portfolio: {
       value: toNumber(data.portfolio?.value),
       buyingPower: toNumber(data.portfolio?.buying_power),
+      holdingsValue: data.portfolio?.holdings_value == null
+        ? undefined
+        : toNumber(data.portfolio?.holdings_value, undefined as unknown as number),
       dailyChange: toNumber(data.portfolio?.daily_change),
       dailyChangePercent: toNumber(data.portfolio?.daily_change_percent),
       history: (data.portfolio?.history ?? []).map((point: any) => ({
         time: String(point.time),
         value: toNumber(point.value),
         buyingPower: toNumber(point.buying_power, undefined as unknown as number),
+        holdingsValue: point.holdings_value == null
+          ? undefined
+          : toNumber(point.holdings_value, undefined as unknown as number),
         timestamp: point.timestamp == null ? undefined : toNumber(point.timestamp, undefined as unknown as number),
       })),
     },

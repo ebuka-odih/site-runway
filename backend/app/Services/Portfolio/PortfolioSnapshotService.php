@@ -7,6 +7,8 @@ use App\Models\PortfolioSnapshot;
 use App\Models\Position;
 use App\Models\User;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Log;
+use Throwable;
 
 class PortfolioSnapshotService
 {
@@ -76,12 +78,7 @@ class PortfolioSnapshotService
                     'buying_power' => round($buyingPower, 8),
                 ]);
 
-                event(new PortfolioSnapshotUpdated(
-                    (string) $user->id,
-                    $portfolioValue,
-                    $buyingPower,
-                    $bucketedTime->getTimestampMs(),
-                ));
+                $this->dispatchSnapshotEvent($user, $portfolioValue, $buyingPower, $bucketedTime->getTimestampMs());
 
                 return true;
             }
@@ -96,12 +93,7 @@ class PortfolioSnapshotService
             'recorded_at' => $bucketedTime,
         ]);
 
-        event(new PortfolioSnapshotUpdated(
-            (string) $user->id,
-            $portfolioValue,
-            $buyingPower,
-            $bucketedTime->getTimestampMs(),
-        ));
+        $this->dispatchSnapshotEvent($user, $portfolioValue, $buyingPower, $bucketedTime->getTimestampMs());
 
         return true;
     }
@@ -130,5 +122,22 @@ class PortfolioSnapshotService
     private function isEffectivelyZero(float $value): bool
     {
         return abs($value) < 0.00000001;
+    }
+
+    private function dispatchSnapshotEvent(User $user, float $portfolioValue, float $buyingPower, int $timestampMs): void
+    {
+        try {
+            event(new PortfolioSnapshotUpdated(
+                (string) $user->id,
+                $portfolioValue,
+                $buyingPower,
+                $timestampMs,
+            ));
+        } catch (Throwable $exception) {
+            Log::warning('Portfolio snapshot broadcast failed; continuing request.', [
+                'user_id' => (string) $user->id,
+                'message' => $exception->getMessage(),
+            ]);
+        }
     }
 }

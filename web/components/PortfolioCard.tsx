@@ -26,22 +26,31 @@ const toChartPoint = (
   point: PortfolioHistoryPoint,
   index: number,
   buyingPowerFallback: number,
-): ChartPoint => ({
-  time: point.time,
-  value: Number(point.value),
-  buyingPower: Number(point.buyingPower ?? buyingPowerFallback),
-  timestamp: Number(point.timestamp ?? index),
-});
+): ChartPoint => {
+  const buyingPower = Number(point.buyingPower ?? buyingPowerFallback);
+  const totalValue = Number(point.value);
+  const explicitHoldingsValue = Number(point.holdingsValue);
+  const holdingsValue = Number.isFinite(explicitHoldingsValue)
+    ? Math.max(0, explicitHoldingsValue)
+    : Math.max(0, totalValue - buyingPower);
+
+  return {
+    time: point.time,
+    value: roundMoney(holdingsValue),
+    buyingPower,
+    timestamp: Number(point.timestamp ?? index),
+  };
+};
 
 const buildHistory = (
   points: PortfolioHistoryPoint[],
-  currentValue: number,
+  currentHoldingValue: number,
   buyingPower: number,
 ): ChartPoint[] => {
   if (points.length === 0) {
     return [{
       time: 'Now',
-      value: roundMoney(currentValue),
+      value: roundMoney(currentHoldingValue),
       buyingPower: roundMoney(buyingPower),
       timestamp: Date.now(),
     }];
@@ -53,7 +62,7 @@ const buildHistory = (
   const last = mapped[lastIndex];
   mapped[lastIndex] = {
     ...last,
-    value: roundMoney(currentValue),
+    value: roundMoney(currentHoldingValue),
     buyingPower: roundMoney(buyingPower),
     timestamp: Date.now(),
   };
@@ -68,26 +77,35 @@ const PortfolioCard: React.FC = () => {
   const portfolio = dashboard?.portfolio;
   const buyingPower = portfolio?.buyingPower ?? 0;
 
-  const derivedCurrentValue = useMemo(() => {
+  const derivedCurrentHoldingValue = useMemo(() => {
     const holdingsValue = (dashboard?.positions ?? []).reduce((total, position) => {
       return total + (position.quantity * position.price);
     }, 0);
 
-    const computedValue = buyingPower + holdingsValue;
-    if (computedValue > 0) {
-      return computedValue;
+    if (holdingsValue > 0) {
+      return holdingsValue;
     }
 
-    return portfolio?.value ?? 0;
+    const holdingsFromSummary = Number(portfolio?.holdingsValue);
+    if (Number.isFinite(holdingsFromSummary) && holdingsFromSummary > 0) {
+      return holdingsFromSummary;
+    }
+
+    const holdingsFromPortfolio = (portfolio?.value ?? 0) - buyingPower;
+    if (holdingsFromPortfolio > 0) {
+      return holdingsFromPortfolio;
+    }
+
+    return 0;
   }, [buyingPower, dashboard?.positions, portfolio?.value]);
 
   const history = useMemo<ChartPoint[]>(() => {
     const points = dashboard?.portfolio.history ?? [];
-    return buildHistory(points, derivedCurrentValue, buyingPower);
-  }, [buyingPower, dashboard?.portfolio.history, derivedCurrentValue]);
+    return buildHistory(points, derivedCurrentHoldingValue, buyingPower);
+  }, [buyingPower, dashboard?.portfolio.history, derivedCurrentHoldingValue]);
 
-  const chartStartValue = history[0]?.value ?? derivedCurrentValue;
-  const chartEndValue = history[history.length - 1]?.value ?? derivedCurrentValue;
+  const chartStartValue = history[0]?.value ?? derivedCurrentHoldingValue;
+  const chartEndValue = history[history.length - 1]?.value ?? derivedCurrentHoldingValue;
   const dailyChange = chartEndValue - chartStartValue;
   const dailyChangePercent = chartStartValue > 0 ? (dailyChange / chartStartValue) * 100 : 0;
   const isPositive = dailyChange >= 0;
@@ -156,7 +174,7 @@ const PortfolioCard: React.FC = () => {
               itemStyle={{ color: '#22c55e' }}
               cursor={{ stroke: '#27272a', strokeWidth: 1, strokeDasharray: '3 3' }}
               labelStyle={{ color: '#a1a1aa', fontSize: '11px' }}
-              formatter={(value: number) => [`$${value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, 'Portfolio']}
+              formatter={(value: number) => [`$${value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, 'Holdings']}
             />
             <Line
               type="monotone"

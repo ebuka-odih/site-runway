@@ -90,6 +90,16 @@ const AppContent: React.FC = () => {
   }, [isAuthenticated, location.pathname, navigate]);
 
   useEffect(() => {
+    if (isBootstrapping || isAuthenticated) {
+      return;
+    }
+
+    if (isDashboardRoute(location.pathname)) {
+      navigate('/', { replace: true });
+    }
+  }, [isBootstrapping, isAuthenticated, location.pathname, navigate]);
+
+  useEffect(() => {
     if (activeTab !== 'Trade' && isTradingDeskOpen) {
       setIsTradingDeskOpen(false);
     }

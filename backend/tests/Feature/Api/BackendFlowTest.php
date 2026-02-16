@@ -229,6 +229,47 @@ class BackendFlowTest extends TestCase
         $this->assertCount(208, $yearHistory);
     }
 
+    public function test_dashboard_history_includes_holdings_value_series(): void
+    {
+        $this->seed();
+
+        $loginResponse = $this->postJson('/api/v1/auth/login', [
+            'email' => 'tommygreymassey@yahoo.com',
+            'password' => 'password',
+            'device_name' => 'phpunit',
+        ]);
+
+        $token = $loginResponse->json('token');
+
+        $dashboardResponse = $this
+            ->withToken($token)
+            ->getJson('/api/v1/dashboard?range=24h');
+
+        $dashboardResponse
+            ->assertOk()
+            ->assertJsonStructure([
+                'data' => [
+                    'portfolio' => [
+                        'holdings_value',
+                        'history' => [
+                            '*' => ['holdings_value'],
+                        ],
+                    ],
+                ],
+            ]);
+
+        $history = collect($dashboardResponse->json('data.portfolio.history'));
+
+        $this->assertTrue($history->isNotEmpty());
+        $this->assertTrue($history->every(fn (array $point): bool => array_key_exists('holdings_value', $point)));
+
+        $lastPoint = $history->last();
+        $summaryHoldingsValue = (float) $dashboardResponse->json('data.portfolio.holdings_value');
+        $lastHistoryHoldingsValue = (float) data_get($lastPoint, 'holdings_value', 0);
+
+        $this->assertEqualsWithDelta($summaryHoldingsValue, $lastHistoryHoldingsValue, 0.01);
+    }
+
     public function test_market_assets_include_price_update_timestamp(): void
     {
         $this->seed();

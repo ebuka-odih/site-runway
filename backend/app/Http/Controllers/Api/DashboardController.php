@@ -17,6 +17,8 @@ use Illuminate\Validation\Rule;
 
 class DashboardController extends Controller
 {
+    private const MIN_SNAPSHOT_COVERAGE_RATIO = 0.15;
+
     /**
      * @var array<string, array{points: int, interval_minutes: int, trend_scale: float, noise_scale: float, cash_noise_scale: float}>
      */
@@ -128,6 +130,7 @@ class DashboardController extends Controller
                 'portfolio' => [
                     'value' => round($portfolioValue, 2),
                     'buying_power' => round($cashBalance, 2),
+                    'holdings_value' => round($holdingBalance, 2),
                     'daily_change' => round($dailyChange, 2),
                     'daily_change_percent' => round($dailyChangePercent, 2),
                     'history' => $portfolioHistory,
@@ -206,6 +209,16 @@ class DashboardController extends Controller
         ])->values()->all();
 
         $timelineCount = count($normalizedTimeline);
+        $requiredTimelineSeconds = max(60, ($points - 1) * $intervalMinutes * 60);
+        $firstSnapshotTimestamp = (int) $normalizedTimeline[0]['timestamp'];
+        $lastSnapshotTimestamp = (int) $normalizedTimeline[$timelineCount - 1]['timestamp'];
+        $coveredSeconds = max(0, $lastSnapshotTimestamp - $firstSnapshotTimestamp);
+        $coverageRatio = $coveredSeconds / $requiredTimelineSeconds;
+
+        if ($coverageRatio < self::MIN_SNAPSHOT_COVERAGE_RATIO) {
+            return null;
+        }
+
         $cursor = 0;
 
         $history = collect(range(0, $points - 1))
@@ -234,11 +247,14 @@ class DashboardController extends Controller
                     $buyingPower = (float) $left['buying_power'] + (((float) $right['buying_power'] - (float) $left['buying_power']) * $ratio);
                 }
 
+                $holdingsValue = max(0, $value - $buyingPower);
+
                 return [
                     'time' => $this->formatHistoryTime($pointTime, $range),
                     'timestamp' => $pointTime->getTimestampMs(),
                     'value' => round($value, 2),
                     'buying_power' => round($buyingPower, 2),
+                    'holdings_value' => round($holdingsValue, 2),
                 ];
             })
             ->values();
@@ -253,6 +269,7 @@ class DashboardController extends Controller
                 'timestamp' => $now->getTimestampMs(),
                 'value' => round($currentPortfolioValue, 2),
                 'buying_power' => round($cashBalance, 2),
+                'holdings_value' => round(max(0, $currentPortfolioValue - $cashBalance), 2),
             ]);
         }
 
@@ -290,6 +307,7 @@ class DashboardController extends Controller
                         'timestamp' => $timestamp->getTimestampMs(),
                         'value' => round($portfolioValue, 2),
                         'buying_power' => round($cashBalance, 2),
+                        'holdings_value' => round(max(0, $portfolioValue - $cashBalance), 2),
                     ];
                 }
 
@@ -325,6 +343,7 @@ class DashboardController extends Controller
                     'timestamp' => $timestamp->getTimestampMs(),
                     'value' => round($cashBalance + $holdingsValue, 2),
                     'buying_power' => round($cashBalance, 2),
+                    'holdings_value' => round($holdingsValue, 2),
                 ];
             })
             ->values();
@@ -339,6 +358,7 @@ class DashboardController extends Controller
                 'timestamp' => $now->getTimestampMs(),
                 'value' => round($currentPortfolioValue, 2),
                 'buying_power' => round($cashBalance, 2),
+                'holdings_value' => round(max(0, $currentPortfolioValue - $cashBalance), 2),
             ]);
         }
 

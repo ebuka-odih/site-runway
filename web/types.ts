@@ -33,12 +33,14 @@ export interface PortfolioHistoryPoint {
   time: string;
   value: number;
   buyingPower?: number;
+  holdingsValue?: number;
   timestamp?: number;
 }
 
 export interface PortfolioSummary {
   value: number;
   buyingPower: number;
+  holdingsValue?: number;
   dailyChange: number;
   dailyChangePercent: number;
   history: PortfolioHistoryPoint[];
