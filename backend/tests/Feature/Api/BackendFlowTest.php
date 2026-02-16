@@ -147,4 +147,55 @@ class BackendFlowTest extends TestCase
         $this->assertCount(96, $dayHistory);
         $this->assertCount(208, $yearHistory);
     }
+
+    public function test_market_assets_include_price_update_timestamp(): void
+    {
+        $this->seed();
+
+        $loginResponse = $this->postJson('/api/v1/auth/login', [
+            'email' => 'tommygreymassey@yahoo.com',
+            'password' => 'password',
+            'device_name' => 'phpunit',
+        ]);
+
+        $token = $loginResponse->json('token');
+
+        $marketResponse = $this
+            ->withToken($token)
+            ->getJson('/api/v1/market/assets?type=stock');
+
+        $marketResponse
+            ->assertOk()
+            ->assertJsonStructure([
+                'data' => [
+                    '*' => [
+                        'id',
+                        'symbol',
+                        'price',
+                        'last_price_update_at',
+                    ],
+                ],
+            ]);
+
+        $firstAsset = collect($marketResponse->json('data'))->first();
+
+        $this->assertIsArray($firstAsset);
+        $this->assertNotNull($firstAsset['last_price_update_at'] ?? null);
+
+        $detailResponse = $this
+            ->withToken($token)
+            ->getJson('/api/v1/market/assets/'.$firstAsset['id']);
+
+        $detailResponse
+            ->assertOk()
+            ->assertJsonStructure([
+                'data' => [
+                    'id',
+                    'symbol',
+                    'last_price_update_at',
+                ],
+            ]);
+
+        $this->assertNotNull($detailResponse->json('data.last_price_update_at'));
+    }
 }

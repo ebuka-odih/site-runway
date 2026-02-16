@@ -6,6 +6,7 @@ export interface SelectableAsset {
   changePercent: number;
   shares?: number;
   type?: string;
+  lastPriceUpdateAt?: string | null;
 }
 
 export interface Asset extends SelectableAsset {
@@ -120,6 +121,7 @@ export interface MarketAssetDetail {
   price: number;
   changePercent: number;
   changeValue: number;
+  lastPriceUpdateAt?: string | null;
   marketCap: number;
   volume24h: number;
   chart: ChartDataPoint[];

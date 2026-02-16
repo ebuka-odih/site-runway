@@ -8,6 +8,34 @@ interface TradePageProps {
   onAssetClick: (asset: SelectableAsset) => void;
 }
 
+function formatPriceFreshness(timestamp: string | null | undefined): string {
+  if (!timestamp) {
+    return 'Price update time unavailable';
+  }
+
+  const parsed = new Date(timestamp).getTime();
+
+  if (Number.isNaN(parsed)) {
+    return 'Price update time unavailable';
+  }
+
+  const elapsedSeconds = Math.max(0, Math.floor((Date.now() - parsed) / 1000));
+
+  if (elapsedSeconds < 30) {
+    return 'Updated just now';
+  }
+
+  if (elapsedSeconds < 3600) {
+    return `Updated ${Math.floor(elapsedSeconds / 60)}m ago`;
+  }
+
+  if (elapsedSeconds < 86400) {
+    return `Updated ${Math.floor(elapsedSeconds / 3600)}h ago`;
+  }
+
+  return `Updated ${new Date(parsed).toLocaleString()}`;
+}
+
 const TradePage: React.FC<TradePageProps> = ({ onOpenTradingDesk, onAssetClick }) => {
   const [activeTab, setActiveTab] = useState('Stocks');
   const { marketAssets, prices, orders, user, refreshMarketAssets, refreshOrders } = useMarket();
@@ -72,6 +100,30 @@ const TradePage: React.FC<TradePageProps> = ({ onOpenTradingDesk, onAssetClick }
       .sort((left, right) => new Date(right.placedAt).getTime() - new Date(left.placedAt).getTime())
       .slice(0, 8)
   ), [orders]);
+
+  const latestPriceUpdateAt = useMemo(() => {
+    let latestTimestamp: number | null = null;
+    let latestValue: string | null = null;
+
+    currentAssets.forEach((asset) => {
+      if (!asset.lastPriceUpdateAt) {
+        return;
+      }
+
+      const parsed = new Date(asset.lastPriceUpdateAt).getTime();
+
+      if (Number.isNaN(parsed)) {
+        return;
+      }
+
+      if (latestTimestamp === null || parsed > latestTimestamp) {
+        latestTimestamp = parsed;
+        latestValue = asset.lastPriceUpdateAt;
+      }
+    });
+
+    return latestValue;
+  }, [currentAssets]);
 
   const renderAssetRow = (asset: SelectableAsset) => {
     const liveData = prices[asset.symbol];
@@ -141,6 +193,12 @@ const TradePage: React.FC<TradePageProps> = ({ onOpenTradingDesk, onAssetClick }
           </button>
         ))}
       </div>
+
+      {activeTab !== 'History' && (
+        <p className="text-[11px] font-bold text-zinc-500 uppercase tracking-wider">
+          {formatPriceFreshness(latestPriceUpdateAt)}
+        </p>
+      )}
 
       <div className="space-y-3 pb-20">
         {activeTab !== 'History' && currentAssets.map(renderAssetRow)}

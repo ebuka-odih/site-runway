@@ -48,6 +48,7 @@ class MarketController extends Controller
                 'change_percent' => (float) $asset->change_percent,
                 'change_value' => (float) $asset->change_value,
                 'is_positive' => (float) $asset->change_percent >= 0,
+                'last_price_update_at' => optional($asset->updated_at)->toIso8601String(),
             ]),
         ]);
     }
@@ -98,6 +99,7 @@ class MarketController extends Controller
                 'price' => (float) $asset->current_price,
                 'change_percent' => (float) $asset->change_percent,
                 'change_value' => (float) $asset->change_value,
+                'last_price_update_at' => optional($asset->updated_at)->toIso8601String(),
                 'market_cap' => $marketCap,
                 'volume_24h' => $volume24h,
                 'chart' => $history,

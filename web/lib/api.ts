@@ -75,6 +75,7 @@ function mapSelectableAsset(raw: any): SelectableAsset {
     price: toNumber(raw.price ?? raw.current_price),
     changePercent: toNumber(raw.change_percent),
     shares: raw.shares !== undefined ? toNumber(raw.shares) : undefined,
+    lastPriceUpdateAt: raw.last_price_update_at ?? raw.lastPriceUpdateAt ?? null,
   };
 }
 
@@ -435,6 +436,7 @@ export async function apiMarketAssetDetail(assetId: string): Promise<MarketAsset
     price: toNumber(data.price),
     changePercent: toNumber(data.change_percent),
     changeValue: toNumber(data.change_value),
+    lastPriceUpdateAt: data.last_price_update_at ?? data.lastPriceUpdateAt ?? null,
     marketCap: toNumber(data.market_cap),
     volume24h: toNumber(data.volume_24h),
     chart: (data.chart ?? []).map((point: any) => ({
