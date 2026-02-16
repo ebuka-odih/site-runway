@@ -14,11 +14,13 @@
 
 ## Backend API wiring
 - Frontend API client uses `VITE_API_BASE_URL` (default: `/api/v1`).
-- In local dev, Vite proxies `/api/*` to Laravel (`VITE_BACKEND_ORIGIN`, default `http://127.0.0.1:8000`).
+- In local dev, Vite proxies `/api/*` to backend:
+  - Preferred: `BACKEND_API_BASE_URL` (e.g. `https://api.runwayalgo.com/backend/public/api/v1`)
+  - Legacy fallback: `VITE_BACKEND_ORIGIN` (default `http://127.0.0.1:8000`)
 
 Optional `.env.local` values:
 
 ```bash
 VITE_API_BASE_URL=/api/v1
-VITE_BACKEND_ORIGIN=http://127.0.0.1:8000
+BACKEND_API_BASE_URL=https://api.runwayalgo.com/backend/public/api/v1
 ```
