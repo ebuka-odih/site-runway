@@ -140,6 +140,22 @@ function mergeAssetsBySymbol(input: SelectableAsset[]): SelectableAsset[] {
   return [...map.values()];
 }
 
+function isLoopbackHost(host: string): boolean {
+  const normalized = host.trim().toLowerCase();
+
+  return normalized === 'localhost'
+    || normalized === '127.0.0.1'
+    || normalized === '::1'
+    || normalized.endsWith('.localhost');
+}
+
+function normalizeHost(input: string): string {
+  return input
+    .replace(/^https?:\/\//, '')
+    .split('/')[0]
+    .trim();
+}
+
 export const MarketProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [prices, setPrices] = useState<PriceState>({});
   const [user, setUser] = useState<AuthUser | null>(null);
@@ -311,10 +327,35 @@ export const MarketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     }
 
     const apiBase = String(import.meta.env.VITE_API_BASE_URL ?? '/api/v1').replace(/\/$/, '');
-    const wsHost = String(import.meta.env.VITE_REVERB_HOST ?? window.location.hostname).replace(/^https?:\/\//, '');
-    const configuredPort = Number(import.meta.env.VITE_REVERB_PORT ?? 8080);
-    const wsPort = Number.isFinite(configuredPort) ? configuredPort : 8080;
-    const scheme = String(import.meta.env.VITE_REVERB_SCHEME ?? (window.location.protocol === 'https:' ? 'https' : 'http'));
+    const currentHost = window.location.hostname;
+    const configuredHost = normalizeHost(String(import.meta.env.VITE_REVERB_HOST ?? ''));
+    const configuredScheme = String(import.meta.env.VITE_REVERB_SCHEME ?? '').trim().toLowerCase();
+    const scheme = configuredScheme === 'http' || configuredScheme === 'https'
+      ? configuredScheme
+      : (window.location.protocol === 'https:' ? 'https' : 'http');
+    const defaultPort = scheme === 'https' ? 443 : 80;
+    const configuredPortValue = Number(String(import.meta.env.VITE_REVERB_PORT ?? '').trim());
+
+    const hostFromApiBase = (() => {
+      try {
+        return new URL(apiBase, window.location.origin).hostname;
+      } catch {
+        return '';
+      }
+    })();
+
+    const hostCandidate = configuredHost || hostFromApiBase || currentHost;
+    const shouldUseCurrentHost = isLoopbackHost(hostCandidate) && !isLoopbackHost(currentHost);
+    const wsHost = shouldUseCurrentHost ? currentHost : hostCandidate;
+
+    let wsPort = Number.isFinite(configuredPortValue) && configuredPortValue > 0
+      ? configuredPortValue
+      : defaultPort;
+
+    if (shouldUseCurrentHost && wsPort === 8080) {
+      wsPort = defaultPort;
+    }
+
     const forceTLS = scheme === 'https';
 
     const windowWithPusher = window as Window & { Pusher?: typeof Pusher };
@@ -327,7 +368,7 @@ export const MarketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       wsPort,
       wssPort: wsPort,
       forceTLS,
-      enabledTransports: ['ws', 'wss'],
+      enabledTransports: forceTLS ? ['wss'] : ['ws', 'wss'],
       authEndpoint: `${apiBase}/broadcasting/auth`,
       auth: {
         headers: {
