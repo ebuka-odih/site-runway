@@ -51,19 +51,35 @@ const LandingMarketing: React.FC<LandingMarketingProps> = ({ onOpenAuth }) => (
     {/* Hero Section */}
     <section className="relative pt-20 pb-32 px-6 max-w-7xl mx-auto flex flex-col items-center text-center">
       {/* Floating Assets */}
-      <div className="absolute top-0 left-10 animate-float opacity-40 hidden lg:block">
-        <div className="w-16 h-16 rounded-2xl bg-zinc-900 border border-white/5 flex items-center justify-center shadow-2xl">
-          <Bitcoin className="text-orange-500" size={32} />
+      <div className="absolute top-2 left-10 animate-float opacity-75 hidden lg:block">
+        <div className="min-w-[104px] rounded-2xl bg-zinc-900/90 border border-white/10 px-4 py-3 flex items-center justify-center shadow-2xl">
+          <span className="text-red-400 font-black tracking-widest text-sm">TSLA</span>
         </div>
       </div>
-      <div className="absolute top-40 right-20 animate-float-delayed opacity-40 hidden lg:block">
-        <div className="w-14 h-14 rounded-full bg-zinc-900 border border-white/5 flex items-center justify-center shadow-2xl">
-          <span className="text-blue-400 font-black text-xl">Ξ</span>
+      <div className="absolute top-14 right-16 animate-float-delayed opacity-75 hidden lg:block">
+        <div className="min-w-[112px] rounded-2xl bg-zinc-900/90 border border-white/10 px-4 py-3 flex items-center justify-center gap-2 shadow-2xl">
+          <span className="inline-grid grid-cols-2 gap-[2px]">
+            <span className="w-2 h-2 bg-[#f25022] rounded-[2px]" />
+            <span className="w-2 h-2 bg-[#7fba00] rounded-[2px]" />
+            <span className="w-2 h-2 bg-[#00a4ef] rounded-[2px]" />
+            <span className="w-2 h-2 bg-[#ffb900] rounded-[2px]" />
+          </span>
+          <span className="text-blue-300 font-black tracking-widest text-sm">MSFT</span>
         </div>
       </div>
-      <div className="absolute bottom-20 left-20 animate-float-slow opacity-40 hidden lg:block">
-        <div className="w-12 h-12 rounded-xl bg-zinc-900 border border-white/5 flex items-center justify-center shadow-2xl">
-          <DollarSign className="text-emerald-500" size={24} />
+      <div className="absolute top-44 left-24 animate-float-slow opacity-75 hidden lg:block">
+        <div className="min-w-[104px] rounded-2xl bg-zinc-900/90 border border-white/10 px-4 py-3 flex items-center justify-center shadow-2xl">
+          <span className="text-zinc-100 font-black tracking-widest text-sm">AAPL</span>
+        </div>
+      </div>
+      <div className="absolute top-28 right-44 animate-float opacity-45 hidden lg:block">
+        <div className="w-12 h-12 rounded-xl bg-zinc-900/90 border border-white/10 flex items-center justify-center shadow-2xl">
+          <Bitcoin className="text-orange-500" size={22} />
+        </div>
+      </div>
+      <div className="absolute bottom-16 left-16 animate-float-delayed opacity-45 hidden lg:block">
+        <div className="w-12 h-12 rounded-xl bg-zinc-900/90 border border-white/10 flex items-center justify-center shadow-2xl">
+          <span className="text-blue-400 font-black text-lg">Ξ</span>
         </div>
       </div>
 
