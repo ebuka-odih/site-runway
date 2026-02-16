@@ -36,9 +36,9 @@ const LandingMarketing: React.FC<LandingMarketingProps> = ({ onOpenAuth }) => (
         <span className="text-xl font-black tracking-tighter uppercase italic">RunwayAlgo</span>
       </div>
       <div className="hidden md:flex items-center gap-8 text-sm font-bold text-zinc-400 uppercase tracking-widest">
-        <a href="#" className="hover:text-emerald-500 transition-colors">Markets</a>
-        <a href="#" className="hover:text-emerald-500 transition-colors">CopyTrade</a>
-        <a href="#" className="hover:text-emerald-500 transition-colors">Safety</a>
+        <a href="#markets" className="hover:text-emerald-500 transition-colors">Markets</a>
+        <a href="#copy-trading" className="hover:text-emerald-500 transition-colors">CopyTrade</a>
+        <a href="#security-node" className="hover:text-emerald-500 transition-colors">Safety</a>
       </div>
       <button
         onClick={() => onOpenAuth('login')}
@@ -106,9 +106,12 @@ const LandingMarketing: React.FC<LandingMarketingProps> = ({ onOpenAuth }) => (
         >
           Access Terminal <ArrowRight size={20} className="group-hover:translate-x-1 transition-transform" />
         </button>
-        <button className="bg-zinc-900 border border-white/5 text-white px-10 py-5 rounded-full font-black text-sm uppercase tracking-[0.2em] hover:bg-zinc-800 transition-all">
+        <a
+          href="#markets"
+          className="bg-zinc-900 border border-white/5 text-white px-10 py-5 rounded-full font-black text-sm uppercase tracking-[0.2em] hover:bg-zinc-800 transition-all"
+        >
           View Markets
-        </button>
+        </a>
       </div>
 
       {/* Dashboard Preview */}
@@ -143,7 +146,7 @@ const LandingMarketing: React.FC<LandingMarketingProps> = ({ onOpenAuth }) => (
     </section>
 
     {/* Global Impact Stats */}
-    <section className="py-20 px-6 max-w-7xl mx-auto border-t border-white/5 bg-white/[0.01]">
+    <section id="markets" className="py-20 px-6 max-w-7xl mx-auto border-t border-white/5 bg-white/[0.01]">
       <div className="grid grid-cols-2 md:grid-cols-4 gap-12 text-center">
         {[
           { label: 'Trading Volume', value: '$14.2B+', color: 'text-white' },
@@ -186,18 +189,21 @@ const LandingMarketing: React.FC<LandingMarketingProps> = ({ onOpenAuth }) => (
       <div className="grid md:grid-cols-3 gap-8">
         {[
           {
+            id: 'trading-desk',
             icon: Zap,
             title: 'Lightning Execution',
             desc: 'Trade at the speed of thought. Low-latency engine ensures your orders are filled instantly.',
             color: 'bg-emerald-500',
           },
           {
+            id: 'copy-trading',
             icon: Users,
             title: 'RunwayAlgo CopyTrading',
             desc: "Follow the world's most profitable traders and mirror their moves automatically in real-time.",
             color: 'bg-blue-500',
           },
           {
+            id: 'security-node',
             icon: Shield,
             title: 'Military Grade',
             desc: 'Advanced encryption and multi-sig cold storage keep your assets safe from every angle.',
@@ -222,7 +228,7 @@ const LandingMarketing: React.FC<LandingMarketingProps> = ({ onOpenAuth }) => (
             color: 'bg-indigo-500',
           },
         ].map((feat, i) => (
-          <div key={i} className="group p-10 rounded-[40px] bg-[#121212] border border-white/5 hover:border-emerald-500/30 transition-all hover:-translate-y-2">
+          <div id={feat.id} key={i} className="group p-10 rounded-[40px] bg-[#121212] border border-white/5 hover:border-emerald-500/30 transition-all hover:-translate-y-2">
             <div className={`w-14 h-14 rounded-2xl ${feat.color} flex items-center justify-center text-black mb-10 shadow-xl group-hover:scale-110 transition-transform`}>
               <feat.icon size={28} strokeWidth={2.5} />
             </div>
@@ -262,7 +268,7 @@ const LandingMarketing: React.FC<LandingMarketingProps> = ({ onOpenAuth }) => (
     </section>
 
     {/* Community Testimonials */}
-    <section className="py-32 px-6 bg-white/[0.02] border-y border-white/5">
+    <section id="about-us" className="py-32 px-6 bg-white/[0.02] border-y border-white/5">
       <div className="max-w-7xl mx-auto">
         <div className="flex flex-col md:flex-row items-end justify-between mb-20 gap-8">
           <div className="max-w-xl">
@@ -350,8 +356,17 @@ const LandingMarketing: React.FC<LandingMarketingProps> = ({ onOpenAuth }) => (
             Empowering professional and amateur traders with the most intuitive, high-performance financial tools available.
           </p>
           <div className="flex gap-4">
-            {[Globe, Activity, DollarSign].map((Icon, i) => (
-              <a key={i} href="#" className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center text-zinc-500 hover:text-white hover:bg-white/10 transition-all">
+            {[
+              { Icon: Globe, href: '#markets', label: 'Global markets' },
+              { Icon: Activity, href: '#trading-desk', label: 'Trading desk' },
+              { Icon: DollarSign, href: '#support-hub', label: 'Support hub' },
+            ].map(({ Icon, href, label }) => (
+              <a
+                key={label}
+                href={href}
+                aria-label={label}
+                className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center text-zinc-500 hover:text-white hover:bg-white/10 transition-all"
+              >
                 <Icon size={18} />
               </a>
             ))}
@@ -360,25 +375,56 @@ const LandingMarketing: React.FC<LandingMarketingProps> = ({ onOpenAuth }) => (
         <div>
           <h4 className="text-xs font-black text-white uppercase tracking-widest mb-6">Products</h4>
           <ul className="space-y-4 text-zinc-500 text-sm font-bold">
-            <li><a href="#" className="hover:text-emerald-500 transition-colors">Trading Desk</a></li>
-            <li><a href="#" className="hover:text-emerald-500 transition-colors">Copy Trading</a></li>
-            <li><a href="#" className="hover:text-emerald-500 transition-colors">Security Node</a></li>
+            <li><a href="#trading-desk" className="hover:text-emerald-500 transition-colors">Trading Desk</a></li>
+            <li><a href="#copy-trading" className="hover:text-emerald-500 transition-colors">Copy Trading</a></li>
+            <li><a href="#security-node" className="hover:text-emerald-500 transition-colors">Security Node</a></li>
           </ul>
         </div>
         <div>
           <h4 className="text-xs font-black text-white uppercase tracking-widest mb-6">Company</h4>
           <ul className="space-y-4 text-zinc-500 text-sm font-bold">
-            <li><a href="#" className="hover:text-emerald-500 transition-colors">About Us</a></li>
-            <li><a href="#" className="hover:text-emerald-500 transition-colors">Risk Disclosure</a></li>
-            <li><a href="#" className="hover:text-emerald-500 transition-colors">Support Hub</a></li>
+            <li><a href="#about-us" className="hover:text-emerald-500 transition-colors">About Us</a></li>
+            <li><a href="#risk-disclosure" className="hover:text-emerald-500 transition-colors">Risk Disclosure</a></li>
+            <li><a href="#support-hub" className="hover:text-emerald-500 transition-colors">Support Hub</a></li>
           </ul>
         </div>
+      </div>
+      <div className="grid md:grid-cols-2 gap-6 mb-12">
+        <section id="risk-disclosure" className="rounded-3xl border border-white/10 bg-white/[0.02] p-6">
+          <h5 className="text-[10px] font-black text-white uppercase tracking-widest mb-3">Risk Disclosure</h5>
+          <p className="text-zinc-500 text-sm font-medium leading-relaxed">
+            Trading digital assets, equities, and derivatives involves market risk, including potential loss of principal. Only trade capital you can afford to lose.
+          </p>
+        </section>
+        <section id="support-hub" className="rounded-3xl border border-white/10 bg-white/[0.02] p-6">
+          <h5 className="text-[10px] font-black text-white uppercase tracking-widest mb-3">Support Hub</h5>
+          <p className="text-zinc-500 text-sm font-medium leading-relaxed mb-4">
+            Need onboarding or account help? Reach the support desk for assistance with verification, security, and funding flows.
+          </p>
+          <a href="mailto:support@runwayalgo.com" className="text-emerald-500 text-xs font-black uppercase tracking-widest hover:text-emerald-400 transition-colors">
+            support@runwayalgo.com
+          </a>
+        </section>
+      </div>
+      <div className="grid md:grid-cols-2 gap-6 mb-10">
+        <section id="privacy-policy" className="rounded-3xl border border-white/10 bg-white/[0.02] p-6">
+          <h5 className="text-[10px] font-black text-white uppercase tracking-widest mb-3">Privacy Policy</h5>
+          <p className="text-zinc-500 text-sm font-medium leading-relaxed">
+            We process account and trading telemetry to operate your terminal and maintain security. Sensitive data is safeguarded with layered access controls.
+          </p>
+        </section>
+        <section id="terms-of-service" className="rounded-3xl border border-white/10 bg-white/[0.02] p-6">
+          <h5 className="text-[10px] font-black text-white uppercase tracking-widest mb-3">Terms of Service</h5>
+          <p className="text-zinc-500 text-sm font-medium leading-relaxed">
+            Platform usage is subject to account verification, local regulations, and fair-use controls. Continued use indicates acceptance of these terms.
+          </p>
+        </section>
       </div>
       <div className="flex flex-col md:flex-row items-center justify-between pt-10 border-t border-white/5 gap-6">
         <p className="text-[10px] font-black text-zinc-600 uppercase tracking-widest">© 2026 RUNWAYALGO. ALL RIGHTS RESERVED.</p>
         <div className="flex gap-8 text-[10px] font-black text-zinc-600 uppercase tracking-widest">
-          <a href="#" className="hover:text-white transition-colors">Privacy Policy</a>
-          <a href="#" className="hover:text-white transition-colors">Terms of Service</a>
+          <a href="#privacy-policy" className="hover:text-white transition-colors">Privacy Policy</a>
+          <a href="#terms-of-service" className="hover:text-white transition-colors">Terms of Service</a>
         </div>
       </div>
     </footer>
