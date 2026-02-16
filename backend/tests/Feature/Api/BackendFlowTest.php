@@ -5,6 +5,7 @@ namespace Tests\Feature\Api;
 use App\Models\Asset;
 use App\Models\User;
 use App\Models\Wallet;
+use App\Models\WatchlistItem;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -354,5 +355,92 @@ class BackendFlowTest extends TestCase
         $this->assertArrayHasKey('day_change_percent', $position);
         $this->assertArrayHasKey('updated_at', $position);
         $this->assertEqualsWithDelta(0.0, (float) data_get($position, 'day_change_value'), 0.01);
+    }
+
+    public function test_user_can_add_and_remove_watchlist_item(): void
+    {
+        $this->seed();
+
+        $token = $this->postJson('/api/v1/auth/login', [
+            'email' => 'tommygreymassey@yahoo.com',
+            'password' => 'password',
+            'device_name' => 'phpunit',
+        ])->json('token');
+
+        $asset = Asset::query()->where('symbol', 'AAPL')->firstOrFail();
+
+        $addResponse = $this
+            ->withToken($token)
+            ->postJson('/api/v1/watchlist', [
+                'asset_id' => $asset->id,
+            ]);
+
+        $addResponse
+            ->assertCreated()
+            ->assertJsonPath('data.asset_id', $asset->id)
+            ->assertJsonPath('data.symbol', 'AAPL');
+
+        $watchlistItemId = (string) $addResponse->json('data.id');
+
+        $dashboardAfterAdd = $this
+            ->withToken($token)
+            ->getJson('/api/v1/dashboard');
+
+        $dashboardAfterAdd
+            ->assertOk()
+            ->assertJsonFragment([
+                'asset_id' => $asset->id,
+                'symbol' => 'AAPL',
+            ]);
+
+        $this
+            ->withToken($token)
+            ->deleteJson('/api/v1/watchlist/'.$watchlistItemId)
+            ->assertOk();
+
+        $dashboardAfterRemove = $this
+            ->withToken($token)
+            ->getJson('/api/v1/dashboard');
+
+        $dashboardAfterRemove->assertOk();
+        $this->assertNotContains(
+            $asset->id,
+            collect($dashboardAfterRemove->json('data.watchlist'))->pluck('asset_id')->all()
+        );
+    }
+
+    public function test_user_cannot_delete_another_users_watchlist_item(): void
+    {
+        $this->seed();
+
+        $owner = User::query()->where('email', 'tommygreymassey@yahoo.com')->firstOrFail();
+        $asset = Asset::query()->where('symbol', 'AAPL')->firstOrFail();
+        $watchlistItem = WatchlistItem::query()->firstOrCreate([
+            'user_id' => $owner->id,
+            'asset_id' => $asset->id,
+        ], [
+            'sort_order' => 99,
+        ]);
+
+        $otherUser = User::factory()->create([
+            'email' => 'watchlist-other-user@example.com',
+        ]);
+
+        $otherToken = $this->postJson('/api/v1/auth/login', [
+            'email' => $otherUser->email,
+            'password' => 'password',
+            'device_name' => 'phpunit',
+        ])->json('token');
+
+        $this
+            ->withToken($otherToken)
+            ->deleteJson('/api/v1/watchlist/'.$watchlistItem->id)
+            ->assertForbidden();
+
+        $this->assertDatabaseHas('watchlist_items', [
+            'id' => $watchlistItem->id,
+            'user_id' => $owner->id,
+            'asset_id' => $asset->id,
+        ]);
     }
 }

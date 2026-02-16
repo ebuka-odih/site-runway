@@ -5,9 +5,10 @@ import type { SelectableAsset } from '../types';
 
 interface AssetListProps {
   onAssetClick?: (asset: SelectableAsset) => void;
+  onOpenWatchlist?: () => void;
 }
 
-const AssetList: React.FC<AssetListProps> = ({ onAssetClick }) => {
+const AssetList: React.FC<AssetListProps> = ({ onAssetClick, onOpenWatchlist }) => {
   const { prices, positions, watchlist } = useMarket();
 
   const renderAssetRow = (asset: SelectableAsset, isHeld: boolean) => {
@@ -114,7 +115,13 @@ const AssetList: React.FC<AssetListProps> = ({ onAssetClick }) => {
       <section>
         <div className="flex items-center justify-between mb-4">
           <h3 className="font-extrabold text-xl text-white">Watchlist</h3>
-          <button className="text-green-500 p-1 hover:bg-green-500/10 rounded-full transition-colors">
+          <button
+            type="button"
+            onClick={onOpenWatchlist}
+            disabled={!onOpenWatchlist}
+            aria-label="Open watchlist manager"
+            className="text-green-500 p-1 hover:bg-green-500/10 rounded-full transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+          >
             <ChevronRight size={24} />
           </button>
         </div>

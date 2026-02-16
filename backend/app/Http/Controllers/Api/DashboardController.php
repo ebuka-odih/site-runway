@@ -89,6 +89,7 @@ class DashboardController extends Controller
             ->values()
             ->map(fn ($item) => [
                 'id' => $item->id,
+                'asset_id' => $item->asset_id,
                 'symbol' => $item->asset->symbol,
                 'name' => $item->asset->name,
                 'type' => $item->asset->type,

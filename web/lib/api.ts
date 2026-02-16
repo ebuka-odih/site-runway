@@ -428,6 +428,28 @@ export async function apiDashboard(range?: DashboardRange): Promise<DashboardDat
   };
 }
 
+export async function apiWatchlist(): Promise<WatchlistItem[]> {
+  const payload = await request<any>('/watchlist');
+  return (payload.data ?? []).map(mapWatchlist);
+}
+
+export async function apiAddToWatchlist(assetId: string): Promise<WatchlistItem> {
+  const payload = await request<any>('/watchlist', {
+    method: 'POST',
+    body: JSON.stringify({
+      asset_id: assetId,
+    }),
+  });
+
+  return mapWatchlist(payload.data);
+}
+
+export async function apiRemoveFromWatchlist(watchlistItemId: string): Promise<void> {
+  await request(`/watchlist/${watchlistItemId}`, {
+    method: 'DELETE',
+  });
+}
+
 export async function apiMarketAssets(params?: { type?: string; search?: string }): Promise<SelectableAsset[]> {
   const query = new URLSearchParams();
 

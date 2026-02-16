@@ -6,6 +6,7 @@ use App\Http\Controllers\Api\DashboardController;
 use App\Http\Controllers\Api\MarketController;
 use App\Http\Controllers\Api\OrderController;
 use App\Http\Controllers\Api\ProfileController;
+use App\Http\Controllers\Api\WatchlistController;
 use App\Http\Controllers\Api\WalletController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Broadcast;
@@ -36,6 +37,9 @@ Route::prefix('v1')->group(function () {
         Route::post('/auth/logout', [AuthController::class, 'logout']);
 
         Route::get('/dashboard', [DashboardController::class, 'index']);
+        Route::get('/watchlist', [WatchlistController::class, 'index']);
+        Route::post('/watchlist', [WatchlistController::class, 'store']);
+        Route::delete('/watchlist/{watchlistItem}', [WatchlistController::class, 'destroy']);
 
         Route::get('/market/assets', [MarketController::class, 'index']);
         Route::get('/market/assets/{asset}', [MarketController::class, 'show']);

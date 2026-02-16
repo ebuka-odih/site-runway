@@ -3,10 +3,12 @@ import Echo from 'laravel-echo';
 import Pusher from 'pusher-js';
 import {
   API_BASE_URL,
+  apiAddToWatchlist,
   apiCloseCopyRelationship,
   apiCopyDiscover,
   apiCopyFollowing,
   apiCopyHistory,
+  apiRemoveFromWatchlist,
   apiCreateDeposit,
   apiDashboard,
   apiFollowTrader,
@@ -88,6 +90,8 @@ interface MarketContextType {
     input: { allocationAmount?: number; copyRatio?: number; status?: 'active' | 'paused' | 'closed' },
   ) => Promise<CopyRelationshipItem>;
   closeCopyRelationship: (id: string) => Promise<void>;
+  addToWatchlist: (assetId: string) => Promise<void>;
+  removeFromWatchlist: (watchlistItemId: string) => Promise<void>;
   fetchProfile: () => Promise<ProfileData>;
   updateProfile: (input: {
     name?: string;
@@ -443,6 +447,14 @@ export const MarketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const followTrader: MarketContextType['followTrader'] = useCallback((input) => apiFollowTrader(input), []);
   const updateCopyRelationship: MarketContextType['updateCopyRelationship'] = useCallback((id, input) => apiUpdateCopyRelationship(id, input), []);
   const closeCopyRelationship: MarketContextType['closeCopyRelationship'] = useCallback((id) => apiCloseCopyRelationship(id), []);
+  const addToWatchlist: MarketContextType['addToWatchlist'] = useCallback(async (assetId) => {
+    await apiAddToWatchlist(assetId);
+    await refreshDashboard(activeDashboardRangeRef.current);
+  }, [refreshDashboard]);
+  const removeFromWatchlist: MarketContextType['removeFromWatchlist'] = useCallback(async (watchlistItemId) => {
+    await apiRemoveFromWatchlist(watchlistItemId);
+    await refreshDashboard(activeDashboardRangeRef.current);
+  }, [refreshDashboard]);
 
   const fetchProfile: MarketContextType['fetchProfile'] = useCallback(() => apiProfile(), []);
   const updateProfileContext: MarketContextType['updateProfile'] = useCallback(async (input) => {
@@ -495,6 +507,8 @@ export const MarketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     followTrader,
     updateCopyRelationship,
     closeCopyRelationship,
+    addToWatchlist,
+    removeFromWatchlist,
     fetchProfile,
     updateProfile: updateProfileContext,
   }), [
@@ -525,6 +539,8 @@ export const MarketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     followTrader,
     updateCopyRelationship,
     closeCopyRelationship,
+    addToWatchlist,
+    removeFromWatchlist,
     fetchProfile,
     updateProfileContext,
   ]);

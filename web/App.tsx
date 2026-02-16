@@ -12,6 +12,7 @@ import AssetDetail from './components/AssetDetail';
 import CopyTrading from './components/CopyTrading';
 import WalletPage from './components/WalletPage';
 import ProfilePage from './components/ProfilePage';
+import WatchlistPage from './components/WatchlistPage';
 import LandingPage from './components/LandingPage';
 import { MarketProvider, useMarket } from './context/MarketContext';
 import type { SelectableAsset } from './types';
@@ -28,11 +29,11 @@ const TAB_TO_ROUTE: Record<string, string> = {
   More: '/dashboard/more',
 };
 
-const HomeDashboard: React.FC<{ onAssetClick: (asset: SelectableAsset) => void }> = ({ onAssetClick }) => (
+const HomeDashboard: React.FC<{ onAssetClick: (asset: SelectableAsset) => void; onOpenWatchlist: () => void }> = ({ onAssetClick, onOpenWatchlist }) => (
   <div className="animate-in fade-in slide-in-from-bottom-4 duration-1000">
     <PortfolioCard />
     <div className="h-2 bg-black/40 border-y border-white/5 my-2" />
-    <AssetList onAssetClick={onAssetClick} />
+    <AssetList onAssetClick={onAssetClick} onOpenWatchlist={onOpenWatchlist} />
     <div className="h-2 bg-black/40 border-y border-white/5 my-2" />
     <Analytics />
     <Heatmap />
@@ -155,7 +156,8 @@ const AppContent: React.FC = () => {
         <Routes>
           <Route path="/" element={<div />} />
           <Route path="/dashboard" element={<div />} />
-          <Route path="/dashboard/home" element={<HomeDashboard onAssetClick={handleAssetSelect} />} />
+          <Route path="/dashboard/home" element={<HomeDashboard onAssetClick={handleAssetSelect} onOpenWatchlist={() => navigate('/dashboard/watchlist')} />} />
+          <Route path="/dashboard/watchlist" element={<WatchlistPage onBack={() => navigate('/dashboard/home')} onAssetClick={handleAssetSelect} />} />
           <Route
             path="/dashboard/trade"
             element={(
@@ -168,7 +170,7 @@ const AppContent: React.FC = () => {
           <Route path="/dashboard/copy" element={<CopyTrading />} />
           <Route path="/dashboard/wallet" element={<WalletPage />} />
           <Route path="/dashboard/profile" element={<ProfilePage />} />
-          <Route path="/dashboard/more" element={<HomeDashboard onAssetClick={handleAssetSelect} />} />
+          <Route path="/dashboard/more" element={<HomeDashboard onAssetClick={handleAssetSelect} onOpenWatchlist={() => navigate('/dashboard/watchlist')} />} />
           <Route path="*" element={<Navigate to="/dashboard/home" replace />} />
         </Routes>
       </main>
