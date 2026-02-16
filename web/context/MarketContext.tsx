@@ -368,7 +368,7 @@ export const MarketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       wsPort,
       wssPort: wsPort,
       forceTLS,
-      enabledTransports: forceTLS ? ['wss'] : ['ws', 'wss'],
+      enabledTransports: forceTLS ? ['wss'] : ['ws'],
       authEndpoint: `${apiBase}/broadcasting/auth`,
       auth: {
         headers: {
