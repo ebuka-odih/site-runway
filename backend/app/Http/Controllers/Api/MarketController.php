@@ -5,18 +5,24 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Asset;
 use App\Models\Order;
+use App\Services\Finnhub\FinnhubStockSyncService;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
+use Throwable;
 
 class MarketController extends Controller
 {
-    public function index(Request $request): JsonResponse
+    public function index(Request $request, FinnhubStockSyncService $stockSyncService): JsonResponse
     {
         $validated = $request->validate([
             'type' => ['sometimes', Rule::in(['stock', 'crypto', 'etf', 'share'])],
             'search' => ['sometimes', 'string', 'max:100'],
         ]);
+
+        $this->syncStockQuotesIfDue($validated['type'] ?? null, $stockSyncService);
 
         $assets = Asset::query()
             ->when(isset($validated['type']), fn ($query) => $query->where('type', $validated['type']))
@@ -99,5 +105,35 @@ class MarketController extends Controller
                 'recent_trades' => $recentTrades,
             ],
         ]);
+    }
+
+    private function syncStockQuotesIfDue(?string $requestedType, FinnhubStockSyncService $stockSyncService): void
+    {
+        if (app()->environment('testing')) {
+            return;
+        }
+
+        if ($requestedType !== null && ! in_array($requestedType, ['stock', 'share', 'etf'], true)) {
+            return;
+        }
+
+        if (! filled(config('services.finnhub.api_key'))) {
+            return;
+        }
+
+        // Fallback sync when scheduler/cron is delayed. Throttle to once per minute.
+        if (! Cache::add('stocks:finnhub:lazy-sync-lock', now()->timestamp, now()->addSeconds(55))) {
+            return;
+        }
+
+        $calls = max(1, (int) config('stocks.sync.max_calls_per_run', 5));
+
+        try {
+            $stockSyncService->sync($calls);
+        } catch (Throwable $exception) {
+            Log::warning('Finnhub fallback sync failed during market assets request.', [
+                'exception' => $exception->getMessage(),
+            ]);
+        }
     }
 }
