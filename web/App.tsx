@@ -26,7 +26,6 @@ const TAB_TO_ROUTE: Record<string, string> = {
   Copy: '/dashboard/copy',
   Wallet: '/dashboard/wallet',
   Profile: '/dashboard/profile',
-  More: '/dashboard/more',
 };
 
 const HomeDashboard: React.FC<{ onAssetClick: (asset: SelectableAsset) => void; onOpenWatchlist: () => void }> = ({ onAssetClick, onOpenWatchlist }) => (
@@ -45,7 +44,6 @@ const resolveActiveTab = (pathname: string): string => {
   if (pathname.startsWith('/dashboard/copy')) return 'Copy';
   if (pathname.startsWith('/dashboard/wallet')) return 'Wallet';
   if (pathname.startsWith('/dashboard/profile')) return 'Profile';
-  if (pathname.startsWith('/dashboard/more')) return 'More';
   return 'Home';
 };
 
@@ -73,7 +71,9 @@ const AppContent: React.FC = () => {
     if (currentPath === '/' || currentPath === '/dashboard') {
       const savedRoute = localStorage.getItem(DASHBOARD_LAST_ROUTE_KEY);
       const fallbackRoute = TAB_TO_ROUTE.Home;
-      const nextRoute = savedRoute && isDashboardRoute(savedRoute) ? savedRoute : fallbackRoute;
+      const nextRoute = savedRoute && isDashboardRoute(savedRoute) && savedRoute !== '/dashboard/more'
+        ? savedRoute
+        : fallbackRoute;
 
       if (currentPath !== nextRoute) {
         navigate(nextRoute, { replace: true });
@@ -170,7 +170,6 @@ const AppContent: React.FC = () => {
           <Route path="/dashboard/copy" element={<CopyTrading />} />
           <Route path="/dashboard/wallet" element={<WalletPage />} />
           <Route path="/dashboard/profile" element={<ProfilePage />} />
-          <Route path="/dashboard/more" element={<HomeDashboard onAssetClick={handleAssetSelect} onOpenWatchlist={() => navigate('/dashboard/watchlist')} />} />
           <Route path="*" element={<Navigate to="/dashboard/home" replace />} />
         </Routes>
       </main>

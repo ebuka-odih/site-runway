@@ -19,6 +19,7 @@ class TransactionWithdrawalManagementTest extends TestCase
 
         $wallet = Wallet::query()->create([
             'user_id' => $customer->id,
+            'cash_balance' => 120,
         ]);
 
         $withdrawal = WalletTransaction::query()->create([
@@ -35,8 +36,10 @@ class TransactionWithdrawalManagementTest extends TestCase
             ->assertRedirect();
 
         $withdrawal->refresh();
+        $wallet->refresh();
 
         $this->assertSame('approved', $withdrawal->status);
+        $this->assertEqualsWithDelta(40, (float) $wallet->cash_balance, 0.00000001);
     }
 
     public function test_admin_can_decline_pending_withdrawal_transaction(): void

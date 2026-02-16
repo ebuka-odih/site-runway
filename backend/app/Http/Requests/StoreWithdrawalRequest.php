@@ -3,8 +3,9 @@
 namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
-class SubmitDepositProofRequest extends FormRequest
+class StoreWithdrawalRequest extends FormRequest
 {
     /**
      * Determine if the user is authorized to make this request.
@@ -22,8 +23,11 @@ class SubmitDepositProofRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'transaction_hash' => ['required', 'string', 'max:255'],
-            'proof_file' => ['required', 'file', 'image', 'max:10240'],
+            'amount' => ['required', 'numeric', 'gt:0'],
+            'currency' => ['required', 'string', Rule::in(['USD', 'USDT', 'BTC', 'ETH', 'SOL'])],
+            'network' => ['nullable', 'string', 'max:20'],
+            'destination' => ['required', 'string', 'max:255'],
+            'asset_id' => ['nullable', 'uuid', Rule::exists('assets', 'id')],
         ];
     }
 }

@@ -148,7 +148,7 @@ function mapWalletTransaction(raw: any): WalletTransactionItem {
     direction: String(raw.direction),
     amount: toNumber(raw.amount),
     quantity: raw.quantity == null ? null : toNumber(raw.quantity),
-    symbol: raw.symbol ?? null,
+    symbol: raw.symbol ?? raw.asset?.symbol ?? null,
     occurredAt: raw.occurred_at ?? null,
   };
 }
@@ -237,7 +237,9 @@ async function request<T>(
   const requestHeaders = new Headers(headers ?? {});
   requestHeaders.set('Accept', 'application/json');
 
-  if (body !== undefined && !requestHeaders.has('Content-Type')) {
+  const isFormData = typeof FormData !== 'undefined' && body instanceof FormData;
+
+  if (body !== undefined && !isFormData && !requestHeaders.has('Content-Type')) {
     requestHeaders.set('Content-Type', 'application/json');
   }
 
@@ -573,21 +575,41 @@ export async function apiCreateDeposit(input: {
   return mapDepositRequest(payload.data);
 }
 
+export async function apiCreateWithdrawal(input: {
+  amount: number;
+  currency: string;
+  network?: string;
+  destination: string;
+  assetId?: string;
+}): Promise<WalletTransactionItem> {
+  const payload = await request<any>('/wallet/withdrawals', {
+    method: 'POST',
+    body: JSON.stringify({
+      amount: input.amount,
+      currency: input.currency,
+      network: input.network,
+      destination: input.destination,
+      asset_id: input.assetId,
+    }),
+  });
+
+  return mapWalletTransaction(payload.data);
+}
+
 export async function apiSubmitDepositProof(
   depositRequestId: string,
   input: {
     transactionHash: string;
-    proofPath?: string;
-    autoApprove?: boolean;
+    proofFile: File;
   },
 ): Promise<DepositRequestItem> {
+  const formData = new FormData();
+  formData.append('transaction_hash', input.transactionHash);
+  formData.append('proof_file', input.proofFile);
+
   const payload = await request<any>(`/wallet/deposits/${depositRequestId}/proof`, {
     method: 'POST',
-    body: JSON.stringify({
-      transaction_hash: input.transactionHash,
-      proof_path: input.proofPath,
-      auto_approve: input.autoApprove ?? true,
-    }),
+    body: formData,
   });
 
   return mapDepositRequest(payload.data);

@@ -474,8 +474,9 @@ const CopyTrading: React.FC = () => {
                     <input
                       type="number"
                       value={allocation}
-                      onChange={(event) => setAllocation(event.target.value)}
-                      className="w-full bg-[#0a0a0a] border border-white/10 rounded-2xl py-4 px-4 text-xl font-black text-white focus:outline-none focus:border-emerald-500/50 transition-all placeholder:text-zinc-800"
+                      readOnly
+                      aria-readonly="true"
+                      className="w-full bg-[#0a0a0a]/80 border border-white/10 rounded-2xl py-4 px-4 text-xl font-black text-white cursor-not-allowed focus:outline-none transition-all placeholder:text-zinc-800"
                       placeholder="100"
                     />
                     {!isEditing && <p className="text-[10px] font-black text-zinc-600 uppercase tracking-widest px-1">Min: $100</p>}

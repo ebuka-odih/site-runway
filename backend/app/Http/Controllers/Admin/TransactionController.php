@@ -208,9 +208,48 @@ class TransactionController extends Controller
             return back()->with('error', 'Rejected withdrawal transaction cannot be approved.');
         }
 
-        $walletTransaction->update([
-            'status' => 'approved',
-        ]);
+        $approvalResult = 'approved';
+
+        DB::transaction(function () use ($walletTransaction, &$approvalResult): void {
+            $lockedWithdrawal = WalletTransaction::query()
+                ->whereKey($walletTransaction->id)
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            if ($lockedWithdrawal->status !== 'pending') {
+                $approvalResult = 'already_finalized';
+                return;
+            }
+
+            $wallet = Wallet::query()
+                ->whereKey($lockedWithdrawal->wallet_id)
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            $withdrawalAmount = (float) $lockedWithdrawal->amount;
+            $cashBalance = (float) $wallet->cash_balance;
+
+            if ($cashBalance < $withdrawalAmount) {
+                $approvalResult = 'insufficient_funds';
+                return;
+            }
+
+            $wallet->cash_balance = $cashBalance - $withdrawalAmount;
+            $wallet->save();
+
+            $lockedWithdrawal->update([
+                'status' => 'approved',
+                'notes' => $lockedWithdrawal->notes ?? 'Withdrawal approved by admin panel',
+            ]);
+        });
+
+        if ($approvalResult === 'already_finalized') {
+            return back()->with('error', 'Withdrawal transaction is no longer pending.');
+        }
+
+        if ($approvalResult === 'insufficient_funds') {
+            return back()->with('error', 'Wallet balance is insufficient to approve this withdrawal.');
+        }
 
         return back()->with('success', 'Withdrawal transaction approved.');
     }

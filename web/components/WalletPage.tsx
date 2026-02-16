@@ -4,12 +4,13 @@ import { useMarket } from '../context/MarketContext';
 import type { DepositRequestItem, WalletSummaryData } from '../types';
 
 const WalletPage: React.FC = () => {
-  const { fetchWalletSummary, createDeposit, submitDepositProof } = useMarket();
+  const { fetchWalletSummary, createDeposit, createWithdrawal, submitDepositProof } = useMarket();
   const [summary, setSummary] = useState<WalletSummaryData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const [isDepositFormOpen, setIsDepositFormOpen] = useState(false);
+  const [isWithdrawalFormOpen, setIsWithdrawalFormOpen] = useState(false);
   const [modalStatus, setModalStatus] = useState<'input' | 'payment' | 'processing' | 'success'>('input');
   const [amount, setAmount] = useState('0.00');
   const [crypto, setCrypto] = useState('USDT');
@@ -18,6 +19,10 @@ const WalletPage: React.FC = () => {
   const [isCopied, setIsCopied] = useState(false);
   const [proofFile, setProofFile] = useState<File | null>(null);
   const [activeDeposit, setActiveDeposit] = useState<DepositRequestItem | null>(null);
+  const [withdrawalAmount, setWithdrawalAmount] = useState('0.00');
+  const [withdrawalCrypto, setWithdrawalCrypto] = useState('USDT');
+  const [withdrawalNetwork, setWithdrawalNetwork] = useState('ERC 20');
+  const [withdrawalDestination, setWithdrawalDestination] = useState('');
 
   const loadSummary = async () => {
     setError(null);
@@ -100,13 +105,18 @@ const WalletPage: React.FC = () => {
       return;
     }
 
+    if (!proofFile) {
+      setError('A screenshot proof is required before you can submit this deposit.');
+      return;
+    }
+
+    setError(null);
     setModalStatus('processing');
 
     try {
       await submitDepositProof(activeDeposit.id, {
         transactionHash: `0x${Math.random().toString(16).slice(2).padEnd(40, '0').slice(0, 40)}`,
-        proofPath: proofFile ? `uploads/${proofFile.name}` : undefined,
-        autoApprove: true,
+        proofFile,
       });
 
       setModalStatus('success');
@@ -114,12 +124,58 @@ const WalletPage: React.FC = () => {
     } catch (exception) {
       const message = exception instanceof Error ? exception.message : 'Deposit proof submission failed.';
       setError(message);
-      setModalStatus('input');
+      setModalStatus('payment');
     }
+  };
+
+  const handleSubmitWithdrawal = async () => {
+    const parsedAmount = parseFloat(withdrawalAmount);
+
+    if (!Number.isFinite(parsedAmount) || parsedAmount <= 0) {
+      setError('Please enter a valid withdrawal amount.');
+      return;
+    }
+
+    if (!withdrawalDestination.trim()) {
+      setError('Destination wallet address is required for withdrawals.');
+      return;
+    }
+
+    setError(null);
+
+    try {
+      await createWithdrawal({
+        amount: parsedAmount,
+        currency: withdrawalCrypto,
+        network: withdrawalNetwork,
+        destination: withdrawalDestination.trim(),
+      });
+
+      setIsWithdrawalFormOpen(false);
+      setWithdrawalAmount('0.00');
+      setWithdrawalDestination('');
+      await loadSummary();
+    } catch (exception) {
+      const message = exception instanceof Error ? exception.message : 'Unable to create withdrawal request.';
+      setError(message);
+    }
+  };
+
+  const openDepositForm = () => {
+    setError(null);
+    setIsWithdrawalFormOpen(false);
+    setIsDepositFormOpen(true);
+  };
+
+  const openWithdrawalForm = () => {
+    setError(null);
+    setIsDepositFormOpen(false);
+    setIsWithdrawalFormOpen(true);
   };
 
   const resetFlow = () => {
     setIsDepositFormOpen(false);
+    setIsWithdrawalFormOpen(false);
     setModalStatus('input');
     setAmount('0.00');
     setTimeLeft(900);
@@ -132,6 +188,10 @@ const WalletPage: React.FC = () => {
   const deposits = useMemo(() => (
     transactions.filter((transaction) => transaction.type === 'deposit')
   ), [transactions]);
+  const pendingWithdrawals = useMemo(() => (
+    transactions.filter((transaction) => transaction.type === 'withdrawal' && transaction.status === 'pending')
+  ), [transactions]);
+  const pendingDeposits = summary?.pendingDeposits ?? [];
 
   if (isLoading) {
     return (
@@ -170,7 +230,7 @@ const WalletPage: React.FC = () => {
         </div>
       </div>
 
-      {!isDepositFormOpen && (
+      {!isDepositFormOpen && !isWithdrawalFormOpen && (
         <>
           <div className="bg-[#121212] border border-white/5 rounded-[24px] p-6">
             <p className="text-[10px] font-black text-zinc-500 uppercase tracking-widest mb-2">Wallet Balance</p>
@@ -198,7 +258,7 @@ const WalletPage: React.FC = () => {
 
           <div className="space-y-3">
             <button
-              onClick={() => setIsDepositFormOpen(true)}
+              onClick={openDepositForm}
               className="w-full bg-[#0c1a12] border border-emerald-500/20 rounded-[24px] p-6 flex items-center justify-between group active:scale-[0.98] transition-all"
             >
               <div className="text-left">
@@ -211,11 +271,14 @@ const WalletPage: React.FC = () => {
               </div>
             </button>
 
-            <button className="w-full bg-[#1a120c] border border-orange-500/20 rounded-[24px] p-6 flex items-center justify-between group active:scale-[0.98] transition-all opacity-60 cursor-not-allowed">
+            <button
+              onClick={openWithdrawalForm}
+              className="w-full bg-[#1a120c] border border-orange-500/20 rounded-[24px] p-6 flex items-center justify-between group active:scale-[0.98] transition-all"
+            >
               <div className="text-left">
                 <p className="text-[10px] font-black text-orange-500 uppercase tracking-widest mb-1">Withdraw</p>
                 <h4 className="text-lg font-black text-white">Cash out securely</h4>
-                <p className="text-xs text-zinc-500 font-bold">Coming soon</p>
+                <p className="text-xs text-zinc-500 font-bold">Submit withdrawal for admin approval</p>
               </div>
               <div className="w-10 h-10 bg-orange-600 rounded-full flex items-center justify-center text-white">
                 <ArrowUpRight size={24} strokeWidth={3} />
@@ -236,8 +299,8 @@ const WalletPage: React.FC = () => {
 
           <header>
             <p className="text-[10px] font-black text-zinc-500 uppercase tracking-widest mb-2">Instant Funding</p>
-            <h3 className="text-xl font-black text-white mb-2 leading-snug">Upload deposit proof and update balances instantly.</h3>
-            <p className="text-sm text-zinc-600 font-bold">Select wallet, method, and attach proof. We update once approved.</p>
+            <h3 className="text-xl font-black text-white mb-2 leading-snug">Submit your deposit proof for admin approval.</h3>
+            <p className="text-sm text-zinc-600 font-bold">Select wallet, method, and upload a screenshot of your transfer.</p>
           </header>
 
           <div className="space-y-6">
@@ -295,6 +358,93 @@ const WalletPage: React.FC = () => {
         </div>
       )}
 
+      {isWithdrawalFormOpen && (
+        <div className="animate-in slide-in-from-right-4 duration-500 bg-[#0a0a0a] border border-white/5 rounded-[32px] p-6 space-y-6 relative overflow-hidden">
+          <button
+            onClick={() => setIsWithdrawalFormOpen(false)}
+            className="absolute top-6 right-6 p-2 text-zinc-600 hover:text-white transition-colors"
+          >
+            <X size={20} />
+          </button>
+
+          <header>
+            <p className="text-[10px] font-black text-zinc-500 uppercase tracking-widest mb-2">Withdrawal Request</p>
+            <h3 className="text-xl font-black text-white mb-2 leading-snug">Request a withdrawal from your wallet.</h3>
+            <p className="text-sm text-zinc-600 font-bold">Requests are reviewed and approved by admin before processing.</p>
+          </header>
+
+          <div className="space-y-4">
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-black text-zinc-600 uppercase tracking-widest ml-1">Amount</label>
+              <input
+                type="text"
+                value={withdrawalAmount}
+                onChange={(event) => setWithdrawalAmount(event.target.value)}
+                className="w-full bg-[#121212] border border-white/5 rounded-xl py-4 px-4 text-lg font-black text-white focus:outline-none focus:border-orange-500/50 transition-all placeholder:text-zinc-800"
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-black text-zinc-600 uppercase tracking-widest ml-1">Asset</label>
+              <div className="relative">
+                <select
+                  value={withdrawalCrypto}
+                  onChange={(event) => setWithdrawalCrypto(event.target.value)}
+                  className="w-full bg-[#121212] border border-white/5 rounded-xl py-4 px-4 text-sm font-black text-white appearance-none focus:outline-none focus:border-orange-500/50 transition-all"
+                >
+                  <option>USDT</option>
+                  <option>BTC</option>
+                  <option>ETH</option>
+                </select>
+                <ChevronDown size={18} className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-500 pointer-events-none" />
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-black text-zinc-600 uppercase tracking-widest ml-1">Network</label>
+              <div className="relative">
+                <select
+                  value={withdrawalNetwork}
+                  onChange={(event) => setWithdrawalNetwork(event.target.value)}
+                  className="w-full bg-[#121212] border border-white/5 rounded-xl py-4 px-4 text-sm font-black text-white appearance-none focus:outline-none focus:border-orange-500/50 transition-all"
+                >
+                  <option>ERC 20</option>
+                  <option>TRC 20</option>
+                  <option>BEP 20</option>
+                </select>
+                <ChevronDown size={18} className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-500 pointer-events-none" />
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-black text-zinc-600 uppercase tracking-widest ml-1">Destination Address</label>
+              <input
+                type="text"
+                value={withdrawalDestination}
+                onChange={(event) => setWithdrawalDestination(event.target.value)}
+                placeholder="Paste destination wallet address"
+                className="w-full bg-[#121212] border border-white/5 rounded-xl py-4 px-4 text-sm font-black text-white focus:outline-none focus:border-orange-500/50 transition-all placeholder:text-zinc-700"
+              />
+            </div>
+          </div>
+
+          <div className="space-y-3">
+            <button
+              onClick={() => void handleSubmitWithdrawal()}
+              className="w-full py-4 bg-orange-500 hover:bg-orange-400 text-black font-black rounded-xl uppercase tracking-widest text-sm transition-all shadow-xl shadow-orange-500/20 active:scale-[0.98]"
+            >
+              Submit Withdrawal Request
+            </button>
+            <button
+              onClick={() => setIsWithdrawalFormOpen(false)}
+              className="w-full py-4 border border-zinc-800 hover:border-zinc-700 text-zinc-400 font-black rounded-xl uppercase tracking-widest text-sm transition-all"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+
       {modalStatus !== 'input' && (
         <div className="fixed inset-0 z-[200] bg-black/80 backdrop-blur-sm flex items-end sm:items-center justify-center p-4 animate-in fade-in duration-300">
           <div className="bg-[#121212] w-full max-w-md rounded-[32px] p-6 border border-white/5 animate-in slide-in-from-bottom-8 shadow-2xl relative overflow-hidden">
@@ -340,18 +490,24 @@ const WalletPage: React.FC = () => {
                   <div className="flex items-center gap-4">
                     <label className="cursor-pointer bg-zinc-900 border border-zinc-800 px-4 py-2.5 rounded-xl text-[11px] font-black text-white hover:bg-zinc-800 transition-colors uppercase tracking-widest">
                       Choose File
-                      <input type="file" className="hidden" onChange={(event) => setProofFile(event.target.files?.[0] || null)} />
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={(event) => setProofFile(event.target.files?.[0] || null)}
+                      />
                     </label>
                     <span className="text-xs text-zinc-600 font-bold truncate flex-1">
                       {proofFile ? proofFile.name : 'No file selected'}
                     </span>
                   </div>
-                  <p className="text-[10px] font-bold text-zinc-600">Screenshot or PDF up to 10MB</p>
+                  <p className="text-[10px] font-bold text-zinc-600">Screenshot image required (PNG/JPG/WEBP), up to 10MB</p>
                 </div>
 
                 <button
                   onClick={() => void handleSubmitProof()}
-                  className="w-full py-4 bg-[#10b981]/90 hover:bg-[#10b981] text-black font-black rounded-xl uppercase tracking-widest text-sm transition-all shadow-xl active:scale-[0.98]"
+                  disabled={!proofFile}
+                  className="w-full py-4 bg-[#10b981]/90 hover:bg-[#10b981] disabled:bg-zinc-700 disabled:text-zinc-400 disabled:cursor-not-allowed text-black font-black rounded-xl uppercase tracking-widest text-sm transition-all shadow-xl active:scale-[0.98]"
                 >
                   Confirm & Submit
                 </button>
@@ -401,8 +557,62 @@ const WalletPage: React.FC = () => {
         </div>
       )}
 
-      {!isDepositFormOpen && (
+      {!isDepositFormOpen && !isWithdrawalFormOpen && (
         <>
+          {pendingDeposits.length > 0 && (
+            <div className="bg-[#121212] border border-amber-500/20 rounded-[24px] p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h4 className="text-sm font-black text-amber-400 uppercase tracking-widest">Pending Deposits</h4>
+                <span className="text-xs font-black text-zinc-500">{pendingDeposits.length} in review</span>
+              </div>
+
+              <div className="space-y-4">
+                {pendingDeposits.map((deposit) => (
+                  <div key={deposit.id} className="flex items-center justify-between">
+                    <div>
+                      <p className="text-base font-black text-white tabular-nums">
+                        ${deposit.amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                      </p>
+                      <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mt-0.5">
+                        {deposit.currency}{deposit.network ? ` • ${deposit.network}` : ''}
+                      </p>
+                    </div>
+                    <span className="bg-amber-500/10 text-amber-300 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border border-amber-500/25">
+                      {deposit.status}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {pendingWithdrawals.length > 0 && (
+            <div className="bg-[#121212] border border-orange-500/20 rounded-[24px] p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h4 className="text-sm font-black text-orange-400 uppercase tracking-widest">Pending Withdrawals</h4>
+                <span className="text-xs font-black text-zinc-500">{pendingWithdrawals.length} awaiting review</span>
+              </div>
+
+              <div className="space-y-4">
+                {pendingWithdrawals.map((withdrawal) => (
+                  <div key={withdrawal.id} className="flex items-center justify-between">
+                    <div>
+                      <p className="text-base font-black text-white tabular-nums">
+                        ${withdrawal.amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                      </p>
+                      <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mt-0.5">
+                        {withdrawal.symbol ?? 'Asset'} • {withdrawal.type}
+                      </p>
+                    </div>
+                    <span className="bg-orange-500/10 text-orange-300 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border border-orange-500/25">
+                      {withdrawal.status}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           <div className="bg-[#121212] border border-white/5 rounded-[24px] p-6">
             <div className="flex items-center justify-between mb-6">
               <div className="flex items-center gap-2">

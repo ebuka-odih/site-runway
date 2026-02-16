@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Home, TrendingUp, Users, Wallet, User, MoreHorizontal } from 'lucide-react';
+import { Home, TrendingUp, Users, Wallet, User } from 'lucide-react';
 
 interface BottomNavProps {
   activeTab: string;
@@ -14,7 +14,6 @@ const BottomNav: React.FC<BottomNavProps> = ({ activeTab, onTabChange }) => {
     { name: 'Copy', icon: Users },
     { name: 'Wallet', icon: Wallet },
     { name: 'Profile', icon: User },
-    { name: 'More', icon: MoreHorizontal },
   ];
 
   return (

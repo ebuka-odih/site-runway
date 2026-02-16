@@ -51,6 +51,7 @@ Route::prefix('v1')->group(function () {
         Route::get('/wallet/transactions', [WalletController::class, 'transactions']);
         Route::post('/wallet/deposits', [WalletController::class, 'storeDeposit']);
         Route::post('/wallet/deposits/{depositRequest}/proof', [WalletController::class, 'submitProof']);
+        Route::post('/wallet/withdrawals', [WalletController::class, 'storeWithdrawal']);
 
         Route::get('/copy-trading/discover', [CopyTradingController::class, 'discover']);
         Route::get('/copy-trading/following', [CopyTradingController::class, 'following']);

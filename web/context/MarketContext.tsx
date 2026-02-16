@@ -10,6 +10,7 @@ import {
   apiCopyHistory,
   apiRemoveFromWatchlist,
   apiCreateDeposit,
+  apiCreateWithdrawal,
   apiDashboard,
   apiFollowTrader,
   apiLogin,
@@ -77,9 +78,10 @@ interface MarketContextType {
   fetchWalletSummary: () => Promise<WalletSummaryData>;
   fetchWalletTransactions: (params?: { type?: string; status?: string }) => Promise<WalletTransactionItem[]>;
   createDeposit: (input: { amount: number; currency: string; network?: string; assetId?: string }) => Promise<DepositRequestItem>;
+  createWithdrawal: (input: { amount: number; currency: string; network?: string; destination: string; assetId?: string }) => Promise<WalletTransactionItem>;
   submitDepositProof: (
     depositRequestId: string,
-    input: { transactionHash: string; proofPath?: string; autoApprove?: boolean },
+    input: { transactionHash: string; proofFile: File },
   ) => Promise<DepositRequestItem>;
   fetchCopyDiscover: (params?: { filter?: string; search?: string }) => Promise<TraderItem[]>;
   fetchCopyFollowing: () => Promise<{ summary: CopyFollowingSummary; items: CopyRelationshipItem[] }>;
@@ -439,6 +441,7 @@ export const MarketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const fetchWalletSummary: MarketContextType['fetchWalletSummary'] = useCallback(() => apiWalletSummary(), []);
   const fetchWalletTransactions: MarketContextType['fetchWalletTransactions'] = useCallback((params) => apiWalletTransactions(params), []);
   const createDeposit: MarketContextType['createDeposit'] = useCallback((input) => apiCreateDeposit(input), []);
+  const createWithdrawal: MarketContextType['createWithdrawal'] = useCallback((input) => apiCreateWithdrawal(input), []);
   const submitDepositProof: MarketContextType['submitDepositProof'] = useCallback((depositRequestId, input) => apiSubmitDepositProof(depositRequestId, input), []);
 
   const fetchCopyDiscover: MarketContextType['fetchCopyDiscover'] = useCallback((params) => apiCopyDiscover(params), []);
@@ -500,6 +503,7 @@ export const MarketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     fetchWalletSummary,
     fetchWalletTransactions,
     createDeposit,
+    createWithdrawal,
     submitDepositProof,
     fetchCopyDiscover,
     fetchCopyFollowing,
@@ -532,6 +536,7 @@ export const MarketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     fetchWalletSummary,
     fetchWalletTransactions,
     createDeposit,
+    createWithdrawal,
     submitDepositProof,
     fetchCopyDiscover,
     fetchCopyFollowing,
