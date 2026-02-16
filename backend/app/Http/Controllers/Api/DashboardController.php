@@ -18,6 +18,7 @@ use Illuminate\Validation\Rule;
 class DashboardController extends Controller
 {
     private const MIN_SNAPSHOT_COVERAGE_RATIO = 0.15;
+    private const HEATMAP_ITEM_LIMIT = 6;
 
     /**
      * @var array<string, array{points: int, interval_minutes: int, trend_scale: float, noise_scale: float, cash_noise_scale: float}>
@@ -83,6 +84,9 @@ class DashboardController extends Controller
 
                 return $positionsMarketValue > 0 ? round(($bucketValue / $positionsMarketValue) * 100, 2) : 0;
             });
+        $largestAllocationPercent = (float) ($allocationByType->max() ?? 0.0);
+        $cashSharePercent = $portfolioValue > 0 ? ($cashBalance / $portfolioValue) * 100 : 100.0;
+        $riskLevel = $this->resolveRiskLevel($largestAllocationPercent, $cashSharePercent, $positions->count());
 
         $watchlist = $user->watchlistItems
             ->sortBy('sort_order')
@@ -96,6 +100,9 @@ class DashboardController extends Controller
                 'price' => (float) $item->asset->current_price,
                 'change_percent' => (float) $item->asset->change_percent,
             ]);
+        $mappedPositions = $positions
+            ->map(fn (Position $position) => $this->mapPositionForDashboard($position))
+            ->values();
 
         $topGainers = Asset::query()
             ->orderByDesc('change_percent')
@@ -117,14 +124,25 @@ class DashboardController extends Controller
                 'change' => (float) $asset->change_percent,
             ]);
 
-        $heatmap = Asset::query()
-            ->orderByRaw('ABS(change_percent) DESC')
-            ->limit(16)
-            ->get(['symbol', 'change_percent'])
-            ->map(fn ($asset) => [
-                'symbol' => $asset->symbol,
-                'change' => (float) $asset->change_percent,
-            ]);
+        $heatmap = $mappedPositions
+            ->map(fn (array $position) => [
+                'symbol' => (string) $position['symbol'],
+                'change' => (float) $position['day_change_percent'],
+            ])
+            ->sortByDesc(fn (array $item) => abs((float) $item['change']))
+            ->take(self::HEATMAP_ITEM_LIMIT)
+            ->values();
+
+        if ($heatmap->isEmpty()) {
+            $heatmap = $watchlist
+                ->map(fn (array $item) => [
+                    'symbol' => (string) $item['symbol'],
+                    'change' => (float) $item['change_percent'],
+                ])
+                ->sortByDesc(fn (array $item) => abs((float) $item['change']))
+                ->take(self::HEATMAP_ITEM_LIMIT)
+                ->values();
+        }
 
         return response()->json([
             'data' => [
@@ -137,14 +155,12 @@ class DashboardController extends Controller
                     'history' => $portfolioHistory,
                 ],
                 'analytics' => [
-                    'risk_level' => 'Conservative',
+                    'risk_level' => $riskLevel,
                     'diversification_score' => min(100, $positions->count() * 20),
                     'allocation' => $allocationByType,
                     'asset_count' => $positions->count(),
                 ],
-                'positions' => $positions->map(fn (Position $position) => [
-                    ...$this->mapPositionForDashboard($position),
-                ]),
+                'positions' => $mappedPositions,
                 'watchlist' => $watchlist,
                 'top_gainers' => $topGainers,
                 'top_losers' => $topLosers,
@@ -162,6 +178,23 @@ class DashboardController extends Controller
         }
 
         return $this->buildSimulatedPortfolioHistory($positions, $cashBalance, $currentPortfolioValue, $range);
+    }
+
+    private function resolveRiskLevel(float $largestAllocationPercent, float $cashSharePercent, int $assetCount): string
+    {
+        if ($assetCount <= 0) {
+            return 'Conservative';
+        }
+
+        if ($largestAllocationPercent >= 65 || $cashSharePercent < 15) {
+            return 'Aggressive';
+        }
+
+        if ($largestAllocationPercent >= 45 || $cashSharePercent < 35) {
+            return 'Moderate';
+        }
+
+        return 'Conservative';
     }
 
     private function buildSnapshotBackedPortfolioHistory(User $user, float $cashBalance, float $currentPortfolioValue, string $range): ?Collection

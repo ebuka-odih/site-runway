@@ -208,7 +208,18 @@ const TradePage: React.FC<TradePageProps> = ({ onOpenTradingDesk, onAssetClick }
             {recentOrders.map((order) => (
               <div key={order.id} className="bg-[#141414]/60 border border-white/5 rounded-xl p-4 flex items-center justify-between">
                 <div>
-                  <p className="font-extrabold text-white">{order.side.toUpperCase()} {order.asset.symbol}</p>
+                  <div className="flex items-center gap-2">
+                    <span
+                      className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider border ${
+                        order.side === 'buy'
+                          ? 'bg-emerald-500/15 border-emerald-500/35 text-emerald-300'
+                          : 'bg-orange-500/15 border-orange-500/35 text-orange-300'
+                      }`}
+                    >
+                      {order.side}
+                    </span>
+                    <p className="font-extrabold text-white">{order.asset.symbol}</p>
+                  </div>
                   <p className="text-xs text-zinc-500 font-bold">{new Date(order.placedAt).toLocaleString()}</p>
                 </div>
                 <div className="text-right">

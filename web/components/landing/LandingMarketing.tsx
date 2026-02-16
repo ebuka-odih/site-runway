@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import {
   ArrowRight,
   TrendingUp,
@@ -24,6 +24,80 @@ import type { AuthView } from './types';
 interface LandingMarketingProps {
   onOpenAuth: (view?: AuthView) => void;
 }
+
+const TradingViewMarketsWidget: React.FC = () => {
+  const widgetRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (!widgetRef.current) {
+      return;
+    }
+
+    widgetRef.current.innerHTML = '';
+
+    const script = document.createElement('script');
+    script.type = 'text/javascript';
+    script.async = true;
+    script.src = 'https://s3.tradingview.com/external-embedding/embed-widget-market-overview.js';
+    script.innerHTML = JSON.stringify({
+      colorTheme: 'dark',
+      dateRange: '12M',
+      showChart: true,
+      locale: 'en',
+      largeChartUrl: '',
+      isTransparent: true,
+      showSymbolLogo: true,
+      showFloatingTooltip: false,
+      width: '100%',
+      height: 620,
+      tabs: [
+        {
+          title: 'US Stocks',
+          symbols: [
+            { s: 'NASDAQ:AAPL', d: 'Apple' },
+            { s: 'NASDAQ:MSFT', d: 'Microsoft' },
+            { s: 'NASDAQ:NVDA', d: 'NVIDIA' },
+            { s: 'NASDAQ:TSLA', d: 'Tesla' },
+            { s: 'NASDAQ:AMD', d: 'AMD' },
+          ],
+        },
+        {
+          title: 'Crypto',
+          symbols: [
+            { s: 'BINANCE:BTCUSDT', d: 'Bitcoin' },
+            { s: 'BINANCE:ETHUSDT', d: 'Ethereum' },
+            { s: 'BINANCE:SOLUSDT', d: 'Solana' },
+            { s: 'BINANCE:BNBUSDT', d: 'BNB' },
+            { s: 'BINANCE:AVAXUSDT', d: 'Avalanche' },
+          ],
+        },
+        {
+          title: 'ETFs',
+          symbols: [
+            { s: 'AMEX:SPY', d: 'S&P 500 ETF' },
+            { s: 'NASDAQ:QQQ', d: 'Nasdaq 100 ETF' },
+            { s: 'AMEX:VTI', d: 'Total Market ETF' },
+            { s: 'AMEX:DIA', d: 'Dow Jones ETF' },
+            { s: 'AMEX:IWM', d: 'Russell 2000 ETF' },
+          ],
+        },
+      ],
+    });
+
+    widgetRef.current.appendChild(script);
+  }, []);
+
+  return (
+    <div className="tradingview-widget-container w-full" ref={widgetRef}>
+      <div className="tradingview-widget-container__widget min-h-[620px]" />
+      <div className="tradingview-widget-copyright text-[10px] text-zinc-600 font-bold uppercase tracking-[0.16em] mt-3">
+        <a href="https://www.tradingview.com/" rel="noopener nofollow" target="_blank" className="hover:text-zinc-300 transition-colors">
+          Market data by TradingView
+        </a>
+      </div>
+    </div>
+  );
+};
 
 const LandingMarketing: React.FC<LandingMarketingProps> = ({ onOpenAuth }) => (
   <>
@@ -145,8 +219,22 @@ const LandingMarketing: React.FC<LandingMarketingProps> = ({ onOpenAuth }) => (
       </div>
     </section>
 
+    {/* Live Markets */}
+    <section id="markets" className="py-24 px-6 max-w-7xl mx-auto">
+      <div className="text-center mb-10">
+        <p className="text-[10px] font-black text-emerald-500 uppercase tracking-[0.3em] mb-4">Live Markets</p>
+        <h2 className="text-4xl md:text-6xl font-black tracking-tight text-white mb-5 uppercase italic">Market Scanner</h2>
+        <p className="text-zinc-500 max-w-2xl mx-auto font-medium">
+          Track US equities, crypto pairs, and ETFs from one stream before you jump into execution.
+        </p>
+      </div>
+      <div className="rounded-[36px] border border-white/10 bg-[#0b0b0b] p-5 md:p-8">
+        <TradingViewMarketsWidget />
+      </div>
+    </section>
+
     {/* Global Impact Stats */}
-    <section id="markets" className="py-20 px-6 max-w-7xl mx-auto border-t border-white/5 bg-white/[0.01]">
+    <section id="market-stats" className="py-20 px-6 max-w-7xl mx-auto border-t border-white/5 bg-white/[0.01]">
       <div className="grid grid-cols-2 md:grid-cols-4 gap-12 text-center">
         {[
           { label: 'Trading Volume', value: '$14.2B+', color: 'text-white' },

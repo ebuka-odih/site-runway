@@ -188,18 +188,21 @@ class DemoDataSeeder extends Seeder
             'processed_at' => now()->subMinutes(8),
         ]);
 
-        $traders = collect([
-            ['display_name' => 'Tommy Massey', 'username' => 'day_trading', 'avatar_color' => 'emerald', 'strategy' => 'day_trading', 'total_return' => 145.2, 'win_rate' => 68, 'copiers_count' => 1240, 'risk_score' => 4, 'joined_at' => now()->subDays(120), 'is_verified' => true],
-            ['display_name' => 'THOMAS', 'username' => 'thomas_algo', 'avatar_color' => 'emerald', 'strategy' => 'day_trading', 'total_return' => 89.4, 'win_rate' => 52, 'copiers_count' => 2450, 'risk_score' => 3, 'joined_at' => now()->subDays(220), 'is_verified' => true],
-            ['display_name' => 'Frank Taylor', 'username' => 'dca_momentum', 'avatar_color' => 'emerald', 'strategy' => 'DCA & MOMENTUM', 'total_return' => 210.5, 'win_rate' => 36, 'copiers_count' => 312, 'risk_score' => 6, 'joined_at' => now()->subDays(20), 'is_verified' => true],
-            ['display_name' => 'Elite Trader', 'username' => 'scalp_master', 'avatar_color' => 'emerald', 'strategy' => 'SCALPING', 'total_return' => 12.4, 'win_rate' => 78, 'copiers_count' => 154, 'risk_score' => 2, 'joined_at' => now()->subDays(90), 'is_verified' => false],
-            ['display_name' => 'Alpha Whale', 'username' => 'alpha_w', 'avatar_color' => 'blue', 'strategy' => 'LONG_TERM', 'total_return' => 340.1, 'win_rate' => 82, 'copiers_count' => 5600, 'risk_score' => 2, 'joined_at' => now()->subDays(360), 'is_verified' => true],
-            ['display_name' => 'Neo Trader', 'username' => 'neo_1', 'avatar_color' => 'purple', 'strategy' => 'SCALPING', 'total_return' => 15.6, 'win_rate' => 91, 'copiers_count' => 45, 'risk_score' => 1, 'joined_at' => now()->subDays(7), 'is_verified' => false],
-        ])->mapWithKeys(function (array $trader) {
-            $model = Trader::query()->create(array_merge($trader, ['is_active' => true]));
+        $traderUsernames = CopyTradersSeeder::usernames();
 
-            return [$trader['username'] => $model];
-        });
+        $traders = Trader::query()
+            ->whereIn('username', $traderUsernames)
+            ->get()
+            ->keyBy('username');
+
+        if ($traders->count() !== count($traderUsernames)) {
+            $this->call([CopyTradersSeeder::class]);
+
+            $traders = Trader::query()
+                ->whereIn('username', $traderUsernames)
+                ->get()
+                ->keyBy('username');
+        }
 
         $firstRelationship = CopyRelationship::query()->create([
             'user_id' => $user->id,

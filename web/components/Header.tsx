@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Search, Bell, Moon, Settings } from 'lucide-react';
+import { Bell, Settings } from 'lucide-react';
 
 const Header: React.FC = () => {
   return (
@@ -17,16 +17,10 @@ const Header: React.FC = () => {
         </div>
       </div>
       
-      <div className="flex items-center gap-4 text-zinc-400">
-        <button className="p-2 hover:bg-zinc-800 rounded-full transition-colors">
-          <Search size={20} />
-        </button>
+      <div className="flex items-center gap-3 text-zinc-400">
         <button className="p-2 hover:bg-zinc-800 rounded-full transition-colors relative">
           <Bell size={20} />
           <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full border border-black"></span>
-        </button>
-        <button className="p-2 hover:bg-zinc-800 rounded-full transition-colors">
-          <Moon size={20} />
         </button>
         <button className="p-2 hover:bg-zinc-800 rounded-full transition-colors">
           <Settings size={20} />

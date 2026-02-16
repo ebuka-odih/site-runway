@@ -11,7 +11,7 @@ const TradingDesk: React.FC<{ onClose: () => void; onSelectAsset: (asset: Select
   const filteredAssets = useMemo(() => {
     return marketAssets.filter((asset) => {
       const normalizedType = (asset.type ?? '').toLowerCase();
-      const mappedType = normalizedType === 'crypto' ? 'Crypto' : normalizedType === 'share' ? 'Share' : 'Stock';
+      const mappedType = normalizedType === 'crypto' ? 'Crypto' : 'Stock';
       const matchesFilter = activeFilter === 'All' || mappedType === activeFilter;
       const matchesSearch =
         asset.symbol.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -32,7 +32,7 @@ const TradingDesk: React.FC<{ onClose: () => void; onSelectAsset: (asset: Select
         </button>
         <p className="text-[10px] font-bold text-green-500 uppercase tracking-widest mb-1">Assets Overview</p>
         <h2 className="text-2xl font-bold text-white mb-2">Trade Markets</h2>
-        <p className="text-sm text-zinc-500 font-medium">Browse and trade live stocks, crypto, and shares</p>
+        <p className="text-sm text-zinc-500 font-medium">Browse and trade live stocks and crypto</p>
       </div>
 
       <div className="px-4 py-4">
@@ -49,7 +49,7 @@ const TradingDesk: React.FC<{ onClose: () => void; onSelectAsset: (asset: Select
       </div>
 
       <div className="px-4 flex gap-2 pb-4 overflow-x-auto scrollbar-hide">
-        {['All', 'Stock', 'Crypto', 'Share'].map((filter) => (
+        {['All', 'Stock', 'Crypto'].map((filter) => (
           <button
             key={filter}
             onClick={() => setActiveFilter(filter)}

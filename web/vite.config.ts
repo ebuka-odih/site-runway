@@ -8,7 +8,7 @@ export default defineConfig(({ mode }) => {
   const legacyBackendOrigin = env.VITE_BACKEND_ORIGIN?.trim();
   const runtimeApiBaseUrl = configuredBackendApiBaseUrl || '/api/v1';
 
-  let proxyTarget = legacyBackendOrigin || 'http://127.0.0.1:8000';
+  let proxyTarget = legacyBackendOrigin || 'https://api.runwayalgo.com';
   let proxyRewrite: ((requestPath: string) => string) | undefined;
 
   if (configuredBackendApiBaseUrl) {
@@ -17,6 +17,8 @@ export default defineConfig(({ mode }) => {
 
     proxyTarget = parsed.origin;
     proxyRewrite = (requestPath: string) => requestPath.replace(/^\/api\/v1/, backendBasePath);
+  } else if (!legacyBackendOrigin) {
+    proxyRewrite = (requestPath: string) => requestPath.replace(/^\/api\/v1/, '/backend/public/api/v1');
   }
 
   return {

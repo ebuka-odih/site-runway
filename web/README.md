@@ -14,13 +14,17 @@
 
 ## Backend API wiring
 - Frontend API client is built from `BACKEND_API_BASE_URL` (fallback: `/api/v1`).
-- In local dev, Vite also proxies `/api/*` to backend using `BACKEND_API_BASE_URL` when set.
-- Legacy proxy fallback is `VITE_BACKEND_ORIGIN` (default `http://127.0.0.1:8000`).
+- Recommended default is the deployed API: `https://api.runwayalgo.com/backend/public/api/v1`.
+- In local dev, Vite proxies `/api/*` to `BACKEND_API_BASE_URL` when set.
+- If `BACKEND_API_BASE_URL` is not set, Vite fallback proxy targets the deployed API (not localhost).
+- Optional legacy override is `VITE_BACKEND_ORIGIN`.
 
 Optional `.env.local` values:
 
 ```bash
-BACKEND_API_BASE_URL=http://127.0.0.1:8000/api/v1
+BACKEND_API_BASE_URL=https://api.runwayalgo.com/backend/public/api/v1
+# Optional local backend override:
+# BACKEND_API_BASE_URL=http://127.0.0.1:8000/api/v1
 ```
 
 Production example (`.env.production`):
