@@ -1,16 +1,29 @@
 import AdminLayout from '@/Layouts/AdminLayout';
-import { Link, router } from '@inertiajs/react';
+import { Link, router, useForm } from '@inertiajs/react';
 import { useEffect, useRef, useState } from 'react';
 
 const date = (value) => (value ? new Date(value).toLocaleString() : '-');
+const money = (value) =>
+    new Intl.NumberFormat('en-US', {
+        style: 'currency',
+        currency: 'USD',
+        maximumFractionDigits: 2,
+    }).format(Number(value || 0));
 
 export default function Index({ users, filters, stats }) {
     const [search, setSearch] = useState(filters.search || '');
     const [role, setRole] = useState(filters.role || 'all');
     const [verification, setVerification] = useState(filters.verification || 'all');
+    const [fundingUser, setFundingUser] = useState(null);
     const hasMounted = useRef(false);
     const userRows = Array.isArray(users?.data) ? users.data : [];
     const userLinks = Array.isArray(users?.links) ? users.links : [];
+    const fundForm = useForm({
+        target: 'balance',
+        amount: '',
+        notes: '',
+        redirect_to: 'index',
+    });
 
     const applyFilters = (nextSearch, nextRole, nextVerification) => {
         router.get(
@@ -49,6 +62,33 @@ export default function Index({ users, filters, stats }) {
         }
 
         router.delete(`/admin/users/${userId}`);
+    };
+
+    const openFundingModal = (user) => {
+        setFundingUser(user);
+        fundForm.clearErrors();
+        fundForm.setData('target', 'balance');
+        fundForm.setData('amount', '');
+        fundForm.setData('notes', '');
+        fundForm.setData('redirect_to', 'index');
+    };
+
+    const closeFundingModal = () => {
+        setFundingUser(null);
+        fundForm.clearErrors();
+    };
+
+    const submitFunding = (event) => {
+        event.preventDefault();
+
+        if (!fundingUser) {
+            return;
+        }
+
+        fundForm.post(fundingUser.fund_url || `/admin/users/${fundingUser.id}/fund`, {
+            preserveScroll: true,
+            onSuccess: closeFundingModal,
+        });
     };
 
     return (
@@ -133,6 +173,18 @@ export default function Index({ users, filters, stats }) {
                                     <dd className="uppercase text-slate-200">{user.kyc_status}</dd>
                                 </div>
                                 <div className="flex justify-between gap-2">
+                                    <dt>Balance</dt>
+                                    <dd className="text-slate-200">{money(user.balance)}</dd>
+                                </div>
+                                <div className="flex justify-between gap-2">
+                                    <dt>Profit</dt>
+                                    <dd className="text-slate-200">{money(user.profit_balance)}</dd>
+                                </div>
+                                <div className="flex justify-between gap-2">
+                                    <dt>Holding</dt>
+                                    <dd className="text-slate-200">{money(user.holding_balance)}</dd>
+                                </div>
+                                <div className="flex justify-between gap-2">
                                     <dt>Orders / Positions</dt>
                                     <dd className="text-slate-300">
                                         {user.orders_count} / {user.positions_count}
@@ -164,6 +216,13 @@ export default function Index({ users, filters, stats }) {
                                     </Link>
                                     <button
                                         type="button"
+                                        onClick={() => openFundingModal(user)}
+                                        className="rounded-lg border border-amber-500/60 px-2.5 py-1 text-xs text-amber-200 transition hover:bg-amber-500/10"
+                                    >
+                                        Fund
+                                    </button>
+                                    <button
+                                        type="button"
                                         onClick={() => deleteUser(user.id, user.name)}
                                         className="rounded-lg border border-rose-500/60 px-2.5 py-1 text-xs text-rose-200 transition hover:bg-rose-500/10"
                                     >
@@ -182,6 +241,7 @@ export default function Index({ users, filters, stats }) {
                                 <th className="pb-3 pr-3">User</th>
                                 <th className="pb-3 pr-3">Role</th>
                                 <th className="pb-3 pr-3">Tier / KYC</th>
+                                <th className="pb-3 pr-3">Funds</th>
                                 <th className="pb-3 pr-3">Activity</th>
                                 <th className="pb-3 pr-3">Verified</th>
                                 <th className="pb-3">Actions</th>
@@ -210,6 +270,11 @@ export default function Index({ users, filters, stats }) {
                                         <p>{user.membership_tier}</p>
                                         <p className="mt-1 text-slate-500">KYC: {user.kyc_status}</p>
                                     </td>
+                                    <td className="py-3 pr-3 text-xs text-slate-300">
+                                        <p>Balance: {money(user.balance)}</p>
+                                        <p>Profit: {money(user.profit_balance)}</p>
+                                        <p className="mt-1">Holding: {money(user.holding_balance)}</p>
+                                    </td>
                                     <td className="py-3 pr-3 text-xs text-slate-400">
                                         <p>Orders: {user.orders_count}</p>
                                         <p>Positions: {user.positions_count}</p>
@@ -234,6 +299,13 @@ export default function Index({ users, filters, stats }) {
                                             >
                                                 Edit
                                             </Link>
+                                            <button
+                                                type="button"
+                                                onClick={() => openFundingModal(user)}
+                                                className="rounded-lg border border-amber-500/60 px-2.5 py-1 text-xs text-amber-200 transition hover:bg-amber-500/10"
+                                            >
+                                                Fund
+                                            </button>
                                             <button
                                                 type="button"
                                                 onClick={() => deleteUser(user.id, user.name)}
@@ -268,6 +340,115 @@ export default function Index({ users, filters, stats }) {
                     ))}
                 </div>
             </section>
+
+            {fundingUser && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 p-4">
+                    <button
+                        type="button"
+                        className="absolute inset-0"
+                        onClick={closeFundingModal}
+                        aria-label="Close funding modal"
+                    />
+
+                    <section className="relative z-10 w-full max-w-xl rounded-2xl border border-slate-700 bg-slate-900 p-5 shadow-2xl">
+                        <div className="flex items-start justify-between gap-3">
+                            <div>
+                                <h4 className="text-lg font-semibold text-slate-100">Fund User Account</h4>
+                                <p className="text-xs text-slate-400">
+                                    {fundingUser.name} ({fundingUser.email})
+                                </p>
+                            </div>
+
+                            <button
+                                type="button"
+                                onClick={closeFundingModal}
+                                className="rounded-lg border border-slate-700 px-2 py-1 text-xs text-slate-300 transition hover:bg-slate-800"
+                            >
+                                Close
+                            </button>
+                        </div>
+
+                        <div className="mt-4 grid gap-2 text-xs text-slate-300 sm:grid-cols-3">
+                            <InfoChip label="Balance" value={money(fundingUser.balance)} />
+                            <InfoChip label="Profit" value={money(fundingUser.profit_balance)} />
+                            <InfoChip label="Holding" value={money(fundingUser.holding_balance)} />
+                        </div>
+
+                        <form onSubmit={submitFunding} className="mt-5 space-y-4">
+                            <div className="grid gap-4 sm:grid-cols-2">
+                                <label className="block">
+                                    <span className="mb-2 block text-sm text-slate-300">
+                                        Target <span className="text-rose-300">*</span>
+                                    </span>
+                                    <select
+                                        value={fundForm.data.target}
+                                        onChange={(event) => fundForm.setData('target', event.target.value)}
+                                        className={fieldClass(fundForm.errors.target)}
+                                        required
+                                    >
+                                        <option value="balance">Balance</option>
+                                        <option value="profit_balance">Profit Balance</option>
+                                        <option value="holding_balance">Holding Balance</option>
+                                    </select>
+                                    {fundForm.errors.target && (
+                                        <span className="mt-1 block text-xs text-rose-300">{fundForm.errors.target}</span>
+                                    )}
+                                </label>
+
+                                <label className="block">
+                                    <span className="mb-2 block text-sm text-slate-300">
+                                        Amount (USD) <span className="text-rose-300">*</span>
+                                    </span>
+                                    <input
+                                        type="number"
+                                        min="0.01"
+                                        step="0.01"
+                                        value={fundForm.data.amount}
+                                        onChange={(event) => fundForm.setData('amount', event.target.value)}
+                                        className={fieldClass(fundForm.errors.amount)}
+                                        placeholder="100.00"
+                                        required
+                                    />
+                                    {fundForm.errors.amount && (
+                                        <span className="mt-1 block text-xs text-rose-300">{fundForm.errors.amount}</span>
+                                    )}
+                                </label>
+
+                                <label className="block sm:col-span-2">
+                                    <span className="mb-2 block text-sm text-slate-300">Notes</span>
+                                    <input
+                                        type="text"
+                                        value={fundForm.data.notes}
+                                        onChange={(event) => fundForm.setData('notes', event.target.value)}
+                                        className={fieldClass(fundForm.errors.notes)}
+                                        placeholder="Optional audit note"
+                                    />
+                                    {fundForm.errors.notes && (
+                                        <span className="mt-1 block text-xs text-rose-300">{fundForm.errors.notes}</span>
+                                    )}
+                                </label>
+                            </div>
+
+                            <div className="flex flex-wrap gap-2">
+                                <button
+                                    type="submit"
+                                    disabled={fundForm.processing}
+                                    className="rounded-lg bg-gradient-to-r from-amber-400 to-orange-500 px-4 py-2 text-sm font-semibold text-slate-950 transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+                                >
+                                    {fundForm.processing ? 'Funding...' : 'Fund Account'}
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={closeFundingModal}
+                                    className="rounded-lg border border-slate-700 px-4 py-2 text-sm text-slate-200 transition hover:bg-slate-800"
+                                >
+                                    Cancel
+                                </button>
+                            </div>
+                        </form>
+                    </section>
+                </div>
+            )}
         </AdminLayout>
     );
 }
@@ -280,3 +461,19 @@ function MiniStat({ label, value }) {
         </article>
     );
 }
+
+function InfoChip({ label, value }) {
+    return (
+        <article className="rounded-xl border border-slate-700 bg-slate-950/70 px-3 py-2">
+            <p className="text-[10px] uppercase tracking-[0.15em] text-slate-400">{label}</p>
+            <p className="mt-1 text-sm font-semibold text-slate-100">{value}</p>
+        </article>
+    );
+}
+
+const fieldClass = (hasError) =>
+    `w-full rounded-xl border px-3 py-2.5 text-sm outline-none transition ${
+        hasError
+            ? 'border-rose-500/60 bg-rose-500/10 text-rose-100 focus:border-rose-400'
+            : 'border-slate-700 bg-slate-950 text-slate-100 focus:border-cyan-400'
+    }`;

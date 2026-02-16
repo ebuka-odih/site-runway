@@ -273,6 +273,7 @@ export async function apiRegister(input: {
   name: string;
   email: string;
   country: string;
+  currency?: string;
   phone: string;
   password: string;
 }): Promise<{ email: string; debugOtp?: string }> {
@@ -284,6 +285,7 @@ export async function apiRegister(input: {
       name: input.name,
       email: input.email,
       country: input.country,
+      currency: input.currency,
       phone: input.phone,
       password: input.password,
     }),

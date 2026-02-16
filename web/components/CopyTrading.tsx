@@ -201,7 +201,7 @@ const CopyTrading: React.FC = () => {
   };
 
   return (
-    <div className="px-4 py-6 pb-32 max-w-xl mx-auto min-h-screen">
+    <div className="px-4 py-6 pb-32 w-full min-h-screen">
       <header className="mb-8">
         <h2 className="text-3xl font-black text-white tracking-tight mb-2">Copy Trading</h2>
         <p className="text-sm text-zinc-500 font-medium">Follow top traders and mirror their moves</p>

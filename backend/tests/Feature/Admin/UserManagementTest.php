@@ -3,6 +3,8 @@
 namespace Tests\Feature\Admin;
 
 use App\Models\User;
+use App\Models\Wallet;
+use App\Models\WalletTransaction;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Inertia\Testing\AssertableInertia as Assert;
 use Tests\TestCase;
@@ -133,5 +135,74 @@ class UserManagementTest extends TestCase
                 ->has('users.data', 1)
                 ->where('users.data.0.id', $match->id)
             );
+    }
+
+    public function test_admin_can_fund_user_balance_profit_and_holding_from_user_section(): void
+    {
+        $admin = User::factory()->admin()->create();
+        $customer = User::factory()->create([
+            'balance' => 100,
+            'profit_balance' => 20,
+            'holding_balance' => 50,
+        ]);
+
+        $wallet = Wallet::query()->create([
+            'user_id' => $customer->id,
+            'cash_balance' => 100,
+            'profit_loss' => 20,
+            'investing_balance' => 50,
+        ]);
+
+        $this->actingAs($admin)
+            ->post(route('admin.users.fund', $customer), [
+                'target' => 'balance',
+                'amount' => 25,
+                'notes' => 'Manual top-up for pending transfer',
+            ])
+            ->assertRedirect(route('admin.users.edit', $customer));
+
+        $this->actingAs($admin)
+            ->post(route('admin.users.fund', $customer), [
+                'target' => 'profit_balance',
+                'amount' => 5.5,
+            ])
+            ->assertRedirect(route('admin.users.edit', $customer));
+
+        $this->actingAs($admin)
+            ->post(route('admin.users.fund', $customer), [
+                'target' => 'holding_balance',
+                'amount' => 12,
+            ])
+            ->assertRedirect(route('admin.users.edit', $customer));
+
+        $customer->refresh();
+        $wallet->refresh();
+
+        $this->assertSame(125.0, (float) $customer->balance);
+        $this->assertSame(25.5, (float) $customer->profit_balance);
+        $this->assertSame(62.0, (float) $customer->holding_balance);
+
+        $this->assertSame(125.0, (float) $wallet->cash_balance);
+        $this->assertSame(25.5, (float) $wallet->profit_loss);
+        $this->assertSame(62.0, (float) $wallet->investing_balance);
+
+        $this->assertSame(3, WalletTransaction::query()->where('wallet_id', $wallet->id)->count());
+        $this->assertSame(
+            ['deposit', 'copy_pnl', 'copy_allocation'],
+            WalletTransaction::query()->where('wallet_id', $wallet->id)->orderBy('created_at')->pluck('type')->all()
+        );
+    }
+
+    public function test_admin_funding_requires_a_valid_target_and_positive_amount(): void
+    {
+        $admin = User::factory()->admin()->create();
+        $customer = User::factory()->create();
+
+        $this->actingAs($admin)
+            ->post(route('admin.users.fund', $customer), [
+                'target' => 'invalid-target',
+                'amount' => 0,
+            ])
+            ->assertSessionHasErrors(['target', 'amount']);
     }
 }

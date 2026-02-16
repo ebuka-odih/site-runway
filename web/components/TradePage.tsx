@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { ArrowRight } from 'lucide-react';
 import { useMarket } from '../context/MarketContext';
 import type { SelectableAsset } from '../types';
@@ -10,21 +10,41 @@ interface TradePageProps {
 
 const TradePage: React.FC<TradePageProps> = ({ onOpenTradingDesk, onAssetClick }) => {
   const [activeTab, setActiveTab] = useState('Stocks');
-  const { marketAssets, prices, orders, user } = useMarket();
+  const { marketAssets, prices, orders, user, refreshMarketAssets, refreshOrders } = useMarket();
 
   const stockTypes = new Set(['stock', 'etf', 'share']);
 
+  useEffect(() => {
+    void Promise.all([refreshMarketAssets(), refreshOrders()]).catch(() => {
+      // Keep rendering existing state if refresh fails.
+    });
+  }, [refreshMarketAssets, refreshOrders]);
+
   const currentAssets = useMemo(() => {
+    const sortedBySymbol = (assets: SelectableAsset[]) => (
+      [...assets].sort((a, b) => a.symbol.localeCompare(b.symbol))
+    );
+
     if (activeTab === 'Stocks') {
-      return marketAssets.filter((asset) => stockTypes.has((asset.type ?? '').toLowerCase()));
+      return sortedBySymbol(
+        marketAssets.filter((asset) => stockTypes.has((asset.type ?? '').toLowerCase())),
+      );
     }
 
     if (activeTab === 'Crypto') {
-      return marketAssets.filter((asset) => (asset.type ?? '').toLowerCase() === 'crypto');
+      return sortedBySymbol(
+        marketAssets.filter((asset) => (asset.type ?? '').toLowerCase() === 'crypto'),
+      );
     }
 
     return [];
   }, [activeTab, marketAssets]);
+
+  const recentOrders = useMemo(() => (
+    [...orders]
+      .sort((left, right) => new Date(right.placedAt).getTime() - new Date(left.placedAt).getTime())
+      .slice(0, 8)
+  ), [orders]);
 
   const renderAssetRow = (asset: SelectableAsset) => {
     const liveData = prices[asset.symbol];
@@ -100,7 +120,7 @@ const TradePage: React.FC<TradePageProps> = ({ onOpenTradingDesk, onAssetClick }
 
         {activeTab === 'History' && (
           <div className="space-y-3">
-            {orders.slice(0, 8).map((order) => (
+            {recentOrders.map((order) => (
               <div key={order.id} className="bg-[#141414]/60 border border-white/5 rounded-xl p-4 flex items-center justify-between">
                 <div>
                   <p className="font-extrabold text-white">{order.side.toUpperCase()} {order.asset.symbol}</p>

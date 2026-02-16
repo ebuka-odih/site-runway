@@ -17,6 +17,7 @@ interface LandingPageProps {
 }
 
 const BASE_CURRENCIES = ['USD', 'EUR', 'GBP'] as const;
+const DEFAULT_SIGNUP_COUNTRY = 'United States';
 
 const LandingPage: React.FC<LandingPageProps> = ({ onLogin, authError }) => {
   const [showLogin, setShowLogin] = useState(false);
@@ -120,7 +121,8 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLogin, authError }) => {
         username: generatedUsername,
         name: normalizedName,
         email: normalizedEmail,
-        country: signupForm.currency,
+        country: DEFAULT_SIGNUP_COUNTRY,
+        currency: signupForm.currency,
         phone: signupForm.phone.trim(),
         password: signupForm.password,
       });

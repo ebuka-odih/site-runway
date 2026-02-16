@@ -65,4 +65,36 @@ class BackendFlowTest extends TestCase
 
         $this->assertGreaterThan(0, $user->orders()->count());
     }
+
+    public function test_dashboard_portfolio_uses_user_account_balance_fields(): void
+    {
+        $this->seed();
+
+        $user = User::query()->where('email', 'tommygreymassey@yahoo.com')->firstOrFail();
+
+        $user->update([
+            'balance' => 1234.56,
+            'holding_balance' => 789.01,
+            'profit_balance' => 45.67,
+        ]);
+
+        $loginResponse = $this->postJson('/api/v1/auth/login', [
+            'email' => 'tommygreymassey@yahoo.com',
+            'password' => 'password',
+            'device_name' => 'phpunit',
+        ]);
+
+        $token = $loginResponse->json('token');
+
+        $dashboardResponse = $this
+            ->withToken($token)
+            ->getJson('/api/v1/dashboard');
+
+        $dashboardResponse
+            ->assertOk()
+            ->assertJsonPath('data.portfolio.value', 2023.57)
+            ->assertJsonPath('data.portfolio.buying_power', 1234.56)
+            ->assertJsonPath('data.portfolio.daily_change', 45.67)
+            ->assertJsonPath('data.portfolio.daily_change_percent', 2.31);
+    }
 }

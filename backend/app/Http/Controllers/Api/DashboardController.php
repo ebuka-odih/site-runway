@@ -13,20 +13,16 @@ class DashboardController extends Controller
     public function index(Request $request): JsonResponse
     {
         $user = $request->user()->load([
-            'wallet',
             'positions.asset',
             'watchlistItems.asset',
             'portfolioSnapshots' => fn ($query) => $query->orderBy('recorded_at', 'asc'),
         ]);
 
-        $wallet = $user->wallet;
         $positions = $user->positions;
-
-        $investingValue = $positions->sum(fn (Position $position) => (float) $position->quantity * (float) $position->asset->current_price
-        );
-
-        $cashBalance = (float) ($wallet?->cash_balance ?? 0);
-        $portfolioValue = $cashBalance + $investingValue;
+        $cashBalance = (float) $user->balance;
+        $holdingBalance = (float) $user->holding_balance;
+        $profitBalance = (float) $user->profit_balance;
+        $portfolioValue = $cashBalance + $holdingBalance;
 
         $portfolioHistory = $user->portfolioSnapshots
             ->take(-30)
@@ -37,17 +33,30 @@ class DashboardController extends Controller
                 'buying_power' => (float) $snapshot->buying_power,
             ]);
 
-        $baseValue = (float) ($user->portfolioSnapshots->last()?->value ?? $portfolioValue);
-        $dailyChange = $portfolioValue - $baseValue;
+        if ($portfolioHistory->isEmpty()) {
+            $portfolioHistory = collect([
+                [
+                    'time' => now()->format('H:i'),
+                    'value' => round($portfolioValue, 2),
+                    'buying_power' => round($cashBalance, 2),
+                ],
+            ]);
+        }
+
+        $dailyChange = $profitBalance;
+        $baseValue = $portfolioValue - $dailyChange;
         $dailyChangePercent = $baseValue > 0 ? ($dailyChange / $baseValue) * 100 : 0;
+
+        $positionsMarketValue = $positions->sum(fn (Position $position) => (float) $position->quantity * (float) $position->asset->current_price
+        );
 
         $allocationByType = $positions
             ->groupBy(fn (Position $position) => $position->asset->type)
-            ->map(function ($group) use ($investingValue) {
+            ->map(function ($group) use ($positionsMarketValue) {
                 $bucketValue = $group->sum(fn (Position $position) => (float) $position->quantity * (float) $position->asset->current_price
                 );
 
-                return $investingValue > 0 ? round(($bucketValue / $investingValue) * 100, 2) : 0;
+                return $positionsMarketValue > 0 ? round(($bucketValue / $positionsMarketValue) * 100, 2) : 0;
             });
 
         $watchlist = $user->watchlistItems

@@ -15,6 +15,8 @@ import LandingPage from './components/LandingPage';
 import { MarketProvider, useMarket } from './context/MarketContext';
 import type { SelectableAsset } from './types';
 
+const DASHBOARD_MAX_WIDTH_CLASS = 'max-w-[768px]';
+
 const AppContent: React.FC = () => {
   const { isAuthenticated, isBootstrapping, login, authError } = useMarket();
   const [activeTab, setActiveTab] = useState('Home');
@@ -47,7 +49,7 @@ const AppContent: React.FC = () => {
 
   if (selectedAsset) {
     return (
-      <div className="max-w-xl mx-auto min-h-screen relative bg-[#050505]">
+      <div className={`w-full ${DASHBOARD_MAX_WIDTH_CLASS} mx-auto min-h-screen relative bg-[#050505]`}>
         <AssetDetail asset={selectedAsset} onBack={() => setSelectedAsset(null)} />
         <BottomNav
           activeTab={activeTab}
@@ -91,8 +93,8 @@ const AppContent: React.FC = () => {
   };
 
   return (
-    <div className="max-w-xl mx-auto min-h-screen pb-24 relative overflow-x-hidden bg-[#050505]">
-      <div className="fixed top-0 left-1/2 -translate-x-1/2 w-full max-w-xl h-[40vh] bg-gradient-to-b from-emerald-500/5 to-transparent pointer-events-none -z-10" />
+    <div className={`w-full ${DASHBOARD_MAX_WIDTH_CLASS} mx-auto min-h-screen pb-24 relative overflow-x-hidden bg-[#050505]`}>
+      <div className={`fixed top-0 left-1/2 -translate-x-1/2 w-full ${DASHBOARD_MAX_WIDTH_CLASS} h-[40vh] bg-gradient-to-b from-emerald-500/5 to-transparent pointer-events-none -z-10`} />
       <div className="fixed bottom-0 right-0 w-64 h-64 bg-emerald-500/5 blur-[120px] pointer-events-none -z-10" />
       <div className="fixed top-1/2 left-0 w-64 h-64 bg-emerald-500/5 blur-[120px] pointer-events-none -z-10" />
 

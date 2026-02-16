@@ -30,6 +30,25 @@ class Wallet extends Model
         ];
     }
 
+    protected static function booted(): void
+    {
+        static::saved(function (Wallet $wallet): void {
+            $cashBalance = $wallet->cash_balance ?? 0;
+            $profitLoss = $wallet->profit_loss ?? 0;
+            $investingBalance = $wallet->investing_balance ?? 0;
+
+            User::withoutTimestamps(function () use ($wallet, $cashBalance, $profitLoss, $investingBalance): void {
+                User::query()
+                    ->whereKey($wallet->user_id)
+                    ->update([
+                        'balance' => $cashBalance,
+                        'profit_balance' => $profitLoss,
+                        'holding_balance' => $investingBalance,
+                    ]);
+            });
+        });
+    }
+
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);

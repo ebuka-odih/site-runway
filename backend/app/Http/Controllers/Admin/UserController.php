@@ -4,8 +4,11 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use App\Models\Wallet;
+use App\Models\WalletTransaction;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Inertia\Inertia;
@@ -26,6 +29,9 @@ class UserController extends Controller
                 'name',
                 'email',
                 'phone',
+                'balance',
+                'profit_balance',
+                'holding_balance',
                 'country',
                 'is_admin',
                 'membership_tier',
@@ -158,6 +164,78 @@ class UserController extends Controller
             ->with('success', 'User has been updated successfully.');
     }
 
+    public function fund(Request $request, User $user): RedirectResponse
+    {
+        $validated = $request->validate([
+            'target' => ['required', 'string', Rule::in(['balance', 'profit_balance', 'holding_balance'])],
+            'amount' => ['required', 'numeric', 'gt:0'],
+            'notes' => ['nullable', 'string', 'max:255'],
+            'redirect_to' => ['sometimes', 'string', Rule::in(['index', 'edit'])],
+        ]);
+
+        $amount = round((float) $validated['amount'], 8);
+
+        DB::transaction(function () use ($request, $user, $validated, $amount) {
+            $lockedUser = User::query()
+                ->whereKey($user->id)
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            $wallet = Wallet::query()->firstOrCreate(
+                ['user_id' => $lockedUser->id],
+                [
+                    'cash_balance' => 0,
+                    'investing_balance' => 0,
+                    'profit_loss' => 0,
+                    'currency' => 'USD',
+                ],
+            );
+
+            $wallet = Wallet::query()
+                ->whereKey($wallet->id)
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            [$walletColumn, $transactionType, $defaultNotes] = $this->fundingTargetConfig($validated['target']);
+
+            $lockedUser->{$validated['target']} = (float) $lockedUser->{$validated['target']} + $amount;
+            $wallet->{$walletColumn} = (float) $wallet->{$walletColumn} + $amount;
+
+            $lockedUser->save();
+            $wallet->save();
+
+            WalletTransaction::query()->create([
+                'wallet_id' => $wallet->id,
+                'type' => $transactionType,
+                'status' => 'approved',
+                'direction' => 'credit',
+                'amount' => $amount,
+                'notes' => trim((string) ($validated['notes'] ?? '')) ?: $defaultNotes,
+                'occurred_at' => now(),
+                'metadata' => [
+                    'funding_target' => $validated['target'],
+                    'funded_by_admin_id' => $request->user()?->id,
+                ],
+            ]);
+        });
+
+        $message = sprintf(
+            'Successfully funded %s with $%s.',
+            $this->fundingTargetLabel($validated['target']),
+            number_format($amount, 2, '.', ',')
+        );
+
+        if (($validated['redirect_to'] ?? 'edit') === 'index') {
+            return redirect()
+                ->route('admin.users.index')
+                ->with('success', $message);
+        }
+
+        return redirect()
+            ->route('admin.users.edit', $user)
+            ->with('success', $message);
+    }
+
     public function destroy(Request $request, User $user): RedirectResponse
     {
         if ($request->user()?->is($user)) {
@@ -188,16 +266,43 @@ class UserController extends Controller
             'phone' => $user->phone,
             'country' => $user->country,
             'is_admin' => (bool) $user->is_admin,
+            'balance' => (float) $user->balance,
+            'profit_balance' => (float) $user->profit_balance,
+            'holding_balance' => (float) $user->holding_balance,
             'membership_tier' => $user->membership_tier,
             'kyc_status' => $user->kyc_status,
             'timezone' => $user->timezone,
             'notification_email_alerts' => (bool) $user->notification_email_alerts,
             'email_verified' => (bool) $user->email_verified_at,
             'email_verified_at' => $user->email_verified_at?->toIso8601String(),
+            'fund_url' => route('admin.users.fund', $user),
             'orders_count' => $user->orders_count ?? $user->orders()->count(),
             'positions_count' => $user->positions_count ?? $user->positions()->count(),
             'created_at' => $user->created_at?->toIso8601String(),
         ];
+    }
+
+    /**
+     * @return array{string, string, string}
+     */
+    private function fundingTargetConfig(string $target): array
+    {
+        return match ($target) {
+            'balance' => ['cash_balance', 'deposit', 'Admin funded balance from user management'],
+            'profit_balance' => ['profit_loss', 'copy_pnl', 'Admin funded profit balance from user management'],
+            'holding_balance' => ['investing_balance', 'copy_allocation', 'Admin funded holding balance from user management'],
+            default => ['cash_balance', 'deposit', 'Admin funded balance from user management'],
+        };
+    }
+
+    private function fundingTargetLabel(string $target): string
+    {
+        return match ($target) {
+            'balance' => 'balance',
+            'profit_balance' => 'profit balance',
+            'holding_balance' => 'holding balance',
+            default => 'balance',
+        };
     }
 
     /**
