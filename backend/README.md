@@ -95,3 +95,27 @@ All domain ids are UUIDs. Sanctum tokenable morph columns are UUID-aware as well
 ./vendor/bin/pint
 php artisan test
 ```
+
+## Finnhub Stock Sync
+
+Set these env values:
+
+```bash
+FINNHUB_API_KEY=your_finnhub_api_key
+FINNHUB_BASE_URL=https://finnhub.io/api/v1
+FINNHUB_SYNC_CALLS_PER_RUN=5
+```
+
+Manual sync run:
+
+```bash
+php artisan stocks:sync-finnhub
+```
+
+Target specific symbols:
+
+```bash
+php artisan stocks:sync-finnhub --calls=3 --symbol=AAPL --symbol=MSFT --symbol=NVDA
+```
+
+The scheduler is configured to run this every minute (call-budgeted rotation) when `FINNHUB_API_KEY` is set.
