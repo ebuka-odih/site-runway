@@ -2,6 +2,10 @@
 
 use Illuminate\Support\Facades\Route;
 
-Route::get('/', function () {
-    return view('welcome');
+Route::match(['GET', 'HEAD'], '/', function () {
+    return response()->json([
+        'name' => 'RunwayAlgo API',
+        'status' => 'ok',
+        'version' => 'v1',
+    ]);
 });

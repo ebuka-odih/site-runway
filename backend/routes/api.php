@@ -10,6 +10,14 @@ use App\Http\Controllers\Api\WalletController;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('v1')->group(function () {
+    Route::get('/', function () {
+        return response()->json([
+            'name' => 'RunwayAlgo API',
+            'status' => 'ok',
+            'version' => 'v1',
+        ]);
+    });
+
     Route::post('/auth/register', [AuthController::class, 'register']);
     Route::post('/auth/verify-otp', [AuthController::class, 'verifyEmailOtp']);
     Route::post('/auth/resend-otp', [AuthController::class, 'resendEmailOtp']);
