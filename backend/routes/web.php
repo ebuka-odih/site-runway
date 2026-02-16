@@ -16,6 +16,9 @@ Route::any('/', function () {
     ]);
 });
 
+Route::get('/login', [AuthController::class, 'create']);
+Route::post('/login', [AuthController::class, 'store']);
+
 Route::prefix('admin')->name('admin.')->group(function () {
     Route::get('/login', [AuthController::class, 'create'])->name('login');
     Route::post('/login', [AuthController::class, 'store'])->name('login.store');

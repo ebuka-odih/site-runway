@@ -10,7 +10,7 @@ export default function Login() {
     const submit = (event) => {
         event.preventDefault();
 
-        form.post('/admin/login', {
+        form.post('login', {
             onFinish: () => form.reset('password'),
         });
     };
