@@ -7,18 +7,35 @@ use App\Models\Asset;
 use App\Models\Position;
 use App\Models\User;
 use App\Models\Wallet;
+use App\Services\Portfolio\PortfolioSnapshotService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
+use Illuminate\Validation\Rule;
 
 class DashboardController extends Controller
 {
-    private const HISTORY_POINTS = 64;
+    /**
+     * @var array<string, array{points: int, interval_minutes: int, trend_scale: float, noise_scale: float, cash_noise_scale: float}>
+     */
+    private const RANGE_CONFIG = [
+        '24h' => ['points' => 96, 'interval_minutes' => 15, 'trend_scale' => 1.0, 'noise_scale' => 0.65, 'cash_noise_scale' => 0.0007],
+        '1w' => ['points' => 84, 'interval_minutes' => 120, 'trend_scale' => 1.6, 'noise_scale' => 0.95, 'cash_noise_scale' => 0.0010],
+        '1m' => ['points' => 120, 'interval_minutes' => 360, 'trend_scale' => 2.2, 'noise_scale' => 1.2, 'cash_noise_scale' => 0.0014],
+        '3m' => ['points' => 132, 'interval_minutes' => 960, 'trend_scale' => 3.0, 'noise_scale' => 1.45, 'cash_noise_scale' => 0.0018],
+        '6m' => ['points' => 156, 'interval_minutes' => 1920, 'trend_scale' => 4.2, 'noise_scale' => 1.75, 'cash_noise_scale' => 0.0021],
+        '1y' => ['points' => 208, 'interval_minutes' => 2520, 'trend_scale' => 5.5, 'noise_scale' => 2.1, 'cash_noise_scale' => 0.0025],
+    ];
 
-    private const HISTORY_INTERVAL_MINUTES = 5;
-
-    public function index(Request $request): JsonResponse
+    public function index(Request $request, PortfolioSnapshotService $portfolioSnapshotService): JsonResponse
     {
+        $validated = $request->validate([
+            'range' => ['sometimes', 'string', Rule::in(array_keys(self::RANGE_CONFIG))],
+        ]);
+
+        $range = $validated['range'] ?? '24h';
+
         $user = $request->user()->load([
             'wallet',
             'positions.asset',
@@ -42,7 +59,8 @@ class DashboardController extends Controller
         $this->syncAccountBalances($user, $cashBalance, $holdingBalance, $profitBalance);
 
         $portfolioValue = $cashBalance + $holdingBalance;
-        $portfolioHistory = $this->buildPortfolioHistory($positions, $cashBalance, $portfolioValue);
+        $portfolioSnapshotService->captureFromValues($user, $portfolioValue, $cashBalance);
+        $portfolioHistory = $this->buildPortfolioHistory($user, $positions, $cashBalance, $portfolioValue, (string) $range);
 
         $baseValue = (float) ($portfolioHistory->first()['value'] ?? $portfolioValue);
         $dailyChange = $portfolioValue - $baseValue;
@@ -133,17 +151,142 @@ class DashboardController extends Controller
         ]);
     }
 
-    private function buildPortfolioHistory($positions, float $cashBalance, float $currentPortfolioValue): Collection
+    private function buildPortfolioHistory(User $user, $positions, float $cashBalance, float $currentPortfolioValue, string $range): Collection
     {
-        $points = self::HISTORY_POINTS;
-        $intervalMinutes = self::HISTORY_INTERVAL_MINUTES;
+        $snapshotHistory = $this->buildSnapshotBackedPortfolioHistory($user, $cashBalance, $currentPortfolioValue, $range);
+
+        if ($snapshotHistory !== null) {
+            return $snapshotHistory;
+        }
+
+        return $this->buildSimulatedPortfolioHistory($positions, $cashBalance, $currentPortfolioValue, $range);
+    }
+
+    private function buildSnapshotBackedPortfolioHistory(User $user, float $cashBalance, float $currentPortfolioValue, string $range): ?Collection
+    {
+        $config = self::RANGE_CONFIG[$range] ?? self::RANGE_CONFIG['24h'];
+        $points = $config['points'];
+        $intervalMinutes = $config['interval_minutes'];
         $now = now();
+        $start = $now->copy()->subMinutes(($points - 1) * $intervalMinutes);
+
+        $anchor = $user->portfolioSnapshots()
+            ->where('recorded_at', '<', $start)
+            ->latest('recorded_at')
+            ->first(['value', 'buying_power', 'recorded_at']);
+
+        $snapshotsInRange = $user->portfolioSnapshots()
+            ->whereBetween('recorded_at', [$start, $now])
+            ->orderBy('recorded_at')
+            ->get(['value', 'buying_power', 'recorded_at']);
+
+        $timeline = collect();
+
+        if ($anchor !== null) {
+            $timeline->push($anchor);
+        }
+
+        $timeline = $timeline->concat($snapshotsInRange)->values();
+
+        if ($timeline->count() < 2) {
+            return null;
+        }
+
+        $normalizedTimeline = $timeline->map(fn ($snapshot) => [
+            'timestamp' => $snapshot->recorded_at->getTimestamp(),
+            'value' => (float) $snapshot->value,
+            'buying_power' => (float) $snapshot->buying_power,
+        ])->values()->all();
+
+        $timelineCount = count($normalizedTimeline);
+        $cursor = 0;
 
         $history = collect(range(0, $points - 1))
-            ->map(function (int $index) use ($positions, $cashBalance, $points, $intervalMinutes, $now) {
-                $progress = $points > 1 ? $index / ($points - 1) : 1.0;
+            ->map(function (int $index) use (&$cursor, $timelineCount, $normalizedTimeline, $intervalMinutes, $range, $start) {
+                $pointTime = $start->copy()->addMinutes($index * $intervalMinutes);
+                $targetTimestamp = $pointTime->getTimestamp();
 
-                $holdingsValue = $positions->sum(function (Position $position) use ($progress) {
+                while (
+                    $cursor < $timelineCount - 1 &&
+                    (int) $normalizedTimeline[$cursor + 1]['timestamp'] <= $targetTimestamp
+                ) {
+                    $cursor++;
+                }
+
+                $left = $normalizedTimeline[$cursor];
+                $right = $cursor < $timelineCount - 1 ? $normalizedTimeline[$cursor + 1] : null;
+
+                $value = (float) $left['value'];
+                $buyingPower = (float) $left['buying_power'];
+
+                if ($right !== null && $targetTimestamp > (int) $left['timestamp']) {
+                    $span = max(1, (int) $right['timestamp'] - (int) $left['timestamp']);
+                    $ratio = ($targetTimestamp - (int) $left['timestamp']) / $span;
+
+                    $value = (float) $left['value'] + (((float) $right['value'] - (float) $left['value']) * $ratio);
+                    $buyingPower = (float) $left['buying_power'] + (((float) $right['buying_power'] - (float) $left['buying_power']) * $ratio);
+                }
+
+                return [
+                    'time' => $this->formatHistoryTime($pointTime, $range),
+                    'timestamp' => $pointTime->getTimestampMs(),
+                    'value' => round($value, 2),
+                    'buying_power' => round($buyingPower, 2),
+                ];
+            })
+            ->values();
+
+        if ($history->isNotEmpty()) {
+            $lastIndex = $history->count() - 1;
+            $lastPoint = $history->get($lastIndex);
+
+            $history->put($lastIndex, [
+                ...$lastPoint,
+                'time' => $this->formatHistoryTime($now, $range),
+                'timestamp' => $now->getTimestampMs(),
+                'value' => round($currentPortfolioValue, 2),
+                'buying_power' => round($cashBalance, 2),
+            ]);
+        }
+
+        return $history;
+    }
+
+    private function buildSimulatedPortfolioHistory($positions, float $cashBalance, float $currentPortfolioValue, string $range): Collection
+    {
+        $config = self::RANGE_CONFIG[$range] ?? self::RANGE_CONFIG['24h'];
+        $points = $config['points'];
+        $intervalMinutes = $config['interval_minutes'];
+        $trendScale = $config['trend_scale'];
+        $noiseScale = $config['noise_scale'];
+        $cashNoiseScale = $config['cash_noise_scale'];
+        $now = now();
+        $hasPositions = $positions->isNotEmpty();
+
+        $history = collect(range(0, $points - 1))
+            ->map(function (int $index) use ($positions, $cashBalance, $points, $intervalMinutes, $now, $trendScale, $noiseScale, $cashNoiseScale, $range, $hasPositions) {
+                $progress = $points > 1 ? $index / ($points - 1) : 1.0;
+                $timestamp = $now->copy()->subMinutes(($points - 1 - $index) * $intervalMinutes);
+                $timeLabel = $this->formatHistoryTime($timestamp, $range);
+
+                if (! $hasPositions) {
+                    $phase = deg2rad((float) (crc32($range) % 360));
+                    $waveOne = sin(($progress * M_PI * 2.8) + $phase) * 0.65;
+                    $waveTwo = cos(($progress * M_PI * 7.5) + ($phase / 2)) * 0.35;
+                    $envelope = 1 - (($progress - 0.5) * ($progress - 0.5));
+                    $drift = sin(($progress * M_PI * 1.1) + $phase) * 0.0004 * $trendScale;
+                    $noise = ($waveOne + $waveTwo) * $cashNoiseScale * $envelope;
+                    $portfolioValue = max(0.01, $cashBalance * (1 + $drift + $noise));
+
+                    return [
+                        'time' => $timeLabel,
+                        'timestamp' => $timestamp->getTimestampMs(),
+                        'value' => round($portfolioValue, 2),
+                        'buying_power' => round($cashBalance, 2),
+                    ];
+                }
+
+                $holdingsValue = $positions->sum(function (Position $position) use ($progress, $trendScale, $noiseScale, $range) {
                     $quantity = (float) $position->quantity;
                     $currentPrice = (float) $position->asset->current_price;
 
@@ -152,20 +295,27 @@ class DashboardController extends Controller
                     }
 
                     $changePercent = (float) $position->asset->change_percent;
-                    $denominator = 1 + ($changePercent / 100);
-                    $openingPrice = abs($denominator) < 0.0001 ? $currentPrice : ($currentPrice / $denominator);
-                    $basePrice = $openingPrice + (($currentPrice - $openingPrice) * $progress);
+                    $volatility = max(abs($changePercent) / 100, 0.0025);
+                    $drift = ($changePercent / 100) * 0.45 * $trendScale;
+                    $startPrice = $currentPrice / max(0.1, 1 + $drift);
+                    $trendPrice = $startPrice + (($currentPrice - $startPrice) * $progress);
 
-                    $phase = deg2rad((float) (crc32((string) $position->asset->symbol) % 360));
-                    $waveOne = sin(($progress * M_PI * 4) + $phase) * $currentPrice * 0.0025;
-                    $waveTwo = cos(($progress * M_PI * 8) + $phase) * $currentPrice * 0.0015;
-                    $simulatedPrice = max(0.00000001, $basePrice + $waveOne + $waveTwo);
+                    $seed = crc32((string) $position->asset->symbol.$range);
+                    $phase = deg2rad((float) ($seed % 360));
+                    $waveOne = sin(($progress * M_PI * 3.2) + $phase);
+                    $waveTwo = cos(($progress * M_PI * 8.4) + ($phase / 2));
+                    $waveThree = sin(($progress * M_PI * 17.8) + ($phase / 3));
+                    $noiseMix = ($waveOne * 0.55) + ($waveTwo * 0.3) + ($waveThree * 0.15);
+                    $taper = 1 - pow($progress, 1.35);
+                    $noiseAmplitude = $currentPrice * $volatility * $noiseScale;
+                    $simulatedPrice = max(0.00000001, $trendPrice + ($noiseMix * $noiseAmplitude * $taper));
 
                     return $quantity * $simulatedPrice;
                 });
 
                 return [
-                    'time' => $now->copy()->subMinutes(($points - 1 - $index) * $intervalMinutes)->format('H:i'),
+                    'time' => $timeLabel,
+                    'timestamp' => $timestamp->getTimestampMs(),
                     'value' => round($cashBalance + $holdingsValue, 2),
                     'buying_power' => round($cashBalance, 2),
                 ];
@@ -178,13 +328,24 @@ class DashboardController extends Controller
 
             $history->put($lastIndex, [
                 ...$lastPoint,
-                'time' => $now->format('H:i'),
+                'time' => $this->formatHistoryTime($now, $range),
+                'timestamp' => $now->getTimestampMs(),
                 'value' => round($currentPortfolioValue, 2),
                 'buying_power' => round($cashBalance, 2),
             ]);
         }
 
         return $history;
+    }
+
+    private function formatHistoryTime(Carbon $timestamp, string $range): string
+    {
+        return match ($range) {
+            '24h', '1w' => $timestamp->format('H:i'),
+            '1m', '3m' => $timestamp->format('M j'),
+            '6m', '1y' => $timestamp->format('M Y'),
+            default => $timestamp->format('H:i'),
+        };
     }
 
     private function syncAccountBalances(User $user, float $cashBalance, float $holdingBalance, float $profitBalance): void

@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
+import { BrowserRouter, Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 import Header from './components/Header';
 import PortfolioCard from './components/PortfolioCard';
 import Analytics from './components/Analytics';
@@ -16,15 +17,88 @@ import { MarketProvider, useMarket } from './context/MarketContext';
 import type { SelectableAsset } from './types';
 
 const DASHBOARD_MAX_WIDTH_CLASS = 'max-w-[768px]';
+const DASHBOARD_LAST_ROUTE_KEY = 'runwayalgo.dashboard.last-route';
+
+const TAB_TO_ROUTE: Record<string, string> = {
+  Home: '/dashboard/home',
+  Trade: '/dashboard/trade',
+  Copy: '/dashboard/copy',
+  Wallet: '/dashboard/wallet',
+  Profile: '/dashboard/profile',
+  More: '/dashboard/more',
+};
+
+const HomeDashboard: React.FC<{ onAssetClick: (asset: SelectableAsset) => void }> = ({ onAssetClick }) => (
+  <div className="animate-in fade-in slide-in-from-bottom-4 duration-1000">
+    <PortfolioCard />
+    <div className="h-2 bg-black/40 border-y border-white/5 my-2" />
+    <AssetList onAssetClick={onAssetClick} />
+    <div className="h-2 bg-black/40 border-y border-white/5 my-2" />
+    <Analytics />
+    <Heatmap />
+  </div>
+);
+
+const resolveActiveTab = (pathname: string): string => {
+  if (pathname.startsWith('/dashboard/trade')) return 'Trade';
+  if (pathname.startsWith('/dashboard/copy')) return 'Copy';
+  if (pathname.startsWith('/dashboard/wallet')) return 'Wallet';
+  if (pathname.startsWith('/dashboard/profile')) return 'Profile';
+  if (pathname.startsWith('/dashboard/more')) return 'More';
+  return 'Home';
+};
+
+const isDashboardRoute = (pathname: string): boolean => pathname.startsWith('/dashboard/');
 
 const AppContent: React.FC = () => {
   const { isAuthenticated, isBootstrapping, login, authError } = useMarket();
-  const [activeTab, setActiveTab] = useState('Home');
+  const location = useLocation();
+  const navigate = useNavigate();
+  const activeTab = useMemo(() => resolveActiveTab(location.pathname), [location.pathname]);
   const [isTradingDeskOpen, setIsTradingDeskOpen] = useState(false);
   const [selectedAsset, setSelectedAsset] = useState<SelectableAsset | null>(null);
 
   const handleAssetSelect = (asset: SelectableAsset) => {
     setSelectedAsset(asset);
+  };
+
+  useEffect(() => {
+    if (!isAuthenticated) {
+      return;
+    }
+
+    const currentPath = location.pathname;
+
+    if (currentPath === '/' || currentPath === '/dashboard') {
+      const savedRoute = localStorage.getItem(DASHBOARD_LAST_ROUTE_KEY);
+      const fallbackRoute = TAB_TO_ROUTE.Home;
+      const nextRoute = savedRoute && isDashboardRoute(savedRoute) ? savedRoute : fallbackRoute;
+
+      if (currentPath !== nextRoute) {
+        navigate(nextRoute, { replace: true });
+      }
+
+      return;
+    }
+
+    if (isDashboardRoute(currentPath)) {
+      localStorage.setItem(DASHBOARD_LAST_ROUTE_KEY, currentPath);
+      return;
+    }
+
+    navigate(TAB_TO_ROUTE.Home, { replace: true });
+  }, [isAuthenticated, location.pathname, navigate]);
+
+  useEffect(() => {
+    if (activeTab !== 'Trade' && isTradingDeskOpen) {
+      setIsTradingDeskOpen(false);
+    }
+  }, [activeTab, isTradingDeskOpen]);
+
+  const handleTabChange = (tab: string) => {
+    const nextRoute = TAB_TO_ROUTE[tab] ?? TAB_TO_ROUTE.Home;
+    setSelectedAsset(null);
+    navigate(nextRoute);
   };
 
   if (isBootstrapping) {
@@ -53,44 +127,11 @@ const AppContent: React.FC = () => {
         <AssetDetail asset={selectedAsset} onBack={() => setSelectedAsset(null)} />
         <BottomNav
           activeTab={activeTab}
-          onTabChange={(tab) => {
-            setSelectedAsset(null);
-            setActiveTab(tab);
-          }}
+          onTabChange={handleTabChange}
         />
       </div>
     );
   }
-
-  const renderContent = () => {
-    switch (activeTab) {
-      case 'Trade':
-        return (
-          <TradePage
-            onOpenTradingDesk={() => setIsTradingDeskOpen(true)}
-            onAssetClick={handleAssetSelect}
-          />
-        );
-      case 'Copy':
-        return <CopyTrading />;
-      case 'Wallet':
-        return <WalletPage />;
-      case 'Profile':
-        return <ProfilePage />;
-      case 'Home':
-      default:
-        return (
-          <div className="animate-in fade-in slide-in-from-bottom-4 duration-1000">
-            <PortfolioCard />
-            <div className="h-2 bg-black/40 border-y border-white/5 my-2" />
-            <AssetList onAssetClick={handleAssetSelect} />
-            <div className="h-2 bg-black/40 border-y border-white/5 my-2" />
-            <Analytics />
-            <Heatmap />
-          </div>
-        );
-    }
-  };
 
   return (
     <div className={`w-full ${DASHBOARD_MAX_WIDTH_CLASS} mx-auto min-h-screen pb-24 relative overflow-x-hidden bg-[#050505]`}>
@@ -101,10 +142,28 @@ const AppContent: React.FC = () => {
       {activeTab !== 'Profile' && <Header />}
 
       <main>
-        {renderContent()}
+        <Routes>
+          <Route path="/" element={<div />} />
+          <Route path="/dashboard" element={<div />} />
+          <Route path="/dashboard/home" element={<HomeDashboard onAssetClick={handleAssetSelect} />} />
+          <Route
+            path="/dashboard/trade"
+            element={(
+              <TradePage
+                onOpenTradingDesk={() => setIsTradingDeskOpen(true)}
+                onAssetClick={handleAssetSelect}
+              />
+            )}
+          />
+          <Route path="/dashboard/copy" element={<CopyTrading />} />
+          <Route path="/dashboard/wallet" element={<WalletPage />} />
+          <Route path="/dashboard/profile" element={<ProfilePage />} />
+          <Route path="/dashboard/more" element={<HomeDashboard onAssetClick={handleAssetSelect} />} />
+          <Route path="*" element={<Navigate to="/dashboard/home" replace />} />
+        </Routes>
       </main>
 
-      <BottomNav activeTab={activeTab} onTabChange={setActiveTab} />
+      <BottomNav activeTab={activeTab} onTabChange={handleTabChange} />
 
       {isTradingDeskOpen && (
         <TradingDesk
@@ -120,9 +179,11 @@ const AppContent: React.FC = () => {
 };
 
 const App: React.FC = () => (
-  <MarketProvider>
-    <AppContent />
-  </MarketProvider>
+  <BrowserRouter>
+    <MarketProvider>
+      <AppContent />
+    </MarketProvider>
+  </BrowserRouter>
 );
 
 export default App;

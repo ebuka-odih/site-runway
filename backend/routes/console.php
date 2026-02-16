@@ -12,3 +12,11 @@ Schedule::command('stocks:sync-finnhub')
     ->everyMinute()
     ->withoutOverlapping()
     ->when(fn (): bool => filled(config('services.finnhub.api_key')));
+
+Schedule::command('portfolio:capture-snapshots')
+    ->everyMinute()
+    ->withoutOverlapping();
+
+Schedule::command('portfolio:compact-snapshots')
+    ->dailyAt('03:10')
+    ->withoutOverlapping();

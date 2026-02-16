@@ -3,6 +3,7 @@ import type {
   CopyFollowingSummary,
   CopyRelationshipItem,
   CopyTradeHistoryItem,
+  DashboardRange,
   DashboardData,
   DepositRequestItem,
   MarketAssetDetail,
@@ -359,8 +360,16 @@ export async function apiLogout(): Promise<void> {
   await request('/auth/logout', { method: 'POST' });
 }
 
-export async function apiDashboard(): Promise<DashboardData> {
-  const payload = await request<any>('/dashboard');
+export async function apiDashboard(range?: DashboardRange): Promise<DashboardData> {
+  const query = new URLSearchParams();
+
+  if (range) {
+    query.set('range', range);
+  }
+
+  const queryString = query.toString();
+  const path = queryString ? `/dashboard?${queryString}` : '/dashboard';
+  const payload = await request<any>(path);
   const data = payload.data;
 
   return {
@@ -373,6 +382,7 @@ export async function apiDashboard(): Promise<DashboardData> {
         time: String(point.time),
         value: toNumber(point.value),
         buyingPower: toNumber(point.buying_power, undefined as unknown as number),
+        timestamp: point.timestamp == null ? undefined : toNumber(point.timestamp, undefined as unknown as number),
       })),
     },
     analytics: {

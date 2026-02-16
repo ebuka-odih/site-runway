@@ -123,4 +123,28 @@ class BackendFlowTest extends TestCase
         $this->assertEqualsWithDelta($expectedHolding, (float) $wallet->investing_balance, 0.00000001);
         $this->assertEqualsWithDelta($expectedProfit, (float) $wallet->profit_loss, 0.00000001);
     }
+
+    public function test_dashboard_history_respects_selected_range(): void
+    {
+        $this->seed();
+
+        $loginResponse = $this->postJson('/api/v1/auth/login', [
+            'email' => 'tommygreymassey@yahoo.com',
+            'password' => 'password',
+            'device_name' => 'phpunit',
+        ]);
+
+        $token = $loginResponse->json('token');
+
+        $dayResponse = $this->withToken($token)->getJson('/api/v1/dashboard?range=24h');
+        $yearResponse = $this->withToken($token)->getJson('/api/v1/dashboard?range=1y');
+
+        $dayHistory = $dayResponse->json('data.portfolio.history');
+        $yearHistory = $yearResponse->json('data.portfolio.history');
+
+        $this->assertIsArray($dayHistory);
+        $this->assertIsArray($yearHistory);
+        $this->assertCount(96, $dayHistory);
+        $this->assertCount(208, $yearHistory);
+    }
 }

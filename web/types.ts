@@ -32,6 +32,7 @@ export interface PortfolioHistoryPoint {
   time: string;
   value: number;
   buyingPower?: number;
+  timestamp?: number;
 }
 
 export interface PortfolioSummary {
@@ -77,6 +78,8 @@ export interface DashboardData {
   topLosers: MarketMover[];
   heatmap: MarketMover[];
 }
+
+export type DashboardRange = '24h' | '1w' | '1m' | '3m' | '6m' | '1y';
 
 export interface AuthUser {
   id: string;

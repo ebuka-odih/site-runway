@@ -1,4 +1,6 @@
-import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
+import Echo from 'laravel-echo';
+import Pusher from 'pusher-js';
 import {
   apiCloseCopyRelationship,
   apiCopyDiscover,
@@ -29,6 +31,7 @@ import type {
   CopyFollowingSummary,
   CopyRelationshipItem,
   CopyTradeHistoryItem,
+  DashboardRange,
   DashboardData,
   DepositRequestItem,
   MarketAssetDetail,
@@ -57,7 +60,7 @@ interface MarketContextType {
   login: (email: string, password: string) => Promise<boolean>;
   logout: () => Promise<void>;
   refreshCoreData: () => Promise<void>;
-  refreshDashboard: () => Promise<void>;
+  refreshDashboard: (range?: DashboardRange) => Promise<void>;
   refreshMarketAssets: (params?: { type?: string; search?: string }) => Promise<SelectableAsset[]>;
   refreshOrders: () => Promise<OrderItem[]>;
   fetchAssetDetail: (assetId: string) => Promise<MarketAssetDetail>;
@@ -145,9 +148,14 @@ export const MarketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const [orders, setOrders] = useState<OrderItem[]>([]);
   const [isBootstrapping, setIsBootstrapping] = useState(true);
   const [authError, setAuthError] = useState<string | null>(null);
+  const activeDashboardRangeRef = useRef<DashboardRange>('24h');
+  const refreshDashboardRef = useRef<MarketContextType['refreshDashboard']>(async () => {});
 
-  const refreshDashboard = useCallback(async () => {
-    const nextDashboard = await apiDashboard();
+  const refreshDashboard = useCallback(async (range?: DashboardRange) => {
+    const effectiveRange = range ?? activeDashboardRangeRef.current;
+    activeDashboardRangeRef.current = effectiveRange;
+
+    const nextDashboard = await apiDashboard(effectiveRange);
     setDashboard(nextDashboard);
 
     setPrices((previous) => {
@@ -168,6 +176,10 @@ export const MarketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       return buildPriceState(previous, sourceAssets);
     });
   }, [marketAssets]);
+
+  useEffect(() => {
+    refreshDashboardRef.current = refreshDashboard;
+  }, [refreshDashboard]);
 
   const refreshMarketAssets = useCallback(async (params?: { type?: string; search?: string }) => {
     const nextAssets = await apiMarketAssets(params);
@@ -289,6 +301,70 @@ export const MarketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
     void bootstrap();
   }, [refreshCoreData]);
+
+  useEffect(() => {
+    const token = getAuthToken();
+    const appKey = String(import.meta.env.VITE_REVERB_APP_KEY ?? '').trim();
+
+    if (!user || !token || !appKey) {
+      return;
+    }
+
+    const apiBase = String(import.meta.env.VITE_API_BASE_URL ?? '/api/v1').replace(/\/$/, '');
+    const wsHost = String(import.meta.env.VITE_REVERB_HOST ?? window.location.hostname).replace(/^https?:\/\//, '');
+    const configuredPort = Number(import.meta.env.VITE_REVERB_PORT ?? 8080);
+    const wsPort = Number.isFinite(configuredPort) ? configuredPort : 8080;
+    const scheme = String(import.meta.env.VITE_REVERB_SCHEME ?? (window.location.protocol === 'https:' ? 'https' : 'http'));
+    const forceTLS = scheme === 'https';
+
+    const windowWithPusher = window as Window & { Pusher?: typeof Pusher };
+    windowWithPusher.Pusher = Pusher;
+
+    const echo = new Echo({
+      broadcaster: 'reverb',
+      key: appKey,
+      wsHost,
+      wsPort,
+      wssPort: wsPort,
+      forceTLS,
+      enabledTransports: ['ws', 'wss'],
+      authEndpoint: `${apiBase}/broadcasting/auth`,
+      auth: {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      },
+    });
+
+    const channelName = `portfolio.${user.id}`;
+    const channel = echo.private(channelName);
+    let refreshTimeout: number | null = null;
+
+    const queueRefresh = () => {
+      if (refreshTimeout !== null) {
+        return;
+      }
+
+      refreshTimeout = window.setTimeout(() => {
+        refreshTimeout = null;
+        void refreshDashboardRef.current(activeDashboardRangeRef.current).catch(() => {
+          // Keep current state if a live refresh fails.
+        });
+      }, 350);
+    };
+
+    channel.listen('.portfolio.snapshot.updated', queueRefresh);
+
+    return () => {
+      if (refreshTimeout !== null) {
+        window.clearTimeout(refreshTimeout);
+      }
+
+      channel.stopListening('.portfolio.snapshot.updated');
+      echo.leave(channelName);
+      echo.disconnect();
+    };
+  }, [user]);
 
   const placeOrder: MarketContextType['placeOrder'] = useCallback(async (input) => {
     const order = await apiPlaceOrder(input);
