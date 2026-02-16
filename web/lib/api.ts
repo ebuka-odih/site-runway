@@ -17,7 +17,7 @@ import type {
   WatchlistItem,
 } from '../types';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? '/api/v1';
+export const API_BASE_URL = String(__API_BASE_URL__ || '/api/v1');
 const TOKEN_STORAGE_KEY = 'runwayalgo.api.token';
 
 export interface ApiError extends Error {

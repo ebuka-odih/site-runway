@@ -6,6 +6,7 @@ export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, __dirname, '');
   const configuredBackendApiBaseUrl = env.BACKEND_API_BASE_URL?.trim();
   const legacyBackendOrigin = env.VITE_BACKEND_ORIGIN?.trim();
+  const runtimeApiBaseUrl = configuredBackendApiBaseUrl || '/api/v1';
 
   let proxyTarget = legacyBackendOrigin || 'http://127.0.0.1:8000';
   let proxyRewrite: ((requestPath: string) => string) | undefined;
@@ -19,6 +20,9 @@ export default defineConfig(({ mode }) => {
   }
 
   return {
+    define: {
+      __API_BASE_URL__: JSON.stringify(runtimeApiBaseUrl),
+    },
     server: {
       port: 3000,
       host: '0.0.0.0',

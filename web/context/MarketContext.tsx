@@ -2,6 +2,7 @@ import React, { createContext, useCallback, useContext, useEffect, useMemo, useR
 import Echo from 'laravel-echo';
 import Pusher from 'pusher-js';
 import {
+  API_BASE_URL,
   apiCloseCopyRelationship,
   apiCopyDiscover,
   apiCopyFollowing,
@@ -329,7 +330,7 @@ export const MarketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       return;
     }
 
-    const apiBase = String(import.meta.env.VITE_API_BASE_URL ?? '/api/v1').replace(/\/$/, '');
+    const apiBase = String(API_BASE_URL).replace(/\/$/, '');
     const currentHost = window.location.hostname;
     const configuredHost = normalizeHost(String(import.meta.env.VITE_REVERB_HOST ?? ''));
     const configuredScheme = String(import.meta.env.VITE_REVERB_SCHEME ?? '').trim().toLowerCase();
