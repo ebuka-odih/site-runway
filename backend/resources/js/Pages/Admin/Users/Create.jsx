@@ -1,8 +1,10 @@
 import AdminLayout from '@/Layouts/AdminLayout';
 import UserForm from '@/Pages/Admin/Users/UserForm';
-import { useForm } from '@inertiajs/react';
+import { adminPath } from '@/lib/adminPath';
+import { useForm, usePage } from '@inertiajs/react';
 
 export default function Create({ options }) {
+    const { url } = usePage();
     const form = useForm({
         username: '',
         name: '',
@@ -21,7 +23,7 @@ export default function Create({ options }) {
 
     const submit = (event) => {
         event.preventDefault();
-        form.post('/admin/users');
+        form.post(adminPath(url, 'users'));
     };
 
     return (
@@ -33,6 +35,7 @@ export default function Create({ options }) {
                 description="Add a new account and optionally grant admin privileges."
                 submitLabel="Create User"
                 onSubmit={submit}
+                cancelHref={adminPath(url, 'users')}
             />
         </AdminLayout>
     );

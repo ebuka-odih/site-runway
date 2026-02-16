@@ -1,7 +1,9 @@
 import AdminLayout from '@/Layouts/AdminLayout';
-import { useForm } from '@inertiajs/react';
+import { adminPath } from '@/lib/adminPath';
+import { useForm, usePage } from '@inertiajs/react';
 
 export default function Index({ settings }) {
+    const { url } = usePage();
     const form = useForm({
         site_mode: settings.site_mode,
         deposits_enabled: Boolean(settings.deposits_enabled),
@@ -16,7 +18,7 @@ export default function Index({ settings }) {
 
     const submit = (event) => {
         event.preventDefault();
-        form.post('/admin/settings');
+        form.post(adminPath(url, 'settings'));
     };
 
     return (
@@ -160,7 +162,7 @@ export default function Index({ settings }) {
 
                 <div className="mt-4">
                     <a
-                        href="/admin/settings/export/database"
+                        href={adminPath(url, 'settings/export/database')}
                         className="inline-flex rounded-xl border border-cyan-500/60 bg-cyan-500/10 px-5 py-2.5 text-sm font-semibold text-cyan-200 transition hover:bg-cyan-500/20"
                     >
                         Export Full Site Database

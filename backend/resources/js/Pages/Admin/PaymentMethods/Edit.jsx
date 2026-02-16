@@ -1,8 +1,10 @@
 import AdminLayout from '@/Layouts/AdminLayout';
 import PaymentMethodForm from '@/Pages/Admin/PaymentMethods/PaymentMethodForm';
-import { useForm } from '@inertiajs/react';
+import { adminPath } from '@/lib/adminPath';
+import { useForm, usePage } from '@inertiajs/react';
 
 export default function Edit({ method, options }) {
+    const { url } = usePage();
     const form = useForm({
         name: method.name || '',
         channel: method.channel || (options.channels[0] || 'bank_transfer'),
@@ -16,7 +18,7 @@ export default function Edit({ method, options }) {
 
     const submit = (event) => {
         event.preventDefault();
-        form.put(`/admin/payment-methods/${method.id}`);
+        form.put(adminPath(url, `payment-methods/${method.id}`));
     };
 
     return (
@@ -28,6 +30,7 @@ export default function Edit({ method, options }) {
                 description="Update payment method details and operational settings."
                 submitLabel="Save Changes"
                 onSubmit={submit}
+                cancelHref={adminPath(url, 'payment-methods')}
             />
         </AdminLayout>
     );

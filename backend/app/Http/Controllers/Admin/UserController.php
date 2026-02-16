@@ -275,7 +275,7 @@ class UserController extends Controller
             'notification_email_alerts' => (bool) $user->notification_email_alerts,
             'email_verified' => (bool) $user->email_verified_at,
             'email_verified_at' => $user->email_verified_at?->toIso8601String(),
-            'fund_url' => route('admin.users.fund', $user),
+            'fund_url' => route('admin.users.fund', $user, false),
             'orders_count' => $user->orders_count ?? $user->orders()->count(),
             'positions_count' => $user->positions_count ?? $user->positions()->count(),
             'created_at' => $user->created_at?->toIso8601String(),

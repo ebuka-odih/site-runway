@@ -1,6 +1,7 @@
 import AdminLayout from '@/Layouts/AdminLayout';
 import UserForm from '@/Pages/Admin/Users/UserForm';
-import { useForm } from '@inertiajs/react';
+import { adminPath } from '@/lib/adminPath';
+import { useForm, usePage } from '@inertiajs/react';
 
 const money = (value) =>
     new Intl.NumberFormat('en-US', {
@@ -10,6 +11,7 @@ const money = (value) =>
     }).format(Number(value || 0));
 
 export default function Edit({ user, options }) {
+    const { url } = usePage();
     const form = useForm({
         username: user.username || '',
         name: user.name || '',
@@ -34,12 +36,12 @@ export default function Edit({ user, options }) {
 
     const submit = (event) => {
         event.preventDefault();
-        form.put(`/admin/users/${user.id}`);
+        form.put(adminPath(url, `users/${user.id}`));
     };
 
     const submitFunding = (event) => {
         event.preventDefault();
-        fundingForm.post(user.fund_url || `/admin/users/${user.id}/fund`, {
+        fundingForm.post(adminPath(url, `users/${user.id}/fund`), {
             preserveScroll: true,
             onSuccess: () => fundingForm.reset('amount', 'notes'),
         });
@@ -55,6 +57,7 @@ export default function Edit({ user, options }) {
                     description="Update profile data, access level, and account state."
                     submitLabel="Save Changes"
                     onSubmit={submit}
+                    cancelHref={adminPath(url, 'users')}
                     showPasswordHelp
                 />
 

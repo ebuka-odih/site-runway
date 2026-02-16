@@ -1,17 +1,18 @@
 import { Head, Link, usePage } from '@inertiajs/react';
 import { useMemo, useState } from 'react';
-
-const navigation = [
-    { name: 'Dashboard', short: 'Home', href: '/admin' },
-    { name: 'Transactions', short: 'Txns', href: '/admin/transactions' },
-    { name: 'Users', short: 'Users', href: '/admin/users' },
-    { name: 'Payment Methods', short: 'Pay', href: '/admin/payment-methods' },
-    { name: 'Settings', short: 'Settings', href: '/admin/settings' },
-];
+import { adminBasePath, adminPath } from '@/lib/adminPath';
 
 export default function AdminLayout({ title, children }) {
     const { url, props } = usePage();
     const [menuOpen, setMenuOpen] = useState(false);
+    const baseUrl = adminBasePath(url);
+    const navigation = [
+        { name: 'Dashboard', short: 'Home', href: adminPath(url) },
+        { name: 'Transactions', short: 'Txns', href: adminPath(url, 'transactions') },
+        { name: 'Users', short: 'Users', href: adminPath(url, 'users') },
+        { name: 'Payment Methods', short: 'Pay', href: adminPath(url, 'payment-methods') },
+        { name: 'Settings', short: 'Settings', href: adminPath(url, 'settings') },
+    ];
 
     const flashMessage = useMemo(() => {
         if (props.flash?.error) {
@@ -26,13 +27,14 @@ export default function AdminLayout({ title, children }) {
     }, [props.flash]);
 
     const user = props.auth?.user;
+    const currentPath = String(url || '').split('#')[0].split('?')[0];
 
     const isActive = (href) => {
-        if (href === '/admin') {
-            return url === '/admin';
+        if (href === baseUrl) {
+            return currentPath === baseUrl;
         }
 
-        return url.startsWith(href);
+        return currentPath.startsWith(href);
     };
 
     return (
@@ -108,7 +110,7 @@ export default function AdminLayout({ title, children }) {
                                 )}
 
                                 <Link
-                                    href="/admin/logout"
+                                    href={adminPath(url, 'logout')}
                                     method="post"
                                     as="button"
                                     className="rounded-xl border border-rose-500/60 px-3 py-2 text-xs font-semibold text-rose-200 transition hover:bg-rose-500/20"

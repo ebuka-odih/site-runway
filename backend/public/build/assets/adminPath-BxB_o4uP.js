@@ -1,0 +1,1 @@
+const a="/admin",s=(n="")=>n.split("#")[0].split("?")[0];function r(n=""){const e=s(String(n||"")),t=e.indexOf(a);return t===-1?a:e.slice(0,t+a.length)||a}function c(n="",e=""){const t=r(n).replace(/\/+$/,""),i=String(e||"").replace(/^\/+/,"");return i?`${t}/${i}`:t}export{c as a,r as b};

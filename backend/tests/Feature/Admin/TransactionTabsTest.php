@@ -110,9 +110,9 @@ class TransactionTabsTest extends TestCase
             ->assertInertia(fn (Assert $page) => $page
                 ->component('Admin/Transactions/Index')
                 ->where('transactions.data.0.id', $depositRequest->id)
-                ->where('transactions.data.0.approve_url', route('admin.transactions.deposits.approve', $depositRequest))
-                ->where('transactions.data.0.decline_url', route('admin.transactions.deposits.decline', $depositRequest))
-                ->where('transactions.data.0.delete_url', route('admin.transactions.deposits.destroy', $depositRequest))
+                ->where('transactions.data.0.approve_url', route('admin.transactions.deposits.approve', $depositRequest, false))
+                ->where('transactions.data.0.decline_url', route('admin.transactions.deposits.decline', $depositRequest, false))
+                ->where('transactions.data.0.delete_url', route('admin.transactions.deposits.destroy', $depositRequest, false))
             );
 
         $this->actingAs($admin)
@@ -121,9 +121,9 @@ class TransactionTabsTest extends TestCase
             ->assertInertia(fn (Assert $page) => $page
                 ->component('Admin/Transactions/Index')
                 ->where('transactions.data.0.id', $withdrawalTransaction->id)
-                ->where('transactions.data.0.approve_url', route('admin.transactions.withdrawals.approve', $withdrawalTransaction))
-                ->where('transactions.data.0.decline_url', route('admin.transactions.withdrawals.decline', $withdrawalTransaction))
-                ->where('transactions.data.0.delete_url', route('admin.transactions.withdrawals.destroy', $withdrawalTransaction))
+                ->where('transactions.data.0.approve_url', route('admin.transactions.withdrawals.approve', $withdrawalTransaction, false))
+                ->where('transactions.data.0.decline_url', route('admin.transactions.withdrawals.decline', $withdrawalTransaction, false))
+                ->where('transactions.data.0.delete_url', route('admin.transactions.withdrawals.destroy', $withdrawalTransaction, false))
             );
     }
 }

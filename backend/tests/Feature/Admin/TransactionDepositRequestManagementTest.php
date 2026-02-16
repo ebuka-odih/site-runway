@@ -183,7 +183,7 @@ class TransactionDepositRequestManagementTest extends TestCase
                 ->component('Admin/Transactions/Index')
                 ->where('transactions.data.0.id', $depositRequest->id)
                 ->where('transactions.data.0.has_receipt', true)
-                ->where('transactions.data.0.receipt_url', route('admin.transactions.deposits.receipt', $depositRequest))
+                ->where('transactions.data.0.receipt_url', route('admin.transactions.deposits.receipt', $depositRequest, false))
             );
     }
 

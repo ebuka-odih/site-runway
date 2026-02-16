@@ -1,4 +1,5 @@
-import { Link } from '@inertiajs/react';
+import { adminPath } from '@/lib/adminPath';
+import { Link, usePage } from '@inertiajs/react';
 
 export default function PaymentMethodForm({
     form,
@@ -7,8 +8,10 @@ export default function PaymentMethodForm({
     description,
     submitLabel,
     onSubmit,
-    cancelHref = '/admin/payment-methods',
+    cancelHref,
 }) {
+    const { url } = usePage();
+    const cancelUrl = cancelHref || adminPath(url, 'payment-methods');
     const isCrypto = form.data.channel === 'crypto';
 
     return (
@@ -132,7 +135,7 @@ export default function PaymentMethodForm({
                     </button>
 
                     <Link
-                        href={cancelHref}
+                        href={cancelUrl}
                         className="rounded-xl border border-slate-700 px-5 py-2.5 text-sm text-slate-200 transition hover:border-slate-500 hover:bg-slate-800"
                     >
                         Cancel

@@ -372,10 +372,12 @@ class TransactionController extends Controller
     private function namedRouteOrPath(string $name, string $fallbackPath, mixed $parameters = null): string
     {
         if (Route::has($name)) {
-            return $parameters !== null ? route($name, $parameters) : route($name);
+            return $parameters !== null
+                ? route($name, $parameters, false)
+                : route($name, absolute: false);
         }
 
-        return url($fallbackPath);
+        return $fallbackPath;
     }
 
     /**

@@ -1,8 +1,10 @@
 import AdminLayout from '@/Layouts/AdminLayout';
 import PaymentMethodForm from '@/Pages/Admin/PaymentMethods/PaymentMethodForm';
-import { useForm } from '@inertiajs/react';
+import { adminPath } from '@/lib/adminPath';
+import { useForm, usePage } from '@inertiajs/react';
 
 export default function Create({ options }) {
+    const { url } = usePage();
     const form = useForm({
         name: '',
         channel: options.channels[0] || 'bank_transfer',
@@ -16,7 +18,7 @@ export default function Create({ options }) {
 
     const submit = (event) => {
         event.preventDefault();
-        form.post('/admin/payment-methods');
+        form.post(adminPath(url, 'payment-methods'));
     };
 
     return (
@@ -28,6 +30,7 @@ export default function Create({ options }) {
                 description="Add a new deposit or withdrawal channel using clear, explicit fields."
                 submitLabel="Create Method"
                 onSubmit={submit}
+                cancelHref={adminPath(url, 'payment-methods')}
             />
         </AdminLayout>
     );

@@ -1,5 +1,6 @@
 import AdminLayout from '@/Layouts/AdminLayout';
-import { Link, router } from '@inertiajs/react';
+import { adminPath } from '@/lib/adminPath';
+import { Link, router, usePage } from '@inertiajs/react';
 import { useMemo, useState } from 'react';
 
 const tabs = [
@@ -19,6 +20,7 @@ const shortId = (value) => (value && value.length > 12 ? `${value.slice(0, 6)}..
 const shortHash = (value) => (value && value.length > 20 ? `${value.slice(0, 10)}...${value.slice(-8)}` : value || '-');
 
 export default function Index({ activeTab = 'deposit', transactions, stats }) {
+    const { url } = usePage();
     const rows = Array.isArray(transactions?.data) ? transactions.data : [];
     const links = Array.isArray(transactions?.links) ? transactions.links : [];
     const [selectedId, setSelectedId] = useState(null);
@@ -36,7 +38,7 @@ export default function Index({ activeTab = 'deposit', transactions, stats }) {
         }
 
         router.get(
-            '/admin/transactions',
+            adminPath(url, 'transactions'),
             { tab, page: 1 },
             {
                 preserveState: false,

@@ -1,5 +1,6 @@
 import AdminLayout from '@/Layouts/AdminLayout';
-import { Link, router, useForm } from '@inertiajs/react';
+import { adminPath } from '@/lib/adminPath';
+import { Link, router, useForm, usePage } from '@inertiajs/react';
 import { useEffect, useRef, useState } from 'react';
 
 const date = (value) => (value ? new Date(value).toLocaleString() : '-');
@@ -11,6 +12,8 @@ const money = (value) =>
     }).format(Number(value || 0));
 
 export default function Index({ users, filters, stats }) {
+    const { url } = usePage();
+    const usersIndexUrl = adminPath(url, 'users');
     const [search, setSearch] = useState(filters.search || '');
     const [role, setRole] = useState(filters.role || 'all');
     const [verification, setVerification] = useState(filters.verification || 'all');
@@ -27,7 +30,7 @@ export default function Index({ users, filters, stats }) {
 
     const applyFilters = (nextSearch, nextRole, nextVerification) => {
         router.get(
-            '/admin/users',
+            usersIndexUrl,
             {
                 search: nextSearch,
                 role: nextRole,
@@ -61,7 +64,7 @@ export default function Index({ users, filters, stats }) {
             return;
         }
 
-        router.delete(`/admin/users/${userId}`);
+        router.delete(adminPath(url, `users/${userId}`));
     };
 
     const openFundingModal = (user) => {
@@ -85,7 +88,7 @@ export default function Index({ users, filters, stats }) {
             return;
         }
 
-        fundForm.post(fundingUser.fund_url || `/admin/users/${fundingUser.id}/fund`, {
+        fundForm.post(adminPath(url, `users/${fundingUser.id}/fund`), {
             preserveScroll: true,
             onSuccess: closeFundingModal,
         });
@@ -105,7 +108,7 @@ export default function Index({ users, filters, stats }) {
                     <h3 className="text-lg font-semibold text-slate-100">Manage Users</h3>
 
                     <Link
-                        href="/admin/users/create"
+                        href={adminPath(url, 'users/create')}
                         className="rounded-xl bg-gradient-to-r from-cyan-500 to-emerald-500 px-4 py-2 text-sm font-semibold text-slate-950 transition hover:opacity-90"
                     >
                         Create User
@@ -209,7 +212,7 @@ export default function Index({ users, filters, stats }) {
 
                                 <div className="flex flex-wrap gap-2">
                                     <Link
-                                        href={`/admin/users/${user.id}/edit`}
+                                        href={adminPath(url, `users/${user.id}/edit`)}
                                         className="rounded-lg border border-slate-600 px-2.5 py-1 text-xs text-slate-200 transition hover:border-cyan-400 hover:text-cyan-200"
                                     >
                                         Edit
@@ -294,7 +297,7 @@ export default function Index({ users, filters, stats }) {
                                     <td className="py-3">
                                         <div className="flex flex-wrap gap-2">
                                             <Link
-                                                href={`/admin/users/${user.id}/edit`}
+                                                href={adminPath(url, `users/${user.id}/edit`)}
                                                 className="rounded-lg border border-slate-600 px-2.5 py-1 text-xs text-slate-200 transition hover:border-cyan-400 hover:text-cyan-200"
                                             >
                                                 Edit

@@ -1,5 +1,6 @@
 import AdminLayout from '@/Layouts/AdminLayout';
-import { Link, router } from '@inertiajs/react';
+import { adminPath } from '@/lib/adminPath';
+import { Link, router, usePage } from '@inertiajs/react';
 import { useEffect, useRef, useState } from 'react';
 
 const money = (value) =>
@@ -14,6 +15,8 @@ const shortWallet = (value) =>
     value && value.length > 18 ? `${value.slice(0, 8)}...${value.slice(-6)}` : value || '-';
 
 export default function Index({ methods, filters, filter_options, stats, usage }) {
+    const { url } = usePage();
+    const paymentMethodsUrl = adminPath(url, 'payment-methods');
     const [search, setSearch] = useState(filters.search || '');
     const [channel, setChannel] = useState(filters.channel || 'all');
     const [status, setStatus] = useState(filters.status || 'all');
@@ -26,7 +29,7 @@ export default function Index({ methods, filters, filter_options, stats, usage }
 
     const applyFilters = (nextSearch, nextChannel, nextStatus) => {
         router.get(
-            '/admin/payment-methods',
+            paymentMethodsUrl,
             {
                 search: nextSearch,
                 channel: nextChannel,
@@ -60,7 +63,7 @@ export default function Index({ methods, filters, filter_options, stats, usage }
             return;
         }
 
-        router.delete(`/admin/payment-methods/${methodId}`);
+        router.delete(adminPath(url, `payment-methods/${methodId}`));
     };
 
     return (
@@ -76,7 +79,7 @@ export default function Index({ methods, filters, filter_options, stats, usage }
                     <h3 className="text-lg font-semibold text-slate-100">Manage Payment Methods</h3>
 
                     <Link
-                        href="/admin/payment-methods/create"
+                        href={adminPath(url, 'payment-methods/create')}
                         className="rounded-xl bg-gradient-to-r from-cyan-500 to-emerald-500 px-4 py-2 text-sm font-semibold text-slate-950 transition hover:opacity-90"
                     >
                         Add Method
@@ -156,7 +159,7 @@ export default function Index({ methods, filters, filter_options, stats, usage }
 
                             <div className="mt-3 flex flex-wrap gap-2">
                                 <Link
-                                    href={`/admin/payment-methods/${method.id}/edit`}
+                                    href={adminPath(url, `payment-methods/${method.id}/edit`)}
                                     className="rounded-lg border border-slate-600 px-2.5 py-1 text-xs text-slate-200 transition hover:border-cyan-400 hover:text-cyan-200"
                                 >
                                     Edit
@@ -209,7 +212,7 @@ export default function Index({ methods, filters, filter_options, stats, usage }
                                     <td className="py-3">
                                         <div className="flex flex-wrap gap-2">
                                             <Link
-                                                href={`/admin/payment-methods/${method.id}/edit`}
+                                                href={adminPath(url, `payment-methods/${method.id}/edit`)}
                                                 className="rounded-lg border border-slate-600 px-2.5 py-1 text-xs text-slate-200 transition hover:border-cyan-400 hover:text-cyan-200"
                                             >
                                                 Edit
