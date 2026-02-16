@@ -319,10 +319,13 @@ export const MarketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   }, [refreshCoreData]);
 
   useEffect(() => {
+    const realtimeEnabled = ['1', 'true', 'yes', 'on'].includes(
+      String(import.meta.env.VITE_ENABLE_REALTIME ?? 'false').trim().toLowerCase(),
+    );
     const token = getAuthToken();
     const appKey = String(import.meta.env.VITE_REVERB_APP_KEY ?? '').trim();
 
-    if (!user || !token || !appKey) {
+    if (!realtimeEnabled || !user || !token || !appKey) {
       return;
     }
 
@@ -380,8 +383,25 @@ export const MarketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     const channelName = `portfolio.${user.id}`;
     const channel = echo.private(channelName);
     let refreshTimeout: number | null = null;
+    let disconnectedByError = false;
+
+    const connector = echo.connector as { pusher?: { connection?: { bind: (event: string, callback: () => void) => void; unbind: (event: string, callback: () => void) => void } } };
+    const socketConnection = connector.pusher?.connection;
+
+    const disableRealtime = () => {
+      if (disconnectedByError) {
+        return;
+      }
+
+      disconnectedByError = true;
+      echo.disconnect();
+    };
 
     const queueRefresh = () => {
+      if (disconnectedByError) {
+        return;
+      }
+
       if (refreshTimeout !== null) {
         return;
       }
@@ -395,6 +415,8 @@ export const MarketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     };
 
     channel.listen('.portfolio.snapshot.updated', queueRefresh);
+    socketConnection?.bind('failed', disableRealtime);
+    socketConnection?.bind('unavailable', disableRealtime);
 
     return () => {
       if (refreshTimeout !== null) {
@@ -402,6 +424,8 @@ export const MarketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       }
 
       channel.stopListening('.portfolio.snapshot.updated');
+      socketConnection?.unbind('failed', disableRealtime);
+      socketConnection?.unbind('unavailable', disableRealtime);
       echo.leave(channelName);
       echo.disconnect();
     };

@@ -302,6 +302,54 @@ const buildInteractiveHistory = (
   return history;
 };
 
+const enhanceBackendHistoryLive = (
+  range: DashboardRange,
+  history: ChartPoint[],
+  currentValue: number,
+  liveTick: number,
+): ChartPoint[] => {
+  if (history.length <= 1) {
+    return history;
+  }
+
+  const settings = RANGE_SETTINGS[range];
+  const values = history.map((point) => point.value);
+  const min = Math.min(...values);
+  const max = Math.max(...values);
+  const span = max - min;
+  const seed = hashSeed(`backend-live-${range}`);
+  const phase = ((Date.now() / 1000) * settings.liveSpeed) + (liveTick * 0.23) + ((seed % 97) / 11);
+  const baseAmplitude = span > 0
+    ? span * 0.085
+    : Math.max(currentValue * settings.liveJitter * 18, 18);
+  const amplitude = clamp(baseAmplitude, Math.max(currentValue * 0.00006, 6), Math.max(currentValue * 0.0022, 35));
+
+  const enhanced = history.map((point, index) => {
+    const progress = history.length > 1 ? index / (history.length - 1) : 1;
+    const waveOne = Math.sin((progress * Math.PI * 7.2) + phase) * 0.52;
+    const waveTwo = Math.cos((progress * Math.PI * 14.4) + (phase * 0.72)) * 0.31;
+    const waveThree = Math.sin((progress * Math.PI * 23.8) + (phase * 0.41)) * 0.17;
+    const envelope = 0.3 + (Math.sin(progress * Math.PI) ** 2 * 0.95);
+    const jitter = (waveOne + waveTwo + waveThree) * amplitude * envelope;
+
+    return {
+      ...point,
+      value: Math.max(0.01, Number((point.value + jitter).toFixed(2))),
+    };
+  });
+
+  const delta = Number((currentValue - enhanced[enhanced.length - 1].value).toFixed(2));
+
+  for (let index = 0; index < enhanced.length; index += 1) {
+    enhanced[index] = {
+      ...enhanced[index],
+      value: Math.max(0.01, Number((enhanced[index].value + delta).toFixed(2))),
+    };
+  }
+
+  return enhanced;
+};
+
 const PortfolioCard: React.FC = () => {
   const { dashboard, refreshDashboard, orders, marketAssets } = useMarket();
   const [activeRange, setActiveRange] = useState<DashboardRange>('24h');
@@ -345,7 +393,7 @@ const PortfolioCard: React.FC = () => {
 
   const history = useMemo(() => {
     if (backendHistory.length > 1) {
-      return backendHistory;
+      return enhanceBackendHistoryLive(activeRange, backendHistory, derivedCurrentValue, liveTick);
     }
 
     const mappedOrders: SimOrder[] = orders
