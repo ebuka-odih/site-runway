@@ -74,7 +74,11 @@ function mapSelectableAsset(raw: any): SelectableAsset {
     type: typeof raw.type === 'string' ? raw.type : undefined,
     price: toNumber(raw.price ?? raw.current_price),
     changePercent: toNumber(raw.change_percent),
+    changeValue: raw.change_value == null ? undefined : toNumber(raw.change_value, undefined as unknown as number),
     shares: raw.shares !== undefined ? toNumber(raw.shares) : undefined,
+    marketValue: raw.market_value == null ? undefined : toNumber(raw.market_value, undefined as unknown as number),
+    dayChangeValue: raw.day_change_value == null ? undefined : toNumber(raw.day_change_value, undefined as unknown as number),
+    dayChangePercent: raw.day_change_percent == null ? undefined : toNumber(raw.day_change_percent, undefined as unknown as number),
     lastPriceUpdateAt: raw.last_price_update_at ?? raw.lastPriceUpdateAt ?? null,
   };
 }
@@ -88,10 +92,15 @@ function mapPosition(raw: any): PositionItem {
     type: typeof raw.type === 'string' ? raw.type : undefined,
     price: toNumber(raw.price),
     changePercent: toNumber(raw.change_percent),
+    changeValue: raw.change_value == null ? undefined : toNumber(raw.change_value, undefined as unknown as number),
     shares: toNumber(raw.quantity),
     quantity: toNumber(raw.quantity),
     averagePrice: toNumber(raw.average_price),
     marketValue: toNumber(raw.market_value),
+    dayChangeValue: raw.day_change_value == null ? undefined : toNumber(raw.day_change_value, undefined as unknown as number),
+    dayChangePercent: raw.day_change_percent == null
+      ? toNumber(raw.change_percent, undefined as unknown as number)
+      : toNumber(raw.day_change_percent, undefined as unknown as number),
   };
 }
 

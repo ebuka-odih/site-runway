@@ -4,8 +4,12 @@ export interface SelectableAsset {
   name: string;
   price: number;
   changePercent: number;
+  changeValue?: number;
   shares?: number;
   type?: string;
+  marketValue?: number;
+  dayChangeValue?: number;
+  dayChangePercent?: number;
   lastPriceUpdateAt?: string | null;
 }
 
@@ -59,6 +63,8 @@ export interface PositionItem extends SelectableAsset {
   quantity: number;
   averagePrice: number;
   marketValue: number;
+  dayChangeValue?: number;
+  dayChangePercent?: number;
 }
 
 export interface WatchlistItem extends SelectableAsset {

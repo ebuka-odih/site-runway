@@ -151,6 +151,8 @@ class DashboardController extends Controller
                     'average_price' => (float) $position->average_price,
                     'price' => (float) $position->asset->current_price,
                     'change_percent' => (float) $position->asset->change_percent,
+                    'change_value' => (float) $position->asset->change_value,
+                    'day_change_value' => round((float) $position->quantity * (float) $position->asset->change_value, 2),
                     'market_value' => round((float) $position->quantity * (float) $position->asset->current_price, 2),
                 ]),
                 'watchlist' => $watchlist,

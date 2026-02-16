@@ -16,6 +16,7 @@ const RANGE_OPTIONS: Array<{ value: DashboardRange; label: string; periodLabel: 
 interface ChartPoint {
   time: string;
   value: number;
+  rawValue: number;
   buyingPower: number;
   timestamp: number;
 }
@@ -37,6 +38,7 @@ const toChartPoint = (
   return {
     time: point.time,
     value: roundMoney(holdingsValue),
+    rawValue: roundMoney(holdingsValue),
     buyingPower,
     timestamp: Number(point.timestamp ?? index),
   };
@@ -51,6 +53,7 @@ const buildHistory = (
     return [{
       time: 'Now',
       value: roundMoney(currentHoldingValue),
+      rawValue: roundMoney(currentHoldingValue),
       buyingPower: roundMoney(buyingPower),
       timestamp: Date.now(),
     }];
@@ -63,6 +66,7 @@ const buildHistory = (
   mapped[lastIndex] = {
     ...last,
     value: roundMoney(currentHoldingValue),
+    rawValue: roundMoney(currentHoldingValue),
     buyingPower: roundMoney(buyingPower),
     timestamp: Date.now(),
   };
@@ -73,6 +77,7 @@ const buildHistory = (
 const PortfolioCard: React.FC = () => {
   const { dashboard, refreshDashboard } = useMarket();
   const [activeRange, setActiveRange] = useState<DashboardRange>('24h');
+  const [microPhase, setMicroPhase] = useState(0);
 
   const portfolio = dashboard?.portfolio;
   const buyingPower = portfolio?.buyingPower ?? 0;
@@ -106,9 +111,48 @@ const PortfolioCard: React.FC = () => {
 
   const chartStartValue = history[0]?.value ?? derivedCurrentHoldingValue;
   const chartEndValue = history[history.length - 1]?.value ?? derivedCurrentHoldingValue;
-  const dailyChange = chartEndValue - chartStartValue;
-  const dailyChangePercent = chartStartValue > 0 ? (dailyChange / chartStartValue) * 100 : 0;
+  const rangeChange = chartEndValue - chartStartValue;
+  const rangeChangePercent = chartStartValue > 0 ? (rangeChange / chartStartValue) * 100 : 0;
+  const dailyFromPositions = useMemo(() => {
+    const positionItems = dashboard?.positions ?? [];
+    const hasExplicitValues = positionItems.some((position) => Number.isFinite(Number(position.dayChangeValue)));
+
+    if (!hasExplicitValues) {
+      return null;
+    }
+
+    const dayChange = positionItems.reduce((total, position) => total + (position.dayChangeValue ?? 0), 0);
+    const previousCloseHoldings = derivedCurrentHoldingValue - dayChange;
+    const dayChangePercent = previousCloseHoldings > 0
+      ? (dayChange / previousCloseHoldings) * 100
+      : 0;
+
+    return {
+      dayChange,
+      dayChangePercent,
+    };
+  }, [dashboard?.positions, derivedCurrentHoldingValue]);
+  const dailyChange = activeRange === '24h' && dailyFromPositions
+    ? dailyFromPositions.dayChange
+    : rangeChange;
+  const dailyChangePercent = activeRange === '24h' && dailyFromPositions
+    ? dailyFromPositions.dayChangePercent
+    : rangeChangePercent;
   const isPositive = dailyChange >= 0;
+  const isFlatHistory = useMemo(() => {
+    if (history.length < 3) {
+      return true;
+    }
+
+    const values = history.map((point) => point.value);
+    const min = Math.min(...values);
+    const max = Math.max(...values);
+    const span = max - min;
+    const average = values.reduce((total, value) => total + value, 0) / values.length;
+    const minVisibleSpan = Math.max(Math.abs(average) * 0.001, 1.5);
+
+    return span < minVisibleSpan;
+  }, [history]);
   const activePeriodLabel = useMemo(
     () => RANGE_OPTIONS.find((option) => option.value === activeRange)?.periodLabel ?? 'Today',
     [activeRange],
@@ -130,8 +174,47 @@ const PortfolioCard: React.FC = () => {
     };
   }, [activeRange, refreshDashboard]);
 
+  useEffect(() => {
+    if (!isFlatHistory) {
+      setMicroPhase(0);
+      return;
+    }
+
+    const intervalId = window.setInterval(() => {
+      setMicroPhase((previous) => previous + 0.45);
+    }, 1300);
+
+    return () => {
+      window.clearInterval(intervalId);
+    };
+  }, [isFlatHistory]);
+
+  const renderedHistory = useMemo<ChartPoint[]>(() => {
+    if (!isFlatHistory || history.length < 3) {
+      return history;
+    }
+
+    const lastIndex = history.length - 1;
+    const baseline = chartEndValue;
+    const amplitude = Math.min(2.25, Math.max(Math.abs(baseline) * 0.00018, 0.2));
+
+    return history.map((point, index) => {
+      if (index === 0 || index === lastIndex) {
+        return point;
+      }
+
+      const envelope = Math.sin((Math.PI * index) / lastIndex);
+      const oscillation = Math.sin((index * 0.72) + microPhase) * amplitude * envelope;
+
+      return {
+        ...point,
+        value: roundMoney(point.rawValue + oscillation),
+      };
+    });
+  }, [chartEndValue, history, isFlatHistory, microPhase]);
+
   const yDomain = useMemo(() => {
-    const values = history.map((item) => item.value);
+    const values = renderedHistory.map((item) => item.value);
     const min = Math.min(...values);
     const max = Math.max(...values);
     const span = max - min;
@@ -139,7 +222,7 @@ const PortfolioCard: React.FC = () => {
     const padding = span > 0 ? Math.max(span * 0.15, relativePadding) : relativePadding;
 
     return [min - padding, max + padding];
-  }, [history]);
+  }, [renderedHistory]);
 
   return (
     <div className="px-4 py-6">
@@ -155,6 +238,10 @@ const PortfolioCard: React.FC = () => {
               ${Math.abs(dailyChange).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               ({isPositive ? '+' : ''}{dailyChangePercent.toFixed(2)}%)
             </span>
+            <span className="relative ml-2 inline-flex h-2 w-2">
+              <span className={`absolute inline-flex h-full w-full rounded-full opacity-60 animate-ping ${isPositive ? 'bg-green-500' : 'bg-orange-500'}`} />
+              <span className={`relative inline-flex h-2 w-2 rounded-full ${isPositive ? 'bg-green-500' : 'bg-orange-500'}`} />
+            </span>
           </div>
           <span className="text-zinc-500 text-sm font-medium">{activePeriodLabel}</span>
         </div>
@@ -167,14 +254,19 @@ const PortfolioCard: React.FC = () => {
         </div>
 
         <ResponsiveContainer width="100%" height="100%">
-          <LineChart data={history}>
+          <LineChart data={renderedHistory}>
             <YAxis hide domain={yDomain} />
             <Tooltip
               contentStyle={{ backgroundColor: '#18181b', border: 'none', borderRadius: '8px', color: '#fff' }}
               itemStyle={{ color: '#22c55e' }}
               cursor={{ stroke: '#27272a', strokeWidth: 1, strokeDasharray: '3 3' }}
               labelStyle={{ color: '#a1a1aa', fontSize: '11px' }}
-              formatter={(value: number) => [`$${value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, 'Holdings']}
+              formatter={(_value: number, _name: string, entry: any) => {
+                const raw = Number(entry?.payload?.rawValue);
+                const safeValue = Number.isFinite(raw) ? raw : Number(_value);
+
+                return [`$${safeValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, 'Holdings'];
+              }}
             />
             <Line
               type="monotone"
@@ -203,8 +295,8 @@ const PortfolioCard: React.FC = () => {
               animationEasing="ease-out"
             />
             <ReferenceDot
-              x={history[history.length - 1].time}
-              y={history[history.length - 1].value}
+              x={renderedHistory[renderedHistory.length - 1].time}
+              y={renderedHistory[renderedHistory.length - 1].value}
               r={4}
               fill={isPositive ? '#22c55e' : '#f97316'}
             />

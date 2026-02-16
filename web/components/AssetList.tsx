@@ -13,6 +13,9 @@ const AssetList: React.FC<AssetListProps> = ({ onAssetClick }) => {
   const renderAssetRow = (asset: SelectableAsset, isHeld: boolean) => {
     const liveData = prices[asset.symbol] || { price: asset.price, lastAction: 'none' as const };
     const displayPrice = liveData.price;
+    const displayMarketValue = asset.marketValue ?? ((asset.shares ?? 0) * displayPrice);
+    const dayChangeValue = asset.dayChangeValue;
+    const dayChangePercent = asset.dayChangePercent ?? asset.changePercent;
     const flashClass =
       liveData.lastAction === 'up'
         ? 'bg-green-500/10'
@@ -35,11 +38,30 @@ const AssetList: React.FC<AssetListProps> = ({ onAssetClick }) => {
 
         <div className="text-right flex flex-col items-end">
           <span className={`font-bold tabular-nums transition-colors duration-300 ${liveData.lastAction === 'up' ? 'text-green-400' : liveData.lastAction === 'down' ? 'text-red-400' : 'text-white'}`}>
-            ${displayPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            ${isHeld
+              ? displayMarketValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+              : displayPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
           </span>
-          <span className={`text-xs font-bold ${asset.changePercent >= 0 ? 'text-green-500' : 'text-orange-500'}`}>
-            {asset.changePercent >= 0 ? '+' : ''}
-            {asset.changePercent.toFixed(2)}%
+          <span className={`text-xs font-bold flex items-center gap-1 ${dayChangePercent >= 0 ? 'text-green-500' : 'text-orange-500'}`}>
+            {isHeld && (
+              <span className="relative inline-flex h-1.5 w-1.5">
+                <span className={`absolute inline-flex h-full w-full rounded-full opacity-70 animate-ping ${dayChangePercent >= 0 ? 'bg-green-500' : 'bg-orange-500'}`} />
+                <span className={`relative inline-flex h-1.5 w-1.5 rounded-full ${dayChangePercent >= 0 ? 'bg-green-500' : 'bg-orange-500'}`} />
+              </span>
+            )}
+            {isHeld && typeof dayChangeValue === 'number' ? (
+              <>
+                {dayChangeValue >= 0 ? '+' : ''}
+                ${Math.abs(dayChangeValue).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                {' '}
+                ({dayChangePercent >= 0 ? '+' : ''}{dayChangePercent.toFixed(2)}%)
+              </>
+            ) : (
+              <>
+                {dayChangePercent >= 0 ? '+' : ''}
+                {dayChangePercent.toFixed(2)}%
+              </>
+            )}
           </span>
         </div>
       </div>
@@ -52,8 +74,12 @@ const AssetList: React.FC<AssetListProps> = ({ onAssetClick }) => {
     name: position.name,
     price: position.price,
     changePercent: position.changePercent,
+    changeValue: position.changeValue,
     shares: position.quantity,
     type: position.type,
+    marketValue: position.marketValue,
+    dayChangeValue: position.dayChangeValue,
+    dayChangePercent: position.dayChangePercent,
   }));
 
   return (
