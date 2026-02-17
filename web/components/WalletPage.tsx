@@ -21,8 +21,8 @@ const WalletPage: React.FC = () => {
   const [activeDeposit, setActiveDeposit] = useState<DepositRequestItem | null>(null);
   const [withdrawalAmount, setWithdrawalAmount] = useState('0.00');
   const [withdrawalCrypto, setWithdrawalCrypto] = useState('USDT');
-  const [withdrawalNetwork, setWithdrawalNetwork] = useState('ERC 20');
   const [withdrawalDestination, setWithdrawalDestination] = useState('');
+  const [withdrawalStatus, setWithdrawalStatus] = useState<'input' | 'processing' | 'success'>('input');
 
   const loadSummary = async () => {
     setError(null);
@@ -142,22 +142,23 @@ const WalletPage: React.FC = () => {
     }
 
     setError(null);
+    setWithdrawalStatus('processing');
 
     try {
       await createWithdrawal({
         amount: parsedAmount,
         currency: withdrawalCrypto,
-        network: withdrawalNetwork,
         destination: withdrawalDestination.trim(),
       });
 
-      setIsWithdrawalFormOpen(false);
+      setWithdrawalStatus('success');
       setWithdrawalAmount('0.00');
       setWithdrawalDestination('');
       await loadSummary();
     } catch (exception) {
       const message = exception instanceof Error ? exception.message : 'Unable to create withdrawal request.';
       setError(message);
+      setWithdrawalStatus('input');
     }
   };
 
@@ -170,6 +171,7 @@ const WalletPage: React.FC = () => {
   const openWithdrawalForm = () => {
     setError(null);
     setIsDepositFormOpen(false);
+    setWithdrawalStatus('input');
     setIsWithdrawalFormOpen(true);
   };
 
@@ -181,6 +183,7 @@ const WalletPage: React.FC = () => {
     setTimeLeft(900);
     setProofFile(null);
     setActiveDeposit(null);
+    setWithdrawalStatus('input');
   };
 
   const transactions = summary?.recentTransactions ?? [];
@@ -367,81 +370,101 @@ const WalletPage: React.FC = () => {
             <X size={20} />
           </button>
 
-          <header>
-            <p className="text-[10px] font-black text-zinc-500 uppercase tracking-widest mb-2">Withdrawal Request</p>
-            <h3 className="text-xl font-black text-white mb-2 leading-snug">Request a withdrawal from your wallet.</h3>
-            <p className="text-sm text-zinc-600 font-bold">Requests are reviewed and approved by admin before processing.</p>
-          </header>
-
-          <div className="space-y-4">
-            <div className="space-y-1.5">
-              <label className="text-[10px] font-black text-zinc-600 uppercase tracking-widest ml-1">Amount</label>
-              <input
-                type="text"
-                value={withdrawalAmount}
-                onChange={(event) => setWithdrawalAmount(event.target.value)}
-                className="w-full bg-[#121212] border border-white/5 rounded-xl py-4 px-4 text-lg font-black text-white focus:outline-none focus:border-orange-500/50 transition-all placeholder:text-zinc-800"
-              />
-            </div>
-
-            <div className="space-y-1.5">
-              <label className="text-[10px] font-black text-zinc-600 uppercase tracking-widest ml-1">Asset</label>
-              <div className="relative">
-                <select
-                  value={withdrawalCrypto}
-                  onChange={(event) => setWithdrawalCrypto(event.target.value)}
-                  className="w-full bg-[#121212] border border-white/5 rounded-xl py-4 px-4 text-sm font-black text-white appearance-none focus:outline-none focus:border-orange-500/50 transition-all"
-                >
-                  <option>USDT</option>
-                  <option>BTC</option>
-                  <option>ETH</option>
-                </select>
-                <ChevronDown size={18} className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-500 pointer-events-none" />
+          {withdrawalStatus === 'processing' && (
+            <div className="py-10 flex flex-col items-center text-center gap-4">
+              <Loader2 className="text-orange-400 animate-spin" size={40} />
+              <div>
+                <p className="text-sm font-black text-white">Submitting withdrawal</p>
+                <p className="text-xs text-zinc-500 font-bold">We&apos;re sending your request for approval.</p>
               </div>
             </div>
+          )}
 
-            <div className="space-y-1.5">
-              <label className="text-[10px] font-black text-zinc-600 uppercase tracking-widest ml-1">Network</label>
-              <div className="relative">
-                <select
-                  value={withdrawalNetwork}
-                  onChange={(event) => setWithdrawalNetwork(event.target.value)}
-                  className="w-full bg-[#121212] border border-white/5 rounded-xl py-4 px-4 text-sm font-black text-white appearance-none focus:outline-none focus:border-orange-500/50 transition-all"
-                >
-                  <option>ERC 20</option>
-                  <option>TRC 20</option>
-                  <option>BEP 20</option>
-                </select>
-                <ChevronDown size={18} className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-500 pointer-events-none" />
+          {withdrawalStatus === 'success' && (
+            <div className="py-8 text-center space-y-5">
+              <div className="w-14 h-14 rounded-full bg-orange-500/10 flex items-center justify-center mx-auto">
+                <Check size={28} className="text-orange-400" />
               </div>
+              <div>
+                <p className="text-lg font-black text-white">Withdrawal requested</p>
+                <p className="text-xs text-zinc-500 font-bold mt-1">
+                  Your request is pending admin approval.
+                </p>
+              </div>
+              <button
+                onClick={() => setIsWithdrawalFormOpen(false)}
+                className="w-full py-4 bg-orange-500 hover:bg-orange-400 text-black font-black rounded-xl uppercase tracking-widest text-sm transition-all shadow-xl shadow-orange-500/20 active:scale-[0.98]"
+              >
+                Done
+              </button>
             </div>
+          )}
 
-            <div className="space-y-1.5">
-              <label className="text-[10px] font-black text-zinc-600 uppercase tracking-widest ml-1">Destination Address</label>
-              <input
-                type="text"
-                value={withdrawalDestination}
-                onChange={(event) => setWithdrawalDestination(event.target.value)}
-                placeholder="Paste destination wallet address"
-                className="w-full bg-[#121212] border border-white/5 rounded-xl py-4 px-4 text-sm font-black text-white focus:outline-none focus:border-orange-500/50 transition-all placeholder:text-zinc-700"
-              />
-            </div>
-          </div>
+          {withdrawalStatus === 'input' && (
+            <>
+              <header>
+                <p className="text-[10px] font-black text-zinc-500 uppercase tracking-widest mb-2">Withdrawal Request</p>
+                <h3 className="text-xl font-black text-white mb-2 leading-snug">Withdraw from your cash balance.</h3>
+                <p className="text-sm text-zinc-600 font-bold">
+                  Choose a payout coin and destination wallet address.
+                </p>
+              </header>
 
-          <div className="space-y-3">
-            <button
-              onClick={() => void handleSubmitWithdrawal()}
-              className="w-full py-4 bg-orange-500 hover:bg-orange-400 text-black font-black rounded-xl uppercase tracking-widest text-sm transition-all shadow-xl shadow-orange-500/20 active:scale-[0.98]"
-            >
-              Submit Withdrawal Request
-            </button>
-            <button
-              onClick={() => setIsWithdrawalFormOpen(false)}
-              className="w-full py-4 border border-zinc-800 hover:border-zinc-700 text-zinc-400 font-black rounded-xl uppercase tracking-widest text-sm transition-all"
-            >
-              Cancel
-            </button>
-          </div>
+              <div className="space-y-4">
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-black text-zinc-600 uppercase tracking-widest ml-1">Amount</label>
+                  <input
+                    type="text"
+                    value={withdrawalAmount}
+                    onChange={(event) => setWithdrawalAmount(event.target.value)}
+                    className="w-full bg-[#121212] border border-white/5 rounded-xl py-4 px-4 text-lg font-black text-white focus:outline-none focus:border-orange-500/50 transition-all placeholder:text-zinc-800"
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-black text-zinc-600 uppercase tracking-widest ml-1">Payout Coin</label>
+                  <div className="relative">
+                    <select
+                      value={withdrawalCrypto}
+                      onChange={(event) => setWithdrawalCrypto(event.target.value)}
+                      className="w-full bg-[#121212] border border-white/5 rounded-xl py-4 px-4 text-sm font-black text-white appearance-none focus:outline-none focus:border-orange-500/50 transition-all"
+                    >
+                      <option>USDT</option>
+                      <option>BTC</option>
+                      <option>ETH</option>
+                    </select>
+                    <ChevronDown size={18} className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-500 pointer-events-none" />
+                  </div>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-black text-zinc-600 uppercase tracking-widest ml-1">Destination Address</label>
+                  <input
+                    type="text"
+                    value={withdrawalDestination}
+                    onChange={(event) => setWithdrawalDestination(event.target.value)}
+                    placeholder="Paste destination wallet address"
+                    className="w-full bg-[#121212] border border-white/5 rounded-xl py-4 px-4 text-sm font-black text-white focus:outline-none focus:border-orange-500/50 transition-all placeholder:text-zinc-700"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                <button
+                  onClick={() => void handleSubmitWithdrawal()}
+                  className="w-full py-4 bg-orange-500 hover:bg-orange-400 text-black font-black rounded-xl uppercase tracking-widest text-sm transition-all shadow-xl shadow-orange-500/20 active:scale-[0.98]"
+                >
+                  Submit Withdrawal Request
+                </button>
+                <button
+                  onClick={() => setIsWithdrawalFormOpen(false)}
+                  className="w-full py-4 border border-zinc-800 hover:border-zinc-700 text-zinc-400 font-black rounded-xl uppercase tracking-widest text-sm transition-all"
+                >
+                  Cancel
+                </button>
+              </div>
+            </>
+          )}
         </div>
       )}
 
