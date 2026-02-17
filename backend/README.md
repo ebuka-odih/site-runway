@@ -133,7 +133,7 @@ Set these env values:
 
 ```bash
 FREECRYPTOAPI_API_KEY=your_freecryptoapi_key
-FREECRYPTOAPI_BASE_URL=https://freecryptoapi.com/api/v1
+FREECRYPTOAPI_BASE_URL=https://api.freecryptoapi.com/v1
 FREECRYPTOAPI_QUOTE_ENDPOINT=/getData
 FREECRYPTOAPI_TIMEOUT=10
 FREECRYPTOAPI_SYNC_CALLS_PER_RUN=8

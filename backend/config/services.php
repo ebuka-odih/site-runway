@@ -43,7 +43,7 @@ return [
 
     'freecryptoapi' => [
         'api_key' => env('FREECRYPTOAPI_API_KEY'),
-        'base_url' => env('FREECRYPTOAPI_BASE_URL', 'https://freecryptoapi.com/api/v1'),
+        'base_url' => env('FREECRYPTOAPI_BASE_URL', 'https://api.freecryptoapi.com/v1'),
         'quote_endpoint' => env('FREECRYPTOAPI_QUOTE_ENDPOINT', '/getData'),
         'timeout' => (int) env('FREECRYPTOAPI_TIMEOUT', 10),
     ],
