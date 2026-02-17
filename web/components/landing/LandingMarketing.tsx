@@ -571,7 +571,6 @@ const LandingMarketing: React.FC<LandingMarketingProps> = ({ onOpenAuth }) => {
       </div>
     </footer>
   </>
-    </>
   );
 };
 
