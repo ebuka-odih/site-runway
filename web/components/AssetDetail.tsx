@@ -82,6 +82,8 @@ const AssetDetail: React.FC<AssetDetailProps> = ({ asset, onBack }) => {
           symbol={asset.symbol}
           assetType={asset.type}
           timeframe={timeframe}
+          livePrice={liveData.price}
+          isPositive={isPositive}
         />
       </div>
 

@@ -1,9 +1,12 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
+import { LineChart, Line, ResponsiveContainer, YAxis, ReferenceDot } from 'recharts';
 
 interface TradingViewAssetChartProps {
   symbol: string;
   assetType?: string;
   timeframe: string;
+  livePrice: number;
+  isPositive: boolean;
 }
 
 const STOCK_EXCHANGE_BY_SYMBOL: Record<string, string> = {
@@ -32,78 +35,109 @@ const INTERVAL_BY_TIMEFRAME: Record<string, string> = {
   All: 'W',
 };
 
-const TradingViewAssetChart: React.FC<TradingViewAssetChartProps> = ({ symbol, assetType, timeframe }) => {
-  const widgetRef = useRef<HTMLDivElement | null>(null);
-  const [isLoaded, setIsLoaded] = useState(false);
+const TradingViewAssetChart: React.FC<TradingViewAssetChartProps> = ({
+  symbol,
+  assetType,
+  timeframe,
+  livePrice,
+  isPositive,
+}) => {
+  const [chartMode, setChartMode] = useState<'loading' | 'widget' | 'fallback'>('loading');
 
   const tradingViewSymbol = useMemo(() => resolveTradingViewSymbol(symbol, assetType), [assetType, symbol]);
   const interval = INTERVAL_BY_TIMEFRAME[timeframe] ?? 'D';
 
-  useEffect(() => {
-    if (!widgetRef.current) {
-      return;
-    }
-
-    setIsLoaded(false);
-    widgetRef.current.innerHTML = '';
-    const loadingTimeout = window.setTimeout(() => {
-      setIsLoaded(true);
-    }, 2500);
-
-    const script = document.createElement('script');
-    script.type = 'text/javascript';
-    script.async = true;
-    script.src = 'https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js';
-    script.innerHTML = JSON.stringify({
-      autosize: true,
+  const widgetSrc = useMemo(() => {
+    const params = new URLSearchParams({
       symbol: tradingViewSymbol,
       interval,
       timezone: 'Etc/UTC',
       theme: 'dark',
       style: '1',
       locale: 'en',
-      allow_symbol_change: false,
-      withdateranges: false,
-      hide_top_toolbar: true,
-      hide_side_toolbar: true,
-      hide_legend: false,
-      save_image: false,
-      details: false,
-      hotlist: false,
-      calendar: false,
-      studies: [
-        'MASimple@tv-basicstudies',
-        'RSI@tv-basicstudies',
-      ],
-      backgroundColor: '#050505',
-      gridColor: 'rgba(255, 255, 255, 0.06)',
-      watchlist: [],
+      hide_top_toolbar: '1',
+      hide_side_toolbar: '1',
+      withdateranges: '0',
+      saveimage: '0',
+      details: '0',
+      hotlist: '0',
+      calendar: '0',
+      symboledit: '0',
+      toolbarbg: '#050505',
+      hideideas: '1',
     });
 
-    script.onload = () => {
-      setIsLoaded(true);
-    };
-    script.onerror = () => {
-      setIsLoaded(true);
-    };
+    return `https://s.tradingview.com/widgetembed/?${params.toString()}`;
+  }, [interval, tradingViewSymbol]);
 
-    widgetRef.current.appendChild(script);
+  const fallbackData = useMemo(() => {
+    return Array.from({ length: 40 }, (_, index) => ({
+      time: index.toString(),
+      value: livePrice * (1 + (Math.sin(index / 3) * 0.02) - (index * 0.00045)),
+    }));
+  }, [livePrice]);
+
+  const yDomain = useMemo(() => {
+    const values = fallbackData.map((point) => point.value);
+    const min = Math.min(...values);
+    const max = Math.max(...values);
+    const padding = (max - min) * 0.2 || 1;
+
+    return [min - padding, max + padding];
+  }, [fallbackData]);
+
+  useEffect(() => {
+    setChartMode('loading');
+
+    const fallbackTimer = window.setTimeout(() => {
+      setChartMode((previous) => (previous === 'loading' ? 'fallback' : previous));
+    }, 5500);
 
     return () => {
-      window.clearTimeout(loadingTimeout);
-      if (widgetRef.current) {
-        widgetRef.current.innerHTML = '';
-      }
+      window.clearTimeout(fallbackTimer);
     };
-  }, [interval, tradingViewSymbol]);
+  }, [widgetSrc]);
 
   return (
     <div className="relative h-full w-full rounded-2xl border border-white/5 bg-[#070707] overflow-hidden">
-      <div className="tradingview-widget-container h-full w-full" ref={widgetRef}>
-        <div className="tradingview-widget-container__widget h-full w-full" />
-      </div>
+      {chartMode !== 'fallback' && (
+        <iframe
+          key={widgetSrc}
+          title={`${symbol} TradingView chart`}
+          src={widgetSrc}
+          className="h-full w-full border-0"
+          loading="eager"
+          allow="fullscreen"
+          onLoad={() => setChartMode('widget')}
+          onError={() => setChartMode('fallback')}
+        />
+      )}
 
-      {!isLoaded && (
+      {chartMode === 'fallback' && (
+        <div className="h-full w-full">
+          <ResponsiveContainer width="100%" height="100%">
+            <LineChart data={fallbackData}>
+              <YAxis hide domain={yDomain} />
+              <Line
+                type="monotone"
+                dataKey="value"
+                stroke={isPositive ? '#22c55e' : '#f97316'}
+                strokeWidth={3}
+                dot={false}
+              />
+              <ReferenceDot
+                x={fallbackData[fallbackData.length - 1].time}
+                y={fallbackData[fallbackData.length - 1].value}
+                r={4}
+                fill={isPositive ? '#22c55e' : '#f97316'}
+                className="animate-pulse"
+              />
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
+      )}
+
+      {chartMode === 'loading' && (
         <div className="absolute inset-0 bg-[#070707] animate-pulse" />
       )}
     </div>
