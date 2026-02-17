@@ -318,7 +318,29 @@ function ActionModal({ transaction, onClose, onApprove, onDecline, onDelete }) {
                     <Info label="Amount" value={money(transaction.amount)} />
                     <Info label="Status" value={(transaction.status || '-').toUpperCase()} />
                     <Info label="Tx Hash" value={shortHash(transaction.transaction_hash)} />
-                    <Info label="Destination" value={transaction.destination || '-'} />
+                    <div className="rounded-lg border border-slate-800 bg-slate-950/70 px-3 py-2 sm:col-span-2">
+                        <p className="text-[11px] uppercase tracking-wide text-slate-500">Destination</p>
+                        <div className="mt-1 flex items-center gap-2">
+                            <p className="text-xs text-slate-200 break-all">
+                                {transaction.destination || '-'}
+                            </p>
+                            {transaction.destination ? (
+                                <button
+                                    type="button"
+                                    onClick={() => navigator.clipboard.writeText(transaction.destination)}
+                                    className="ml-auto inline-flex items-center gap-1 rounded-md border border-slate-700 px-2 py-1 text-[11px] font-semibold text-slate-200 transition hover:bg-slate-800"
+                                >
+                                    <svg viewBox="0 0 20 20" className="h-4 w-4 text-slate-300" aria-hidden="true">
+                                        <path
+                                            fill="currentColor"
+                                            d="M7 2a2 2 0 0 0-2 2v1H4a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2v-1h1a2 2 0 0 0 2-2V7.414a2 2 0 0 0-.586-1.414l-2.414-2.414A2 2 0 0 0 10.586 3H10V4a2 2 0 0 1-2 2H7V4a2 2 0 0 0-2-2Zm3 5a1 1 0 0 0 1-1V4.414L13.586 7H10Zm-3 0h2v2a2 2 0 0 0 2 2h2v3a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h1v1a1 1 0 0 0 1 1Z"
+                                        />
+                                    </svg>
+                                    Copy
+                                </button>
+                            ) : null}
+                        </div>
+                    </div>
                     <Info label="Submitted" value={date(transaction.submitted_at || transaction.created_at)} />
                     <Info label="Processed" value={date(transaction.processed_at)} />
                 </dl>
