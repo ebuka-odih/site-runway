@@ -136,6 +136,33 @@ class WalletController extends Controller
             sendEmail: false,
         ));
 
+        $adminMessage = sprintf(
+            'Deposit request from %s (%s) for %s %s.',
+            (string) ($user->name ?? 'User'),
+            (string) ($user->email ?? '-'),
+            $this->formatNumber((float) $deposit->amount),
+            (string) $deposit->currency
+        );
+        $adminActionUrl = '/admin/transactions?tab=deposit';
+        $admins = User::query()->where('is_admin', true)->get();
+
+        if ($admins->isNotEmpty()) {
+            Notification::send($admins, new AdminApprovalNotification(
+                title: 'Deposit approval required',
+                message: $adminMessage,
+                actionUrl: $adminActionUrl,
+            ));
+        } else {
+            $supportEmail = (string) (SiteSettings::get()['support_email'] ?? '');
+            if ($supportEmail !== '') {
+                Notification::route('mail', $supportEmail)->notify(new AdminApprovalNotification(
+                    title: 'Deposit approval required',
+                    message: $adminMessage,
+                    actionUrl: $adminActionUrl,
+                ));
+            }
+        }
+
         return response()->json([
             'message' => 'Deposit request created.',
             'data' => $deposit,
