@@ -6,7 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Asset;
 use App\Models\Order;
 use App\Services\Finnhub\FinnhubStockSyncService;
-use App\Services\FreeCryptoApi\FreeCryptoApiSyncService;
+use App\Services\Coinpaprika\CoinpaprikaSyncService;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Http\JsonResponse;
@@ -19,7 +19,7 @@ class MarketController extends Controller
     public function index(
         Request $request,
         FinnhubStockSyncService $stockSyncService,
-        FreeCryptoApiSyncService $cryptoSyncService
+        CoinpaprikaSyncService $cryptoSyncService
     ): JsonResponse
     {
         $validated = $request->validate([
@@ -145,7 +145,7 @@ class MarketController extends Controller
         }
     }
 
-    private function syncCryptoQuotesIfDue(?string $requestedType, FreeCryptoApiSyncService $cryptoSyncService): void
+    private function syncCryptoQuotesIfDue(?string $requestedType, CoinpaprikaSyncService $cryptoSyncService): void
     {
         if (app()->environment('testing')) {
             return;
@@ -155,12 +155,12 @@ class MarketController extends Controller
             return;
         }
 
-        if (! filled(config('services.freecryptoapi.api_key'))) {
+        if (! filled(config('services.coinpaprika.base_url'))) {
             return;
         }
 
         // Fallback sync when scheduler/cron is delayed. Throttle to once per minute.
-        if (! Cache::add('crypto:freecryptoapi:lazy-sync-lock', now()->timestamp, now()->addSeconds(55))) {
+        if (! Cache::add('crypto:coinpaprika:lazy-sync-lock', now()->timestamp, now()->addSeconds(55))) {
             return;
         }
 
@@ -169,7 +169,7 @@ class MarketController extends Controller
         try {
             $cryptoSyncService->sync($calls);
         } catch (Throwable $exception) {
-            Log::warning('FreeCryptoAPI fallback sync failed during market assets request.', [
+            Log::warning('Coinpaprika fallback sync failed during market assets request.', [
                 'exception' => $exception->getMessage(),
             ]);
         }

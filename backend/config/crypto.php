@@ -4,7 +4,7 @@ return [
 
     /*
     |--------------------------------------------------------------------------
-    | FreeCryptoAPI Sync Settings
+    | Coinpaprika Sync Settings
     |--------------------------------------------------------------------------
     |
     | max_calls_per_run should match your effective provider rate limits
@@ -13,7 +13,7 @@ return [
     */
 
     'sync' => [
-        'max_calls_per_run' => (int) env('FREECRYPTOAPI_SYNC_CALLS_PER_RUN', 8),
+        'max_calls_per_run' => (int) env('COINPAPRIKA_SYNC_CALLS_PER_RUN', 8),
     ],
 
     /*
@@ -47,13 +47,13 @@ return [
     | Symbol Mapping
     |--------------------------------------------------------------------------
     |
-    | Optional per-symbol mapping when provider symbols differ from your
-    | local asset symbols.
+    | Optional per-symbol mapping when provider identifiers differ from your
+    | local asset symbols. Coinpaprika uses ids like "btc-bitcoin".
     |
     */
 
     'symbol_map' => [
-        // 'BTC' => 'BTCUSDT',
+        // 'BTC' => 'btc-bitcoin',
     ],
 
 ];

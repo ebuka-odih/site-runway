@@ -41,11 +41,9 @@ return [
         'timeout' => (int) env('FINNHUB_TIMEOUT', 10),
     ],
 
-    'freecryptoapi' => [
-        'api_key' => env('FREECRYPTOAPI_API_KEY'),
-        'base_url' => env('FREECRYPTOAPI_BASE_URL', 'https://api.freecryptoapi.com/v1'),
-        'quote_endpoint' => env('FREECRYPTOAPI_QUOTE_ENDPOINT', '/getData'),
-        'timeout' => (int) env('FREECRYPTOAPI_TIMEOUT', 10),
+    'coinpaprika' => [
+        'base_url' => env('COINPAPRIKA_BASE_URL', 'https://api.coinpaprika.com/v1'),
+        'timeout' => (int) env('COINPAPRIKA_TIMEOUT', 10),
     ],
 
 ];

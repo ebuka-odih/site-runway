@@ -1,15 +1,15 @@
 <?php
 
-namespace App\Services\FreeCryptoApi;
+namespace App\Services\Coinpaprika;
 
 use App\Models\Asset;
 use Illuminate\Support\Facades\Cache;
 use RuntimeException;
 use Throwable;
 
-class FreeCryptoApiSyncService
+class CoinpaprikaSyncService
 {
-    public function __construct(private readonly FreeCryptoApiClient $freeCryptoApiClient) {}
+    public function __construct(private readonly CoinpaprikaClient $coinpaprikaClient) {}
 
     /**
      * @param  array<int, string>  $symbols
@@ -26,8 +26,8 @@ class FreeCryptoApiSyncService
      */
     public function sync(int $maxCalls, array $symbols = [], bool $createMissing = true): array
     {
-        if (! $this->freeCryptoApiClient->isConfigured()) {
-            throw new RuntimeException('FREECRYPTOAPI_API_KEY is missing. Add it to your backend .env before syncing.');
+        if (! $this->coinpaprikaClient->isConfigured()) {
+            throw new RuntimeException('COINPAPRIKA_BASE_URL is missing. Add it to your backend .env before syncing.');
         }
 
         $universe = $this->resolveUniverse($symbols);
@@ -59,10 +59,8 @@ class FreeCryptoApiSyncService
         $errors = [];
 
         foreach ($symbolsToSync as $symbol) {
-            $providerSymbol = $this->providerSymbol($symbol);
-
             try {
-                $quote = $this->freeCryptoApiClient->quote($providerSymbol);
+                $quote = $this->coinpaprikaClient->quote($symbol);
             } catch (Throwable $exception) {
                 $errors[$symbol] = $exception->getMessage();
 
@@ -70,7 +68,7 @@ class FreeCryptoApiSyncService
             }
 
             if (($quote['current_price'] ?? 0) <= 0) {
-                $skipped[$symbol] = 'FreeCryptoAPI returned empty/invalid price.';
+                $skipped[$symbol] = 'Coinpaprika returned empty/invalid price.';
 
                 continue;
             }
@@ -163,7 +161,7 @@ class FreeCryptoApiSyncService
      */
     private function cursorCacheKey(array $universe): string
     {
-        return 'crypto:freecryptoapi:cursor:'.sha1(implode(',', $universe));
+        return 'crypto:coinpaprika:cursor:'.sha1(implode(',', $universe));
     }
 
     private function displayName(string $symbol): string
@@ -171,18 +169,5 @@ class FreeCryptoApiSyncService
         $name = config('crypto.popular.'.strtoupper($symbol));
 
         return is_string($name) && $name !== '' ? $name : strtoupper($symbol);
-    }
-
-    private function providerSymbol(string $symbol): string
-    {
-        $mapped = config('crypto.symbol_map.'.strtoupper($symbol));
-
-        if (! is_string($mapped)) {
-            return strtoupper($symbol);
-        }
-
-        $trimmed = strtoupper(trim($mapped));
-
-        return $trimmed !== '' ? $trimmed : strtoupper($symbol);
     }
 }

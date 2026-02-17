@@ -2,26 +2,26 @@
 
 namespace App\Console\Commands;
 
-use App\Services\FreeCryptoApi\FreeCryptoApiSyncService;
+use App\Services\Coinpaprika\CoinpaprikaSyncService;
 use Illuminate\Console\Command;
 use Throwable;
 
-class SyncFreeCryptoApiCommand extends Command
+class SyncCoinpaprikaCommand extends Command
 {
     /**
      * @var string
      */
-    protected $signature = 'crypto:sync-freecryptoapi
-                            {--calls= : Max FreeCryptoAPI quote calls for this run}
+    protected $signature = 'crypto:sync-coinpaprika
+                            {--calls= : Max Coinpaprika quote calls for this run}
                             {--symbol=* : Specific symbols to sync (repeatable)}
                             {--no-create : Update only existing crypto assets}';
 
     /**
      * @var string
      */
-    protected $description = 'Sync crypto prices from FreeCryptoAPI into local assets table using a call-budgeted rotation.';
+    protected $description = 'Sync crypto prices from Coinpaprika into local assets table using a call-budgeted rotation.';
 
-    public function handle(FreeCryptoApiSyncService $syncService): int
+    public function handle(CoinpaprikaSyncService $syncService): int
     {
         $defaultCalls = (int) config('crypto.sync.max_calls_per_run', 8);
         $calls = (int) ($this->option('calls') ?? $defaultCalls);
@@ -44,7 +44,7 @@ class SyncFreeCryptoApiCommand extends Command
             return self::FAILURE;
         }
 
-        $this->info('FreeCryptoAPI sync completed.');
+        $this->info('Coinpaprika sync completed.');
         $this->line(sprintf(
             'Universe: %d | Calls used: %d | Cursor: %d -> %d',
             $result['requested_universe'],
