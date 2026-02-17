@@ -235,6 +235,7 @@ class WalletController extends Controller
             $withdrawalsThisCycle = WalletTransaction::query()
                 ->where('wallet_id', $wallet->id)
                 ->where('type', 'withdrawal')
+                ->where('status', 'approved')
                 ->where('occurred_at', '>=', $cycleStart)
                 ->count();
 
