@@ -59,6 +59,11 @@ class FreeCryptoApiClient
             throw new RuntimeException('FreeCryptoAPI response is not a valid JSON object.');
         }
 
+        $symbols = $payload['symbols'] ?? $payload['symbol'] ?? [];
+        if (is_array($symbols) && isset($symbols[0]) && is_array($symbols[0])) {
+            $payload = $symbols[0];
+        }
+
         $currentPrice = $this->findFirstNumericValue($payload, [
             'price',
             'current_price',
