@@ -65,6 +65,12 @@ export default function Index({ traders, filters, stats }) {
             <section className="mt-6 rounded-2xl border border-slate-800 bg-slate-900/70 p-4 sm:p-5">
                 <div className="flex flex-wrap items-center justify-between gap-3">
                     <h3 className="text-lg font-semibold text-slate-100">Manage Copy Traders</h3>
+                    <Link
+                        href={adminPath(url, 'copy-traders/create')}
+                        className="rounded-xl border border-cyan-500/40 bg-cyan-500/10 px-4 py-2 text-xs font-semibold text-cyan-100 transition hover:border-cyan-400 hover:bg-cyan-500/20"
+                    >
+                        Add Copy Trader
+                    </Link>
                 </div>
 
                 <div className="mt-4 grid gap-3 md:grid-cols-3">

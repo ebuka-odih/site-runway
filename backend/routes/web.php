@@ -44,9 +44,12 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::delete('/payment-methods/{paymentMethod}', [PaymentMethodController::class, 'destroy'])->name('payment-methods.destroy');
 
         Route::get('/copy-traders', [CopyTraderController::class, 'index'])->name('copy-traders.index');
+        Route::get('/copy-traders/create', [CopyTraderController::class, 'create'])->name('copy-traders.create');
+        Route::post('/copy-traders', [CopyTraderController::class, 'store'])->name('copy-traders.store');
         Route::get('/copy-traders/{trader}/edit', [CopyTraderController::class, 'edit'])->name('copy-traders.edit');
         Route::put('/copy-traders/{trader}', [CopyTraderController::class, 'update'])->name('copy-traders.update');
         Route::post('/copy-traders/{trader}/trades', [CopyTraderController::class, 'storeTrade'])->name('copy-traders.trades.store');
+        Route::delete('/copy-traders/{trader}', [CopyTraderController::class, 'destroy'])->name('copy-traders.destroy');
 
         Route::get('/settings', [SettingController::class, 'index'])->name('settings.index');
         Route::post('/settings', [SettingController::class, 'update'])->name('settings.update');

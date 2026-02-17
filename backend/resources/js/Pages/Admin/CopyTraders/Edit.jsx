@@ -1,6 +1,6 @@
 import AdminLayout from '@/Layouts/AdminLayout';
 import { adminPath } from '@/lib/adminPath';
-import { Link, useForm, usePage } from '@inertiajs/react';
+import { Link, router, useForm, usePage } from '@inertiajs/react';
 
 const toLocalInputValue = (value) => {
     if (!value) {
@@ -51,6 +51,14 @@ export default function Edit({ trader, assets, active_followers }) {
     const submit = (event) => {
         event.preventDefault();
         form.put(adminPath(url, `copy-traders/${trader.id}`));
+    };
+
+    const handleDelete = () => {
+        if (!window.confirm('Delete this copy trader? This will remove all related follower relationships.')) {
+            return;
+        }
+
+        router.delete(adminPath(url, `copy-traders/${trader.id}`));
     };
 
     const submitTrade = (event) => {
@@ -235,6 +243,14 @@ export default function Edit({ trader, assets, active_followers }) {
                             >
                                 Cancel
                             </Link>
+
+                            <button
+                                type="button"
+                                onClick={handleDelete}
+                                className="rounded-xl border border-rose-500/50 px-5 py-2.5 text-sm font-semibold text-rose-200 transition hover:border-rose-400 hover:bg-rose-500/10"
+                            >
+                                Delete Trader
+                            </button>
                         </div>
                     </form>
                 </section>

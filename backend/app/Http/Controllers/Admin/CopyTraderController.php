@@ -59,6 +59,11 @@ class CopyTraderController extends Controller
         ]);
     }
 
+    public function create(): Response
+    {
+        return Inertia::render('Admin/CopyTraders/Create');
+    }
+
     public function edit(Trader $trader): Response
     {
         $assets = Asset::query()
@@ -81,6 +86,33 @@ class CopyTraderController extends Controller
             ]),
             'active_followers' => $activeFollowers,
         ]);
+    }
+
+    public function store(Request $request): RedirectResponse
+    {
+        $validated = $request->validate([
+            'display_name' => ['required', 'string', 'max:255'],
+            'username' => ['required', 'string', 'max:255', Rule::unique('traders', 'username')],
+            'avatar_color' => ['nullable', 'string', 'max:50'],
+            'strategy' => ['required', 'string', 'max:255'],
+            'copy_fee' => ['required', 'numeric', 'min:0'],
+            'total_return' => ['required', 'numeric'],
+            'win_rate' => ['required', 'numeric', 'min:0', 'max:100'],
+            'copiers_count' => ['required', 'integer', 'min:0'],
+            'risk_score' => ['required', 'integer', 'min:1', 'max:10'],
+            'joined_at' => ['required', 'date'],
+            'is_verified' => ['required', 'boolean'],
+            'is_active' => ['required', 'boolean'],
+        ]);
+
+        $trader = Trader::query()->create([
+            ...$validated,
+            'joined_at' => Carbon::parse($validated['joined_at']),
+        ]);
+
+        return redirect()
+            ->route('admin.copy-traders.edit', $trader)
+            ->with('success', 'Copy trader created successfully.');
     }
 
     public function update(Request $request, Trader $trader): RedirectResponse
@@ -108,6 +140,15 @@ class CopyTraderController extends Controller
         return redirect()
             ->route('admin.copy-traders.edit', $trader)
             ->with('success', 'Copy trader updated successfully.');
+    }
+
+    public function destroy(Trader $trader): RedirectResponse
+    {
+        $trader->delete();
+
+        return redirect()
+            ->route('admin.copy-traders.index')
+            ->with('success', 'Copy trader deleted successfully.');
     }
 
     public function storeTrade(Request $request, Trader $trader): RedirectResponse
