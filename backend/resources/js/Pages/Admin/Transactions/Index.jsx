@@ -1,7 +1,7 @@
 import AdminLayout from '@/Layouts/AdminLayout';
 import { adminPath } from '@/lib/adminPath';
 import { Link, router, usePage } from '@inertiajs/react';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
 const tabs = [
     { key: 'deposit', label: 'Deposits' },
@@ -287,6 +287,12 @@ function ActionModal({ transaction, onClose, onApprove, onDecline, onDelete }) {
         return null;
     }
 
+    const [copied, setCopied] = useState(false);
+
+    useEffect(() => {
+        setCopied(false);
+    }, [transaction.id]);
+
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 p-4">
             <button type="button" className="absolute inset-0" onClick={onClose} aria-label="Close action modal" />
@@ -327,16 +333,28 @@ function ActionModal({ transaction, onClose, onApprove, onDecline, onDelete }) {
                             {transaction.destination ? (
                                 <button
                                     type="button"
-                                    onClick={() => navigator.clipboard.writeText(transaction.destination)}
-                                    className="ml-auto inline-flex items-center gap-1 rounded-md border border-slate-700 px-2 py-1 text-[11px] font-semibold text-slate-200 transition hover:bg-slate-800"
+                                    onClick={() => {
+                                        navigator.clipboard.writeText(transaction.destination);
+                                        setCopied(true);
+                                        window.setTimeout(() => setCopied(false), 1500);
+                                    }}
+                                    className={`ml-auto inline-flex items-center gap-1 rounded-md border px-2 py-1 text-[11px] font-semibold transition ${
+                                        copied
+                                            ? 'border-emerald-500/60 text-emerald-200'
+                                            : 'border-slate-700 text-slate-200 hover:bg-slate-800'
+                                    }`}
                                 >
-                                    <svg viewBox="0 0 20 20" className="h-4 w-4 text-slate-300" aria-hidden="true">
+                                    <svg
+                                        viewBox="0 0 20 20"
+                                        className={`h-4 w-4 ${copied ? 'text-emerald-300' : 'text-slate-300'}`}
+                                        aria-hidden="true"
+                                    >
                                         <path
                                             fill="currentColor"
                                             d="M7 2a2 2 0 0 0-2 2v1H4a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2v-1h1a2 2 0 0 0 2-2V7.414a2 2 0 0 0-.586-1.414l-2.414-2.414A2 2 0 0 0 10.586 3H10V4a2 2 0 0 1-2 2H7V4a2 2 0 0 0-2-2Zm3 5a1 1 0 0 0 1-1V4.414L13.586 7H10Zm-3 0h2v2a2 2 0 0 0 2 2h2v3a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h1v1a1 1 0 0 0 1 1Z"
                                         />
                                     </svg>
-                                    Copy
+                                    {copied ? 'Copied' : 'Copy'}
                                 </button>
                             ) : null}
                         </div>
