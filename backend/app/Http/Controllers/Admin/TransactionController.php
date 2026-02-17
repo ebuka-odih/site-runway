@@ -446,6 +446,7 @@ class TransactionController extends Controller
             'user_name' => $walletTransaction->wallet?->user?->name,
             'user_email' => $walletTransaction->wallet?->user?->email,
             'transaction_hash' => data_get($walletTransaction->metadata, 'transaction_hash'),
+            'destination' => data_get($walletTransaction->metadata, 'destination'),
             'receipt_url' => null,
             'has_receipt' => false,
             'submitted_at' => $walletTransaction->occurred_at?->toIso8601String(),

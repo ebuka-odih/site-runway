@@ -4,10 +4,11 @@ import { useMarket } from '../context/MarketContext';
 import type { DepositRequestItem, WalletSummaryData } from '../types';
 
 const WalletPage: React.FC = () => {
-  const { fetchWalletSummary, createDeposit, createWithdrawal, submitDepositProof } = useMarket();
+  const { fetchWalletSummary, fetchCopyFollowing, createDeposit, createWithdrawal, submitDepositProof } = useMarket();
   const [summary, setSummary] = useState<WalletSummaryData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [hasActiveCopyTrader, setHasActiveCopyTrader] = useState(false);
 
   const [isDepositFormOpen, setIsDepositFormOpen] = useState(false);
   const [isWithdrawalFormOpen, setIsWithdrawalFormOpen] = useState(false);
@@ -24,6 +25,15 @@ const WalletPage: React.FC = () => {
   const [withdrawalDestination, setWithdrawalDestination] = useState('');
   const [withdrawalStatus, setWithdrawalStatus] = useState<'input' | 'processing' | 'success'>('input');
 
+  const loadCopyStatus = async () => {
+    try {
+      const payload = await fetchCopyFollowing();
+      setHasActiveCopyTrader(payload.items.some((item) => item.status === 'active'));
+    } catch (exception) {
+      setHasActiveCopyTrader(false);
+    }
+  };
+
   const loadSummary = async () => {
     setError(null);
 
@@ -36,6 +46,8 @@ const WalletPage: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
+
+    await loadCopyStatus();
   };
 
   useEffect(() => {
@@ -133,6 +145,11 @@ const WalletPage: React.FC = () => {
 
     if (!Number.isFinite(parsedAmount) || parsedAmount <= 0) {
       setError('Please enter a valid withdrawal amount.');
+      return;
+    }
+
+    if (hasActiveCopyTrader && parsedAmount > 500) {
+      setError('Active copy trading accounts are limited to $500 per withdrawal request.');
       return;
     }
 
@@ -416,9 +433,35 @@ const WalletPage: React.FC = () => {
                   <input
                     type="text"
                     value={withdrawalAmount}
-                    onChange={(event) => setWithdrawalAmount(event.target.value)}
+                    onChange={(event) => {
+                      const rawValue = event.target.value;
+
+                      if (!hasActiveCopyTrader) {
+                        setWithdrawalAmount(rawValue);
+                        return;
+                      }
+
+                      if (rawValue.trim() === '') {
+                        setWithdrawalAmount(rawValue);
+                        return;
+                      }
+
+                      const numericValue = parseFloat(rawValue.replace(/[^0-9.]/g, ''));
+
+                      if (Number.isFinite(numericValue) && numericValue > 500) {
+                        setWithdrawalAmount('500');
+                        return;
+                      }
+
+                      setWithdrawalAmount(rawValue);
+                    }}
                     className="w-full bg-[#121212] border border-white/5 rounded-xl py-4 px-4 text-lg font-black text-white focus:outline-none focus:border-orange-500/50 transition-all placeholder:text-zinc-800"
                   />
+                  {hasActiveCopyTrader && (
+                    <p className="text-[11px] font-bold text-orange-300/80 ml-1">
+                      Copy trading is active: withdrawals are capped at $500 per request (first two approvals only).
+                    </p>
+                  )}
                 </div>
 
                 <div className="space-y-1.5">

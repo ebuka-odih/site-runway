@@ -318,6 +318,7 @@ function ActionModal({ transaction, onClose, onApprove, onDecline, onDelete }) {
                     <Info label="Amount" value={money(transaction.amount)} />
                     <Info label="Status" value={(transaction.status || '-').toUpperCase()} />
                     <Info label="Tx Hash" value={shortHash(transaction.transaction_hash)} />
+                    <Info label="Destination" value={transaction.destination || '-'} />
                     <Info label="Submitted" value={date(transaction.submitted_at || transaction.created_at)} />
                     <Info label="Processed" value={date(transaction.processed_at)} />
                 </dl>
