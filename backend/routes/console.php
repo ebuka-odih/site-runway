@@ -13,6 +13,11 @@ Schedule::command('stocks:sync-finnhub')
     ->withoutOverlapping()
     ->when(fn (): bool => filled(config('services.finnhub.api_key')));
 
+Schedule::command('crypto:sync-freecryptoapi')
+    ->everyMinute()
+    ->withoutOverlapping()
+    ->when(fn (): bool => filled(config('services.freecryptoapi.api_key')));
+
 Schedule::command('portfolio:capture-snapshots')
     ->everyMinute()
     ->withoutOverlapping();

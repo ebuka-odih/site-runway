@@ -41,4 +41,11 @@ return [
         'timeout' => (int) env('FINNHUB_TIMEOUT', 10),
     ],
 
+    'freecryptoapi' => [
+        'api_key' => env('FREECRYPTOAPI_API_KEY'),
+        'base_url' => env('FREECRYPTOAPI_BASE_URL', 'https://freecryptoapi.com/api/v1'),
+        'quote_endpoint' => env('FREECRYPTOAPI_QUOTE_ENDPOINT', '/getData'),
+        'timeout' => (int) env('FREECRYPTOAPI_TIMEOUT', 10),
+    ],
+
 ];

@@ -126,3 +126,31 @@ php artisan stocks:sync-finnhub --calls=3 --symbol=AAPL --symbol=MSFT --symbol=N
 ```
 
 The scheduler is configured to run this every minute (call-budgeted rotation) when `FINNHUB_API_KEY` is set.
+
+## FreeCryptoAPI Crypto Sync
+
+Set these env values:
+
+```bash
+FREECRYPTOAPI_API_KEY=your_freecryptoapi_key
+FREECRYPTOAPI_BASE_URL=https://freecryptoapi.com/api/v1
+FREECRYPTOAPI_QUOTE_ENDPOINT=/getData
+FREECRYPTOAPI_TIMEOUT=10
+FREECRYPTOAPI_SYNC_CALLS_PER_RUN=8
+```
+
+Manual sync run:
+
+```bash
+php artisan crypto:sync-freecryptoapi
+```
+
+Target specific symbols:
+
+```bash
+php artisan crypto:sync-freecryptoapi --calls=3 --symbol=BTC --symbol=ETH --symbol=SOL
+```
+
+The scheduler is configured to run this every minute (call-budgeted rotation) when `FREECRYPTOAPI_API_KEY` is set.
+
+If your provider symbol differs from local symbols, map it in `config/crypto.php` using `symbol_map`.

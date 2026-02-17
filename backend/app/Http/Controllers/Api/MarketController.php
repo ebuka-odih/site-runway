@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Asset;
 use App\Models\Order;
 use App\Services\Finnhub\FinnhubStockSyncService;
+use App\Services\FreeCryptoApi\FreeCryptoApiSyncService;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Http\JsonResponse;
@@ -15,7 +16,11 @@ use Throwable;
 
 class MarketController extends Controller
 {
-    public function index(Request $request, FinnhubStockSyncService $stockSyncService): JsonResponse
+    public function index(
+        Request $request,
+        FinnhubStockSyncService $stockSyncService,
+        FreeCryptoApiSyncService $cryptoSyncService
+    ): JsonResponse
     {
         $validated = $request->validate([
             'type' => ['sometimes', Rule::in(['stock', 'crypto', 'etf', 'share'])],
@@ -23,6 +28,7 @@ class MarketController extends Controller
         ]);
 
         $this->syncStockQuotesIfDue($validated['type'] ?? null, $stockSyncService);
+        $this->syncCryptoQuotesIfDue($validated['type'] ?? null, $cryptoSyncService);
 
         $assets = Asset::query()
             ->when(isset($validated['type']), fn ($query) => $query->where('type', $validated['type']))
@@ -134,6 +140,36 @@ class MarketController extends Controller
             $stockSyncService->sync($calls);
         } catch (Throwable $exception) {
             Log::warning('Finnhub fallback sync failed during market assets request.', [
+                'exception' => $exception->getMessage(),
+            ]);
+        }
+    }
+
+    private function syncCryptoQuotesIfDue(?string $requestedType, FreeCryptoApiSyncService $cryptoSyncService): void
+    {
+        if (app()->environment('testing')) {
+            return;
+        }
+
+        if ($requestedType !== null && $requestedType !== 'crypto') {
+            return;
+        }
+
+        if (! filled(config('services.freecryptoapi.api_key'))) {
+            return;
+        }
+
+        // Fallback sync when scheduler/cron is delayed. Throttle to once per minute.
+        if (! Cache::add('crypto:freecryptoapi:lazy-sync-lock', now()->timestamp, now()->addSeconds(55))) {
+            return;
+        }
+
+        $calls = max(1, (int) config('crypto.sync.max_calls_per_run', 8));
+
+        try {
+            $cryptoSyncService->sync($calls);
+        } catch (Throwable $exception) {
+            Log::warning('FreeCryptoAPI fallback sync failed during market assets request.', [
                 'exception' => $exception->getMessage(),
             ]);
         }
