@@ -216,6 +216,7 @@ export interface TraderItem {
   username: string;
   avatarColor?: string | null;
   strategy: string;
+  copyFee: number;
   return: number;
   winRate: number;
   copiers: number;
@@ -238,6 +239,7 @@ export interface CopyRelationshipItem {
   traderId: string;
   traderName: string;
   strategy: string;
+  copyFee: number;
   status: 'active' | 'paused' | 'closed';
   allocation: number;
   copyRatio: number;

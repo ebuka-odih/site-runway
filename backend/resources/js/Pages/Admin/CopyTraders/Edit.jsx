@@ -27,6 +27,7 @@ export default function Edit({ trader, assets, active_followers }) {
         username: trader.username || '',
         avatar_color: trader.avatar_color || '',
         strategy: trader.strategy || '',
+        copy_fee: trader.copy_fee ?? 0,
         total_return: trader.total_return ?? 0,
         win_rate: trader.win_rate ?? 0,
         copiers_count: trader.copiers_count ?? 0,
@@ -131,6 +132,18 @@ export default function Edit({ trader, assets, active_followers }) {
                         </div>
 
                         <div className="grid gap-4 md:grid-cols-2">
+                            <Field label="Copy Fee ($)" error={form.errors.copy_fee} required>
+                                <input
+                                    type="number"
+                                    step="0.01"
+                                    min="0"
+                                    value={form.data.copy_fee}
+                                    onChange={(event) => form.setData('copy_fee', event.target.value)}
+                                    className={fieldClass(form.errors.copy_fee)}
+                                    required
+                                />
+                            </Field>
+
                             <Field label="Total Return (%)" error={form.errors.total_return} required>
                                 <input
                                     type="number"

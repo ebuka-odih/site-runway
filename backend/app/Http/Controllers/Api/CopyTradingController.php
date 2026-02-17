@@ -8,8 +8,11 @@ use App\Http\Requests\UpdateCopyRelationshipRequest;
 use App\Models\CopyRelationship;
 use App\Models\CopyTrade;
 use App\Models\Trader;
+use App\Models\User;
+use App\Models\Wallet;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 
 class CopyTradingController extends Controller
@@ -59,6 +62,7 @@ class CopyTradingController extends Controller
                         'username' => $trader->username,
                         'avatar_color' => $trader->avatar_color,
                         'strategy' => $trader->strategy,
+                        'copy_fee' => (float) $trader->copy_fee,
                         'return' => (float) $trader->total_return,
                         'win_rate' => (float) $trader->win_rate,
                         'copiers' => (int) $trader->copiers_count,
@@ -97,6 +101,7 @@ class CopyTradingController extends Controller
                     'trader_id' => $relationship->trader_id,
                     'trader_name' => $relationship->trader->display_name,
                     'strategy' => $relationship->trader->strategy,
+                    'copy_fee' => (float) ($relationship->trader->copy_fee ?? 0),
                     'status' => $relationship->status,
                     'allocation' => (float) $relationship->allocation_amount,
                     'copy_ratio' => (float) $relationship->copy_ratio,
@@ -121,29 +126,89 @@ class CopyTradingController extends Controller
     public function follow(FollowTraderRequest $request): JsonResponse
     {
         $validated = $request->validated();
+        $user = $request->user();
+        $trader = Trader::query()->whereKey($validated['trader_id'])->firstOrFail();
 
         $existingRelationship = CopyRelationship::query()
-            ->where('user_id', $request->user()->id)
+            ->where('user_id', $user->id)
             ->where('trader_id', $validated['trader_id'])
             ->first();
 
-        $relationship = CopyRelationship::query()->updateOrCreate(
-            [
-                'user_id' => $request->user()->id,
-                'trader_id' => $validated['trader_id'],
-            ],
-            [
-                'allocation_amount' => $validated['allocation_amount'],
-                'copy_ratio' => $validated['copy_ratio'],
-                'status' => 'active',
-                'started_at' => now(),
-                'ended_at' => null,
-            ]
-        );
+        $shouldCharge = ! $existingRelationship || $existingRelationship->status !== 'active';
+        $copyFee = (float) $trader->copy_fee;
+        $wallet = null;
 
-        if (! $existingRelationship || $existingRelationship->status !== 'active') {
-            Trader::query()->whereKey($validated['trader_id'])->increment('copiers_count');
+        if ($shouldCharge && $copyFee > 0) {
+            $wallet = $this->resolveUserWallet($user);
+            if ((float) $wallet->cash_balance < $copyFee) {
+                return response()->json([
+                    'message' => 'Insufficient balance to cover the copy trader fee.',
+                    'available_balance' => (float) $wallet->cash_balance,
+                    'required_fee' => $copyFee,
+                ], 403);
+            }
         }
+
+        $relationship = null;
+
+        DB::transaction(function () use (
+            $validated,
+            $user,
+            $trader,
+            $existingRelationship,
+            $shouldCharge,
+            $copyFee,
+            &$wallet,
+            &$relationship
+        ) {
+            if ($shouldCharge && $copyFee > 0) {
+                $wallet = Wallet::query()->whereKey($wallet?->id)->lockForUpdate()->first();
+
+                if (! $wallet) {
+                    $wallet = $this->resolveUserWallet($user);
+                }
+
+                $cashBalance = (float) $wallet->cash_balance;
+
+                if ($cashBalance < $copyFee) {
+                    abort(403, 'Insufficient balance to cover the copy trader fee.');
+                }
+
+                $wallet->cash_balance = $cashBalance - $copyFee;
+                $wallet->save();
+
+                $wallet->transactions()->create([
+                    'type' => 'copy_fee',
+                    'status' => 'approved',
+                    'direction' => 'debit',
+                    'amount' => $copyFee,
+                    'notes' => 'Copy trader fee charged on activation',
+                    'occurred_at' => now(),
+                    'metadata' => [
+                        'trader_id' => $trader->id,
+                        'trader_name' => $trader->display_name,
+                    ],
+                ]);
+            }
+
+            $relationship = CopyRelationship::query()->updateOrCreate(
+                [
+                    'user_id' => $user->id,
+                    'trader_id' => $validated['trader_id'],
+                ],
+                [
+                    'allocation_amount' => $validated['allocation_amount'],
+                    'copy_ratio' => $validated['copy_ratio'],
+                    'status' => 'active',
+                    'started_at' => now(),
+                    'ended_at' => null,
+                ]
+            );
+
+            if (! $existingRelationship || $existingRelationship->status !== 'active') {
+                Trader::query()->whereKey($validated['trader_id'])->increment('copiers_count');
+            }
+        });
 
         return response()->json([
             'message' => 'Copy trading relationship active.',
@@ -192,6 +257,22 @@ class CopyTradingController extends Controller
 
         return response()->json([
             'message' => 'Copy relationship closed.',
+        ]);
+    }
+
+    private function resolveUserWallet(User $user): Wallet
+    {
+        $wallet = $user->wallet()->first();
+
+        if ($wallet) {
+            return $wallet;
+        }
+
+        return $user->wallet()->create([
+            'cash_balance' => (float) $user->balance,
+            'investing_balance' => (float) $user->holding_balance,
+            'profit_loss' => (float) $user->profit_balance,
+            'currency' => 'USD',
         ]);
     }
 }

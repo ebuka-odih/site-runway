@@ -4,6 +4,12 @@ import { Link, router, usePage } from '@inertiajs/react';
 import { useEffect, useRef, useState } from 'react';
 
 const percent = (value) => `${Number(value || 0).toFixed(2)}%`;
+const money = (value) =>
+    new Intl.NumberFormat('en-US', {
+        style: 'currency',
+        currency: 'USD',
+        maximumFractionDigits: 2,
+    }).format(Number(value || 0));
 const dateTime = (value) => (value ? new Date(value).toLocaleString() : '-');
 
 export default function Index({ traders, filters, stats }) {
@@ -113,6 +119,10 @@ export default function Index({ traders, filters, stats }) {
                                     <dd className="text-slate-200">{trader.strategy}</dd>
                                 </div>
                                 <div className="flex justify-between gap-2">
+                                    <dt>Copy Fee</dt>
+                                    <dd className="text-slate-200">{money(trader.copy_fee)}</dd>
+                                </div>
+                                <div className="flex justify-between gap-2">
                                     <dt>Return</dt>
                                     <dd className="text-slate-200">{percent(trader.total_return)}</dd>
                                 </div>
@@ -148,6 +158,7 @@ export default function Index({ traders, filters, stats }) {
                             <tr>
                                 <th className="pb-3 pr-3">Trader</th>
                                 <th className="pb-3 pr-3">Strategy</th>
+                                <th className="pb-3 pr-3">Copy Fee</th>
                                 <th className="pb-3 pr-3">Return</th>
                                 <th className="pb-3 pr-3">Win Rate</th>
                                 <th className="pb-3 pr-3">Copiers</th>
@@ -165,6 +176,7 @@ export default function Index({ traders, filters, stats }) {
                                         <p className="text-xs text-slate-500">@{trader.username}</p>
                                     </td>
                                     <td className="py-3 pr-3">{trader.strategy}</td>
+                                    <td className="py-3 pr-3">{money(trader.copy_fee)}</td>
                                     <td className="py-3 pr-3">{percent(trader.total_return)}</td>
                                     <td className="py-3 pr-3">{percent(trader.win_rate)}</td>
                                     <td className="py-3 pr-3">{trader.copiers_count}</td>

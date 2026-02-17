@@ -132,6 +132,7 @@ const CopyTrading: React.FC = () => {
       username: relationship.traderName,
       strategy: relationship.strategy,
       avatarColor: 'emerald',
+      copyFee: relationship.copyFee,
       return: 0,
       winRate: 0,
       copiers: 0,
@@ -320,16 +321,22 @@ const CopyTrading: React.FC = () => {
                       <p className="text-xs font-bold text-zinc-500 uppercase tracking-tighter">{trader.strategy}</p>
                     </div>
                   </div>
-                  <button
-                    onClick={() => handleCopyClick(trader)}
-                    className={`px-6 py-2 rounded-lg text-[11px] font-black uppercase tracking-widest transition-all ${
-                      trader.isFollowing
-                        ? 'border border-zinc-800 text-zinc-400 hover:text-white hover:border-zinc-700'
-                        : 'bg-[#10b981] text-black hover:bg-[#059669]'
-                    }`}
-                  >
-                    {trader.isFollowing ? 'Manage' : 'Copy'}
-                  </button>
+                  <div className="flex flex-col items-end gap-2">
+                    <div className="text-right">
+                      <p className="text-[9px] font-black text-zinc-600 uppercase tracking-widest">Copy Fee</p>
+                      <p className="text-sm font-black text-white">${trader.copyFee.toFixed(2)}</p>
+                    </div>
+                    <button
+                      onClick={() => handleCopyClick(trader)}
+                      className={`px-6 py-2 rounded-lg text-[11px] font-black uppercase tracking-widest transition-all ${
+                        trader.isFollowing
+                          ? 'border border-zinc-800 text-zinc-400 hover:text-white hover:border-zinc-700'
+                          : 'bg-[#10b981] text-black hover:bg-[#059669]'
+                      }`}
+                    >
+                      {trader.isFollowing ? 'Manage' : 'Copy'}
+                    </button>
+                  </div>
                 </div>
 
                 <div className="grid grid-cols-3 gap-2 pt-4 border-t border-white/5">
@@ -369,6 +376,10 @@ const CopyTrading: React.FC = () => {
                     <div className="flex items-center gap-2 mt-0.5">
                       <p className="text-[10px] font-black text-zinc-600 uppercase tracking-widest">Allocated</p>
                       <p className="text-[10px] font-black text-white">${relationship.allocation.toFixed(2)}</p>
+                    </div>
+                    <div className="flex items-center gap-2 mt-0.5">
+                      <p className="text-[10px] font-black text-zinc-600 uppercase tracking-widest">Copy Fee</p>
+                      <p className="text-[10px] font-black text-white">${relationship.copyFee.toFixed(2)}</p>
                     </div>
                   </div>
                 </div>
@@ -466,6 +477,18 @@ const CopyTrading: React.FC = () => {
                 </div>
 
                 <div className="space-y-6">
+                  <div className="space-y-2">
+                    <div className="flex justify-between items-center">
+                      <label className="text-sm font-black text-white uppercase tracking-widest block">Copy Fee ($)</label>
+                      <span className="text-emerald-500 font-black text-sm">
+                        ${selectedTrader.copyFee.toFixed(2)}
+                      </span>
+                    </div>
+                    <p className="text-[10px] font-black text-zinc-600 uppercase tracking-widest px-1">
+                      Charged upfront when you start copying.
+                    </p>
+                  </div>
+
                   <div className="space-y-3">
                     <div className="flex justify-between items-center">
                       <label className="text-sm font-black text-white uppercase tracking-widest block">Allocation Amount ($)</label>
@@ -556,6 +579,10 @@ const CopyTrading: React.FC = () => {
                   <div className="flex justify-between items-center">
                     <span className="text-xs font-black text-zinc-500 uppercase tracking-widest">Allocation</span>
                     <span className="font-black text-white text-lg">${allocation}</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-xs font-black text-zinc-500 uppercase tracking-widest">Copy Fee</span>
+                    <span className="font-black text-emerald-500 text-lg">${selectedTrader.copyFee.toFixed(2)}</span>
                   </div>
                   <div className="flex justify-between items-center">
                     <span className="text-xs font-black text-zinc-500 uppercase tracking-widest">Copy Ratio</span>

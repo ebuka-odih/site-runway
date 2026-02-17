@@ -17,6 +17,7 @@ class Trader extends Model
         'username',
         'avatar_color',
         'strategy',
+        'copy_fee',
         'total_return',
         'win_rate',
         'copiers_count',
@@ -29,6 +30,7 @@ class Trader extends Model
     protected function casts(): array
     {
         return [
+            'copy_fee' => 'decimal:2',
             'total_return' => 'decimal:4',
             'win_rate' => 'decimal:2',
             'copiers_count' => 'integer',
