@@ -22,9 +22,13 @@ const TradeModal: React.FC<TradeModalProps> = ({ asset: initialAsset, type: init
   const [executedOrder, setExecutedOrder] = useState<OrderItem | null>(null);
 
   const livePrice = prices[currentAsset.symbol]?.price || currentAsset.price;
+  const isCrypto = (currentAsset.type ?? '').toLowerCase() === 'crypto';
+  const unitLabel = isCrypto ? currentAsset.symbol : 'shares';
+  const ownedLabel = isCrypto ? `${currentAsset.symbol} owned` : 'shares owned';
   const activeColorClass = tradeType === 'buy' ? 'bg-[#10b981]' : 'bg-red-500';
   const activeTextClass = tradeType === 'buy' ? 'text-emerald-500' : 'text-red-500';
   const activeBgLightClass = tradeType === 'buy' ? 'bg-emerald-500/10' : 'bg-red-500/10';
+  const caretColorClass = tradeType === 'buy' ? 'bg-emerald-500' : 'bg-red-500';
 
   const estimatedTotal = parseFloat(amount || '0') * livePrice;
 
@@ -76,7 +80,7 @@ const TradeModal: React.FC<TradeModalProps> = ({ asset: initialAsset, type: init
     }
 
     if (tradeType === 'sell' && quantity > ownedShares) {
-      setError(`You only own ${ownedShares.toFixed(4)} shares.`);
+      setError(`You only own ${ownedShares.toFixed(4)} ${unitLabel}.`);
       return;
     }
 
@@ -162,7 +166,7 @@ const TradeModal: React.FC<TradeModalProps> = ({ asset: initialAsset, type: init
             </div>
             <div className="flex justify-between items-center text-sm">
               <span className="text-zinc-500 font-bold">Quantity</span>
-              <span className="font-black text-white">{amount} {currentAsset.symbol}</span>
+              <span className="font-black text-white">{amount} {unitLabel}</span>
             </div>
             <div className="flex justify-between items-center text-sm">
               <span className="text-zinc-500 font-bold">Average Price</span>
@@ -208,8 +212,8 @@ const TradeModal: React.FC<TradeModalProps> = ({ asset: initialAsset, type: init
           </div>
 
           <div className="text-center mb-10">
-            <p className="text-zinc-600 text-[10px] font-black uppercase tracking-widest mb-2">Total Quantity</p>
-            <h4 className="text-4xl font-black mb-1 tracking-tight">{amount} units</h4>
+            <p className="text-zinc-600 text-[10px] font-black uppercase tracking-widest mb-2">Total {unitLabel}</p>
+            <h4 className="text-4xl font-black mb-1 tracking-tight">{amount} {unitLabel}</h4>
             <p className="text-zinc-400 font-bold text-sm">{currentAsset.name}</p>
           </div>
 
@@ -373,18 +377,21 @@ const TradeModal: React.FC<TradeModalProps> = ({ asset: initialAsset, type: init
             <p className="text-zinc-600 text-[10px] font-bold tracking-widest uppercase">
               {tradeType === 'buy'
                 ? `$${buyingPower.toLocaleString()} available`
-                : `${ownedShares.toFixed(4)} shares owned`}
+                : `${ownedShares.toFixed(4)} ${ownedLabel}`}
             </p>
           </div>
         </div>
 
         <div className="px-6 flex flex-col gap-4">
           <div className="flex justify-between items-end py-3 border-b border-white/5">
-            <span className="font-black text-sm text-zinc-500 uppercase tracking-widest pb-1">Shares</span>
+            <span className="font-black text-sm text-zinc-500 uppercase tracking-widest pb-1">
+              {isCrypto ? `${currentAsset.symbol} Amount` : 'Shares'}
+            </span>
             <div className="flex items-center">
               <span className={`text-4xl font-black tabular-nums tracking-tighter leading-none ${amount === '0' ? 'text-zinc-900' : activeTextClass}`}>
                 {amount}
               </span>
+              <span className={`ml-1 inline-block w-0.5 h-8 ${caretColorClass} animate-pulse`} />
             </div>
           </div>
 
