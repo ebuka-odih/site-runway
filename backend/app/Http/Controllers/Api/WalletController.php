@@ -216,6 +216,35 @@ class WalletController extends Controller
 
         $wallet = $this->resolveUserWallet($user);
 
+        $activeCopyRelationships = $user->copyRelationships()
+            ->where('status', 'active')
+            ->get(['started_at']);
+
+        if ($activeCopyRelationships->isNotEmpty()) {
+            if ((float) $validated['amount'] > 500) {
+                return response()->json([
+                    'message' => 'Active copy trader bots are limited to withdrawals of $500 per request.',
+                ], 403);
+            }
+
+            $cycleStart = $activeCopyRelationships
+                ->pluck('started_at')
+                ->filter()
+                ->min() ?? now();
+
+            $withdrawalsThisCycle = WalletTransaction::query()
+                ->where('wallet_id', $wallet->id)
+                ->where('type', 'withdrawal')
+                ->where('occurred_at', '>=', $cycleStart)
+                ->count();
+
+            if ($withdrawalsThisCycle >= 2) {
+                return response()->json([
+                    'message' => 'You have an active copy trader bot and cannot withdraw till their bot ends its circle.',
+                ], 403);
+            }
+        }
+
         $asset = Asset::query()
             ->where('symbol', $validated['currency'])
             ->first();
