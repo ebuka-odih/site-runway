@@ -163,6 +163,18 @@ export interface WalletTransactionItem {
   occurredAt?: string | null;
 }
 
+export interface UserNotificationItem {
+  id: string;
+  type: string;
+  eventType: string;
+  title: string;
+  message: string;
+  actionUrl?: string | null;
+  metadata?: Record<string, unknown>;
+  createdAt?: string | null;
+  readAt?: string | null;
+}
+
 export interface WalletSummaryData {
   wallet: {
     id: string;

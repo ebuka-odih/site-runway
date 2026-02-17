@@ -14,6 +14,10 @@ import WalletPage from './components/WalletPage';
 import ProfilePage from './components/ProfilePage';
 import WatchlistPage from './components/WatchlistPage';
 import LandingPage from './components/LandingPage';
+import AboutUsPage from './components/landing/AboutUsPage';
+import PrivacyPolicyPage from './components/landing/PrivacyPolicyPage';
+import RiskDisclosurePage from './components/landing/RiskDisclosurePage';
+import TermsOfServicePage from './components/landing/TermsOfServicePage';
 import { MarketProvider, useMarket } from './context/MarketContext';
 import type { SelectableAsset } from './types';
 
@@ -125,10 +129,22 @@ const AppContent: React.FC = () => {
 
   if (!isAuthenticated) {
     return (
-      <LandingPage
-        onLogin={login}
-        authError={authError}
-      />
+      <Routes>
+        <Route
+          path="/"
+          element={(
+            <LandingPage
+              onLogin={login}
+              authError={authError}
+            />
+          )}
+        />
+        <Route path="/about-us" element={<AboutUsPage />} />
+        <Route path="/risk-disclosure" element={<RiskDisclosurePage />} />
+        <Route path="/privacy-policy" element={<PrivacyPolicyPage />} />
+        <Route path="/terms-of-service" element={<TermsOfServicePage />} />
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
     );
   }
 

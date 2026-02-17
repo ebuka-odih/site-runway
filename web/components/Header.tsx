@@ -1,8 +1,77 @@
-
-import React from 'react';
-import { Bell, Settings } from 'lucide-react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { Bell, CheckCheck, Settings } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { useMarket } from '../context/MarketContext';
+import type { UserNotificationItem } from '../types';
 
 const Header: React.FC = () => {
+  const navigate = useNavigate();
+  const {
+    notifications,
+    unreadNotificationCount,
+    refreshNotifications,
+    markNotificationAsRead,
+    markAllNotificationsAsRead,
+  } = useMarket();
+  const [isNotificationOpen, setIsNotificationOpen] = useState(false);
+  const containerRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    void refreshNotifications({ limit: 20 });
+  }, [refreshNotifications]);
+
+  useEffect(() => {
+    const handleOutsideClick = (event: MouseEvent) => {
+      if (!containerRef.current) {
+        return;
+      }
+
+      if (!containerRef.current.contains(event.target as Node)) {
+        setIsNotificationOpen(false);
+      }
+    };
+
+    if (isNotificationOpen) {
+      document.addEventListener('mousedown', handleOutsideClick);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleOutsideClick);
+    };
+  }, [isNotificationOpen]);
+
+  const notificationBadge = useMemo(() => {
+    if (unreadNotificationCount <= 0) {
+      return null;
+    }
+
+    return unreadNotificationCount > 9 ? '9+' : String(unreadNotificationCount);
+  }, [unreadNotificationCount]);
+
+  const toggleNotifications = () => {
+    const nextOpen = !isNotificationOpen;
+    setIsNotificationOpen(nextOpen);
+
+    if (nextOpen) {
+      void refreshNotifications({ limit: 20 });
+    }
+  };
+
+  const handleNotificationClick = async (notification: UserNotificationItem) => {
+    try {
+      if (!notification.readAt) {
+        await markNotificationAsRead(notification.id);
+      }
+
+      if (notification.actionUrl) {
+        navigate(notification.actionUrl);
+        setIsNotificationOpen(false);
+      }
+    } catch {
+      // Keep the panel open so users can retry if an action fails.
+    }
+  };
+
   return (
     <header className="flex items-center justify-between p-4 sticky top-0 bg-[#050505]/80 backdrop-blur-md z-50 border-b border-white/5">
       <div className="flex items-center gap-2">
@@ -16,18 +85,87 @@ const Header: React.FC = () => {
           <p className="text-[10px] text-zinc-500 font-medium">Happy Holidays</p>
         </div>
       </div>
-      
-      <div className="flex items-center gap-3 text-zinc-400">
-        <button className="p-2 hover:bg-zinc-800 rounded-full transition-colors relative">
+
+      <div ref={containerRef} className="flex items-center gap-3 text-zinc-400 relative">
+        <button
+          type="button"
+          onClick={toggleNotifications}
+          className="p-2 hover:bg-zinc-800 rounded-full transition-colors relative"
+          aria-label="Open notifications"
+        >
           <Bell size={20} />
-          <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full border border-black"></span>
+          {notificationBadge && (
+            <span className="absolute -top-1 -right-1 min-w-4 h-4 px-1 rounded-full bg-red-500 text-[10px] text-white font-bold leading-4 text-center">
+              {notificationBadge}
+            </span>
+          )}
         </button>
-        <button className="p-2 hover:bg-zinc-800 rounded-full transition-colors">
+        <button
+          type="button"
+          className="p-2 hover:bg-zinc-800 rounded-full transition-colors"
+          onClick={() => navigate('/dashboard/profile')}
+          aria-label="Open profile settings"
+        >
           <Settings size={20} />
         </button>
+
+        {isNotificationOpen && (
+          <div className="absolute right-0 top-12 w-[320px] max-w-[calc(100vw-2rem)] rounded-2xl border border-white/10 bg-[#0a0a0a] shadow-2xl shadow-black/60 overflow-hidden">
+            <div className="px-4 py-3 border-b border-white/5 flex items-center justify-between">
+              <h3 className="text-xs font-bold uppercase tracking-widest text-zinc-400">Notifications</h3>
+              <button
+                type="button"
+                className="text-[11px] text-emerald-400 hover:text-emerald-300 disabled:text-zinc-600 disabled:cursor-not-allowed inline-flex items-center gap-1"
+                onClick={() => void markAllNotificationsAsRead()}
+                disabled={unreadNotificationCount <= 0}
+              >
+                <CheckCheck size={14} />
+                Mark all read
+              </button>
+            </div>
+
+            <div className="max-h-80 overflow-y-auto">
+              {notifications.length === 0 && (
+                <div className="px-4 py-6 text-sm text-zinc-500">No notifications yet.</div>
+              )}
+
+              {notifications.map((notification) => (
+                <button
+                  type="button"
+                  key={notification.id}
+                  onClick={() => void handleNotificationClick(notification)}
+                  className={`w-full text-left px-4 py-3 border-b border-white/5 hover:bg-white/5 transition-colors ${notification.readAt ? 'opacity-70' : ''}`}
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="text-sm font-semibold text-white">{notification.title}</p>
+                      <p className="mt-1 text-xs text-zinc-400 leading-relaxed">{notification.message}</p>
+                      <p className="mt-1 text-[11px] text-zinc-500">{formatTimestamp(notification.createdAt)}</p>
+                    </div>
+                    {!notification.readAt && <span className="mt-1 w-2 h-2 rounded-full bg-emerald-400" />}
+                  </div>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     </header>
   );
 };
+
+function formatTimestamp(input?: string | null): string {
+  if (!input) {
+    return 'Just now';
+  }
+
+  const timestamp = new Date(input);
+
+  if (Number.isNaN(timestamp.getTime())) {
+    return 'Just now';
+  }
+
+  return timestamp.toLocaleString();
+}
 
 export default Header;

@@ -10,6 +10,7 @@ use App\Models\Position;
 use App\Models\User;
 use App\Models\Wallet;
 use App\Models\WalletTransaction;
+use App\Notifications\UserEventNotification;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -142,6 +143,34 @@ class OrderController extends Controller
             return $order->load('asset:id,symbol,name,type,current_price,change_percent');
         });
 
+        $orderSymbol = (string) data_get($order, 'asset.symbol', $asset->symbol);
+        $orderQuantity = $this->formatQuantity((float) $order->quantity);
+        $orderValue = $this->formatCurrency((float) $order->total_value);
+        $eventType = $order->side === 'buy' ? 'order.buy_filled' : 'order.sell_filled';
+        $title = $order->side === 'buy' ? 'Buy order filled' : 'Sell order filled';
+        $message = sprintf(
+            'Your %s order for %s %s was filled for %s.',
+            strtoupper((string) $order->side),
+            $orderQuantity,
+            $orderSymbol,
+            $orderValue
+        );
+
+        $user->notify(new UserEventNotification(
+            eventType: $eventType,
+            title: $title,
+            message: $message,
+            metadata: [
+                'order_id' => $order->id,
+                'side' => $order->side,
+                'symbol' => $orderSymbol,
+                'quantity' => (float) $order->quantity,
+                'total_value' => (float) $order->total_value,
+            ],
+            actionUrl: '/dashboard/trade',
+            sendEmail: false,
+        ));
+
         return response()->json([
             'message' => 'Order executed successfully.',
             'data' => $order,
@@ -266,5 +295,15 @@ class OrderController extends Controller
     private function isDrifted(float $current, float $expected): bool
     {
         return abs($current - $expected) >= 0.00000001;
+    }
+
+    private function formatQuantity(float $value): string
+    {
+        return rtrim(rtrim(number_format($value, 8, '.', ''), '0'), '.');
+    }
+
+    private function formatCurrency(float $value): string
+    {
+        return '$'.number_format($value, 2, '.', ',');
     }
 }

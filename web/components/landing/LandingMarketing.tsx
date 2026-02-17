@@ -1,4 +1,5 @@
 import React, { useEffect, useRef } from 'react';
+import { Link } from 'react-router-dom';
 import {
   ArrowRight,
   TrendingUp,
@@ -471,8 +472,8 @@ const LandingMarketing: React.FC<LandingMarketingProps> = ({ onOpenAuth }) => (
         <div>
           <h4 className="text-xs font-black text-white uppercase tracking-widest mb-6">Company</h4>
           <ul className="space-y-4 text-zinc-500 text-sm font-bold">
-            <li><a href="#about-us" className="hover:text-emerald-500 transition-colors">About Us</a></li>
-            <li><a href="#risk-disclosure" className="hover:text-emerald-500 transition-colors">Risk Disclosure</a></li>
+            <li><Link to="/about-us" className="hover:text-emerald-500 transition-colors">About Us</Link></li>
+            <li><Link to="/risk-disclosure" className="hover:text-emerald-500 transition-colors">Risk Disclosure</Link></li>
             <li><a href="#support-hub" className="hover:text-emerald-500 transition-colors">Support Hub</a></li>
           </ul>
         </div>
@@ -483,6 +484,9 @@ const LandingMarketing: React.FC<LandingMarketingProps> = ({ onOpenAuth }) => (
           <p className="text-zinc-500 text-sm font-medium leading-relaxed">
             Trading digital assets, equities, and derivatives involves market risk, including potential loss of principal. Only trade capital you can afford to lose.
           </p>
+          <Link to="/risk-disclosure" className="inline-flex mt-4 text-emerald-500 text-xs font-black uppercase tracking-widest hover:text-emerald-400 transition-colors">
+            Read full disclosure
+          </Link>
         </section>
         <section id="support-hub" className="rounded-3xl border border-white/10 bg-white/[0.02] p-6">
           <h5 className="text-[10px] font-black text-white uppercase tracking-widest mb-3">Support Hub</h5>
@@ -500,19 +504,25 @@ const LandingMarketing: React.FC<LandingMarketingProps> = ({ onOpenAuth }) => (
           <p className="text-zinc-500 text-sm font-medium leading-relaxed">
             We process account and trading telemetry to operate your terminal and maintain security. Sensitive data is safeguarded with layered access controls.
           </p>
+          <Link to="/privacy-policy" className="inline-flex mt-4 text-emerald-500 text-xs font-black uppercase tracking-widest hover:text-emerald-400 transition-colors">
+            Read full policy
+          </Link>
         </section>
         <section id="terms-of-service" className="rounded-3xl border border-white/10 bg-white/[0.02] p-6">
           <h5 className="text-[10px] font-black text-white uppercase tracking-widest mb-3">Terms of Service</h5>
           <p className="text-zinc-500 text-sm font-medium leading-relaxed">
             Platform usage is subject to account verification, local regulations, and fair-use controls. Continued use indicates acceptance of these terms.
           </p>
+          <Link to="/terms-of-service" className="inline-flex mt-4 text-emerald-500 text-xs font-black uppercase tracking-widest hover:text-emerald-400 transition-colors">
+            Read full terms
+          </Link>
         </section>
       </div>
       <div className="flex flex-col md:flex-row items-center justify-between pt-10 border-t border-white/5 gap-6">
         <p className="text-[10px] font-black text-zinc-600 uppercase tracking-widest">© 2026 RUNWAYALGO. ALL RIGHTS RESERVED.</p>
         <div className="flex gap-8 text-[10px] font-black text-zinc-600 uppercase tracking-widest">
-          <a href="#privacy-policy" className="hover:text-white transition-colors">Privacy Policy</a>
-          <a href="#terms-of-service" className="hover:text-white transition-colors">Terms of Service</a>
+          <Link to="/privacy-policy" className="hover:text-white transition-colors">Privacy Policy</Link>
+          <Link to="/terms-of-service" className="hover:text-white transition-colors">Terms of Service</Link>
         </div>
       </div>
     </footer>

@@ -11,6 +11,7 @@ use App\Models\DepositRequest;
 use App\Models\User;
 use App\Models\Wallet;
 use App\Models\WalletTransaction;
+use App\Notifications\UserEventNotification;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -82,7 +83,8 @@ class WalletController extends Controller
     public function storeDeposit(StoreDepositRequest $request): JsonResponse
     {
         $validated = $request->validated();
-        $wallet = $this->resolveUserWallet($request->user());
+        $user = $request->user();
+        $wallet = $this->resolveUserWallet($user);
 
         $asset = Asset::query()
             ->where('symbol', $validated['currency'])
@@ -97,6 +99,25 @@ class WalletController extends Controller
             'status' => 'payment',
             'expires_at' => now()->addMinutes(15),
         ]);
+
+        $user->notify(new UserEventNotification(
+            eventType: 'wallet.deposit_requested',
+            title: 'Deposit request created',
+            message: sprintf(
+                'Your deposit request for %s %s was created. Submit payment proof to continue.',
+                $this->formatNumber((float) $deposit->amount),
+                (string) $deposit->currency
+            ),
+            metadata: [
+                'deposit_request_id' => $deposit->id,
+                'amount' => (float) $deposit->amount,
+                'currency' => $deposit->currency,
+                'network' => $deposit->network,
+                'status' => $deposit->status,
+            ],
+            actionUrl: '/dashboard/wallet',
+            sendEmail: false,
+        ));
 
         return response()->json([
             'message' => 'Deposit request created.',
@@ -136,6 +157,24 @@ class WalletController extends Controller
             ]);
         });
 
+        $request->user()->notify(new UserEventNotification(
+            eventType: 'wallet.deposit_proof_submitted',
+            title: 'Deposit proof submitted',
+            message: sprintf(
+                'Your proof for deposit %s %s was submitted and is awaiting admin approval.',
+                $this->formatNumber((float) $depositRequest->amount),
+                (string) $depositRequest->currency
+            ),
+            metadata: [
+                'deposit_request_id' => $depositRequest->id,
+                'amount' => (float) $depositRequest->amount,
+                'currency' => $depositRequest->currency,
+                'status' => 'processing',
+            ],
+            actionUrl: '/dashboard/wallet',
+            sendEmail: false,
+        ));
+
         return response()->json([
             'message' => 'Deposit proof submitted. Awaiting admin approval.',
             'data' => $depositRequest->fresh(),
@@ -145,7 +184,8 @@ class WalletController extends Controller
     public function storeWithdrawal(StoreWithdrawalRequest $request): JsonResponse
     {
         $validated = $request->validated();
-        $wallet = $this->resolveUserWallet($request->user());
+        $user = $request->user();
+        $wallet = $this->resolveUserWallet($user);
 
         $asset = Asset::query()
             ->where('symbol', $validated['currency'])
@@ -181,6 +221,25 @@ class WalletController extends Controller
                 'destination' => $validated['destination'],
             ],
         ]);
+
+        $user->notify(new UserEventNotification(
+            eventType: 'wallet.withdrawal_requested',
+            title: 'Withdrawal request submitted',
+            message: sprintf(
+                'Your withdrawal request for %s %s is pending admin approval.',
+                $this->formatNumber((float) $withdrawal->amount),
+                (string) $validated['currency']
+            ),
+            metadata: [
+                'wallet_transaction_id' => $withdrawal->id,
+                'amount' => (float) $withdrawal->amount,
+                'currency' => $validated['currency'],
+                'network' => $withdrawal->network,
+                'status' => $withdrawal->status,
+            ],
+            actionUrl: '/dashboard/wallet',
+            sendEmail: false,
+        ));
 
         return response()->json([
             'message' => 'Withdrawal request submitted. Awaiting admin approval.',
@@ -290,5 +349,10 @@ class WalletController extends Controller
     private function isDrifted(float $current, float $expected): bool
     {
         return abs($current - $expected) >= 0.00000001;
+    }
+
+    private function formatNumber(float $value): string
+    {
+        return number_format($value, 2, '.', ',');
     }
 }

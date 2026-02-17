@@ -4,6 +4,7 @@ use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\CopyTradingController;
 use App\Http\Controllers\Api\DashboardController;
 use App\Http\Controllers\Api\MarketController;
+use App\Http\Controllers\Api\NotificationController;
 use App\Http\Controllers\Api\OrderController;
 use App\Http\Controllers\Api\ProfileController;
 use App\Http\Controllers\Api\WatchlistController;
@@ -46,6 +47,10 @@ Route::prefix('v1')->group(function () {
 
         Route::get('/orders', [OrderController::class, 'index']);
         Route::post('/orders', [OrderController::class, 'store']);
+
+        Route::get('/notifications', [NotificationController::class, 'index']);
+        Route::post('/notifications/read-all', [NotificationController::class, 'markAllRead']);
+        Route::patch('/notifications/{notificationId}/read', [NotificationController::class, 'markRead']);
 
         Route::get('/wallet', [WalletController::class, 'summary']);
         Route::get('/wallet/transactions', [WalletController::class, 'transactions']);

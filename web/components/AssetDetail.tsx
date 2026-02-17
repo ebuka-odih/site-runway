@@ -1,8 +1,8 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { ArrowLeft, ArrowUp, ArrowDown, ChevronRight, LayoutGrid, FileText } from 'lucide-react';
-import { LineChart, Line, ResponsiveContainer, YAxis, ReferenceDot } from 'recharts';
 import { useMarket } from '../context/MarketContext';
 import TradeModal from './TradeModal';
+import TradingViewAssetChart from './TradingViewAssetChart';
 import type { MarketAssetDetail, SelectableAsset } from '../types';
 
 interface AssetDetailProps {
@@ -48,26 +48,6 @@ const AssetDetail: React.FC<AssetDetailProps> = ({ asset, onBack }) => {
   const liveData = prices[asset.symbol] || { price: asset.price, changePercent: asset.changePercent, lastAction: 'none' as const };
   const isPositive = liveData.changePercent >= 0;
 
-  const chartData = useMemo(() => {
-    if (detail?.chart?.length) {
-      return detail.chart;
-    }
-
-    return Array.from({ length: 40 }, (_, index) => ({
-      time: index.toString(),
-      value: liveData.price * (1 + (Math.sin(index / 3) * 0.02) - (index * 0.0005)),
-    }));
-  }, [detail?.chart, liveData.price]);
-
-  const yDomain = useMemo(() => {
-    const values = chartData.map((point) => point.value);
-    const min = Math.min(...values);
-    const max = Math.max(...values);
-    const padding = (max - min) * 0.2 || 1;
-
-    return [min - padding, max + padding];
-  }, [chartData]);
-
   return (
     <div className="animate-in slide-in-from-right duration-500 min-h-screen bg-[#050505] pb-32">
       <header className="px-4 py-4 flex items-center justify-between sticky top-0 bg-[#050505]/80 backdrop-blur-md z-40">
@@ -97,26 +77,12 @@ const AssetDetail: React.FC<AssetDetailProps> = ({ asset, onBack }) => {
         <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest pt-1">24 Hour Market</p>
       </div>
 
-      <div className="h-64 w-full mt-4 mb-8">
-        <ResponsiveContainer width="100%" height="100%">
-          <LineChart data={chartData}>
-            <YAxis hide domain={yDomain} />
-            <Line
-              type="monotone"
-              dataKey="value"
-              stroke={isPositive ? '#22c55e' : '#f97316'}
-              strokeWidth={3}
-              dot={false}
-            />
-            <ReferenceDot
-              x={chartData[chartData.length - 1].time}
-              y={chartData[chartData.length - 1].value}
-              r={4}
-              fill={isPositive ? '#22c55e' : '#f97316'}
-              className="animate-pulse"
-            />
-          </LineChart>
-        </ResponsiveContainer>
+      <div className="h-64 w-full mt-4 mb-8 px-4">
+        <TradingViewAssetChart
+          symbol={asset.symbol}
+          assetType={asset.type}
+          timeframe={timeframe}
+        />
       </div>
 
       <div className="flex justify-between px-4 mb-10 overflow-x-auto scrollbar-hide">

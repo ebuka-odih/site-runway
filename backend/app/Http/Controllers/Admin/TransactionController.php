@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\DepositRequest;
 use App\Models\Wallet;
 use App\Models\WalletTransaction;
+use App\Notifications\UserEventNotification;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response as HttpResponse;
@@ -149,6 +150,29 @@ class TransactionController extends Controller
             ]);
         });
 
+        $depositRequest->refresh()->loadMissing('wallet.user');
+        $customer = $depositRequest->wallet?->user;
+
+        if ($customer !== null) {
+            $customer->notify(new UserEventNotification(
+                eventType: 'wallet.deposit_approved',
+                title: 'Deposit approved',
+                message: sprintf(
+                    'Your deposit of %s %s has been approved and credited to your wallet.',
+                    $this->formatNumber((float) $depositRequest->amount),
+                    (string) $depositRequest->currency
+                ),
+                metadata: [
+                    'deposit_request_id' => $depositRequest->id,
+                    'amount' => (float) $depositRequest->amount,
+                    'currency' => $depositRequest->currency,
+                    'status' => 'approved',
+                ],
+                actionUrl: '/dashboard/wallet',
+                sendEmail: true,
+            ));
+        }
+
         return back()->with('success', 'Deposit request approved.');
     }
 
@@ -167,6 +191,29 @@ class TransactionController extends Controller
             'submitted_at' => $depositRequest->submitted_at ?? now(),
             'processed_at' => now(),
         ]);
+
+        $depositRequest->loadMissing('wallet.user');
+        $customer = $depositRequest->wallet?->user;
+
+        if ($customer !== null) {
+            $customer->notify(new UserEventNotification(
+                eventType: 'wallet.deposit_rejected',
+                title: 'Deposit declined',
+                message: sprintf(
+                    'Your deposit of %s %s was declined by admin review.',
+                    $this->formatNumber((float) $depositRequest->amount),
+                    (string) $depositRequest->currency
+                ),
+                metadata: [
+                    'deposit_request_id' => $depositRequest->id,
+                    'amount' => (float) $depositRequest->amount,
+                    'currency' => $depositRequest->currency,
+                    'status' => 'rejected',
+                ],
+                actionUrl: '/dashboard/wallet',
+                sendEmail: true,
+            ));
+        }
 
         return back()->with('success', 'Deposit request declined.');
     }
@@ -251,6 +298,29 @@ class TransactionController extends Controller
             return back()->with('error', 'Wallet balance is insufficient to approve this withdrawal.');
         }
 
+        $walletTransaction->refresh()->loadMissing(['wallet.user', 'asset']);
+        $customer = $walletTransaction->wallet?->user;
+
+        if ($customer !== null) {
+            $customer->notify(new UserEventNotification(
+                eventType: 'wallet.withdrawal_approved',
+                title: 'Withdrawal approved',
+                message: sprintf(
+                    'Your withdrawal of %s %s has been approved.',
+                    $this->formatNumber((float) $walletTransaction->amount),
+                    $this->transactionCurrency($walletTransaction)
+                ),
+                metadata: [
+                    'wallet_transaction_id' => $walletTransaction->id,
+                    'amount' => (float) $walletTransaction->amount,
+                    'currency' => $this->transactionCurrency($walletTransaction),
+                    'status' => 'approved',
+                ],
+                actionUrl: '/dashboard/wallet',
+                sendEmail: true,
+            ));
+        }
+
         return back()->with('success', 'Withdrawal transaction approved.');
     }
 
@@ -271,6 +341,29 @@ class TransactionController extends Controller
         $walletTransaction->update([
             'status' => 'rejected',
         ]);
+
+        $walletTransaction->loadMissing(['wallet.user', 'asset']);
+        $customer = $walletTransaction->wallet?->user;
+
+        if ($customer !== null) {
+            $customer->notify(new UserEventNotification(
+                eventType: 'wallet.withdrawal_rejected',
+                title: 'Withdrawal declined',
+                message: sprintf(
+                    'Your withdrawal of %s %s was declined by admin review.',
+                    $this->formatNumber((float) $walletTransaction->amount),
+                    $this->transactionCurrency($walletTransaction)
+                ),
+                metadata: [
+                    'wallet_transaction_id' => $walletTransaction->id,
+                    'amount' => (float) $walletTransaction->amount,
+                    'currency' => $this->transactionCurrency($walletTransaction),
+                    'status' => 'rejected',
+                ],
+                actionUrl: '/dashboard/wallet',
+                sendEmail: true,
+            ));
+        }
 
         return back()->with('success', 'Withdrawal transaction declined.');
     }
@@ -452,5 +545,15 @@ class TransactionController extends Controller
             'depositRequest' => $depositRequest,
             'message' => $message,
         ], 200);
+    }
+
+    private function formatNumber(float $value): string
+    {
+        return number_format($value, 2, '.', ',');
+    }
+
+    private function transactionCurrency(WalletTransaction $walletTransaction): string
+    {
+        return (string) ($walletTransaction->asset?->symbol ?? 'USD');
     }
 }

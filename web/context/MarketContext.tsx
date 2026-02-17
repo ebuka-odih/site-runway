@@ -15,9 +15,12 @@ import {
   apiFollowTrader,
   apiLogin,
   apiLogout,
+  apiMarkAllNotificationsRead,
+  apiMarkNotificationRead,
   apiMarketAssetDetail,
   apiMarketAssets,
   apiMe,
+  apiNotifications,
   apiOrders,
   apiPlaceOrder,
   apiProfile,
@@ -44,6 +47,7 @@ import type {
   ProfileData,
   SelectableAsset,
   TraderItem,
+  UserNotificationItem,
   WalletSummaryData,
   WalletTransactionItem,
 } from '../types';
@@ -57,6 +61,8 @@ interface MarketContextType {
   dashboard: DashboardData | null;
   marketAssets: SelectableAsset[];
   orders: OrderItem[];
+  notifications: UserNotificationItem[];
+  unreadNotificationCount: number;
   portfolioValue: number;
   buyingPower: number;
   positions: DashboardData['positions'];
@@ -67,6 +73,9 @@ interface MarketContextType {
   refreshDashboard: (range?: DashboardRange) => Promise<void>;
   refreshMarketAssets: (params?: { type?: string; search?: string }) => Promise<SelectableAsset[]>;
   refreshOrders: () => Promise<OrderItem[]>;
+  refreshNotifications: (params?: { limit?: number; unreadOnly?: boolean }) => Promise<UserNotificationItem[]>;
+  markNotificationAsRead: (notificationId: string) => Promise<void>;
+  markAllNotificationsAsRead: () => Promise<void>;
   fetchAssetDetail: (assetId: string) => Promise<MarketAssetDetail>;
   placeOrder: (input: {
     assetId: string;
@@ -169,6 +178,8 @@ export const MarketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const [dashboard, setDashboard] = useState<DashboardData | null>(null);
   const [marketAssets, setMarketAssets] = useState<SelectableAsset[]>([]);
   const [orders, setOrders] = useState<OrderItem[]>([]);
+  const [notifications, setNotifications] = useState<UserNotificationItem[]>([]);
+  const [unreadNotificationCount, setUnreadNotificationCount] = useState(0);
   const [isBootstrapping, setIsBootstrapping] = useState(true);
   const [authError, setAuthError] = useState<string | null>(null);
   const activeDashboardRangeRef = useRef<DashboardRange>('24h');
@@ -238,18 +249,48 @@ export const MarketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     return nextOrders;
   }, []);
 
+  const refreshNotifications = useCallback(async (params?: { limit?: number; unreadOnly?: boolean }) => {
+    const payload = await apiNotifications(params);
+    setNotifications(payload.items);
+    setUnreadNotificationCount(payload.unreadCount);
+    return payload.items;
+  }, []);
+
+  const markNotificationAsRead = useCallback(async (notificationId: string) => {
+    const payload = await apiMarkNotificationRead(notificationId);
+
+    setNotifications((previous) => previous.map((notification) => (
+      notification.id === notificationId
+        ? payload.notification
+        : notification
+    )));
+    setUnreadNotificationCount(payload.unreadCount);
+  }, []);
+
+  const markAllNotificationsAsRead = useCallback(async () => {
+    await apiMarkAllNotificationsRead();
+    setNotifications((previous) => previous.map((notification) => ({
+      ...notification,
+      readAt: notification.readAt ?? new Date().toISOString(),
+    })));
+    setUnreadNotificationCount(0);
+  }, []);
+
   const refreshCoreData = useCallback(async () => {
-    const [nextUser, nextDashboard, nextMarketAssets, nextOrders] = await Promise.all([
+    const [nextUser, nextDashboard, nextMarketAssets, nextOrders, nextNotifications] = await Promise.all([
       apiMe(),
       apiDashboard(),
       apiMarketAssets(),
       apiOrders(),
+      apiNotifications({ limit: 20 }),
     ]);
 
     setUser(nextUser);
     setDashboard(nextDashboard);
     setMarketAssets(nextMarketAssets);
     setOrders(nextOrders);
+    setNotifications(nextNotifications.items);
+    setUnreadNotificationCount(nextNotifications.unreadCount);
 
     const sourceAssets = mergeAssetsBySymbol([
       ...nextMarketAssets,
@@ -295,6 +336,8 @@ export const MarketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     setDashboard(null);
     setMarketAssets([]);
     setOrders([]);
+    setNotifications([]);
+    setUnreadNotificationCount(0);
     setPrices({});
     setAuthError(null);
   }, []);
@@ -316,6 +359,8 @@ export const MarketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         setDashboard(null);
         setMarketAssets([]);
         setOrders([]);
+        setNotifications([]);
+        setUnreadNotificationCount(0);
         setPrices({});
       } finally {
         setIsBootstrapping(false);
@@ -488,6 +533,8 @@ export const MarketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     dashboard,
     marketAssets,
     orders,
+    notifications,
+    unreadNotificationCount,
     portfolioValue: dashboard?.portfolio.value ?? 0,
     buyingPower: dashboard?.portfolio.buyingPower ?? 0,
     positions,
@@ -498,6 +545,9 @@ export const MarketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     refreshDashboard,
     refreshMarketAssets,
     refreshOrders,
+    refreshNotifications,
+    markNotificationAsRead,
+    markAllNotificationsAsRead,
     fetchAssetDetail,
     placeOrder,
     fetchWalletSummary,
@@ -523,6 +573,8 @@ export const MarketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     dashboard,
     marketAssets,
     orders,
+    notifications,
+    unreadNotificationCount,
     positions,
     watchlist,
     login,
@@ -531,6 +583,9 @@ export const MarketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     refreshDashboard,
     refreshMarketAssets,
     refreshOrders,
+    refreshNotifications,
+    markNotificationAsRead,
+    markAllNotificationsAsRead,
     fetchAssetDetail,
     placeOrder,
     fetchWalletSummary,

@@ -12,6 +12,7 @@ import type {
   ProfileData,
   SelectableAsset,
   TraderItem,
+  UserNotificationItem,
   WalletSummaryData,
   WalletTransactionItem,
   WatchlistItem,
@@ -150,6 +151,20 @@ function mapWalletTransaction(raw: any): WalletTransactionItem {
     quantity: raw.quantity == null ? null : toNumber(raw.quantity),
     symbol: raw.symbol ?? raw.asset?.symbol ?? null,
     occurredAt: raw.occurred_at ?? null,
+  };
+}
+
+function mapNotification(raw: any): UserNotificationItem {
+  return {
+    id: String(raw.id),
+    type: String(raw.type ?? ''),
+    eventType: String(raw.event_type ?? raw.eventType ?? 'system'),
+    title: String(raw.title ?? 'Notification'),
+    message: String(raw.message ?? ''),
+    actionUrl: toNullableString(raw.action_url ?? raw.actionUrl),
+    metadata: typeof raw.metadata === 'object' && raw.metadata !== null ? raw.metadata : {},
+    createdAt: raw.created_at ?? raw.createdAt ?? null,
+    readAt: raw.read_at ?? raw.readAt ?? null,
   };
 }
 
@@ -524,6 +539,49 @@ export async function apiPlaceOrder(input: {
   });
 
   return mapOrder(payload.data);
+}
+
+export async function apiNotifications(params?: { limit?: number; unreadOnly?: boolean }): Promise<{
+  items: UserNotificationItem[];
+  unreadCount: number;
+}> {
+  const query = new URLSearchParams();
+
+  if (typeof params?.limit === 'number') {
+    query.set('limit', String(params.limit));
+  }
+
+  if (typeof params?.unreadOnly === 'boolean') {
+    query.set('unread_only', params.unreadOnly ? '1' : '0');
+  }
+
+  const queryString = query.toString();
+  const path = queryString ? `/notifications?${queryString}` : '/notifications';
+  const payload = await request<any>(path);
+
+  return {
+    items: (payload.data ?? []).map(mapNotification),
+    unreadCount: toNumber(payload.meta?.unread_count),
+  };
+}
+
+export async function apiMarkAllNotificationsRead(): Promise<number> {
+  const payload = await request<any>('/notifications/read-all', {
+    method: 'POST',
+  });
+
+  return toNumber(payload.meta?.unread_count);
+}
+
+export async function apiMarkNotificationRead(notificationId: string): Promise<{ notification: UserNotificationItem; unreadCount: number }> {
+  const payload = await request<any>(`/notifications/${notificationId}/read`, {
+    method: 'PATCH',
+  });
+
+  return {
+    notification: mapNotification(payload.data),
+    unreadCount: toNumber(payload.meta?.unread_count),
+  };
 }
 
 export async function apiWalletSummary(): Promise<WalletSummaryData> {
