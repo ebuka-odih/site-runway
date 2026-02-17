@@ -430,8 +430,12 @@ const WalletPage: React.FC = () => {
                       className="w-full bg-[#121212] border border-white/5 rounded-xl py-4 px-4 text-sm font-black text-white appearance-none focus:outline-none focus:border-orange-500/50 transition-all"
                     >
                       <option>USDT</option>
+                      <option>USDC</option>
                       <option>BTC</option>
                       <option>ETH</option>
+                      <option>SOL</option>
+                      <option>XRP</option>
+                      <option>BNB</option>
                     </select>
                     <ChevronDown size={18} className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-500 pointer-events-none" />
                   </div>

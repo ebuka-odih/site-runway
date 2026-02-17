@@ -24,7 +24,7 @@ class StoreWithdrawalRequest extends FormRequest
     {
         return [
             'amount' => ['required', 'numeric', 'gt:0'],
-            'currency' => ['required', 'string', Rule::in(['USD', 'USDT', 'BTC', 'ETH', 'SOL'])],
+            'currency' => ['required', 'string', Rule::in(['USD', 'USDT', 'USDC', 'BTC', 'ETH', 'SOL', 'XRP', 'BNB'])],
             'network' => ['nullable', 'string', 'max:20'],
             'destination' => ['required', 'string', 'max:255'],
             'asset_id' => ['nullable', 'uuid', Rule::exists('assets', 'id')],

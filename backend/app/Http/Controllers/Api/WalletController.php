@@ -11,11 +11,13 @@ use App\Models\DepositRequest;
 use App\Models\User;
 use App\Models\Wallet;
 use App\Models\WalletTransaction;
+use App\Notifications\AdminApprovalNotification;
 use App\Notifications\UserEventNotification;
 use App\Support\SiteSettings;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Notification;
 
 class WalletController extends Controller
 {
@@ -299,6 +301,33 @@ class WalletController extends Controller
             actionUrl: '/dashboard/wallet',
             sendEmail: false,
         ));
+
+        $adminMessage = sprintf(
+            'Withdrawal request from %s (%s) for %s %s.',
+            (string) ($user->name ?? 'User'),
+            (string) ($user->email ?? '-'),
+            $this->formatNumber((float) $withdrawal->amount),
+            (string) $validated['currency']
+        );
+        $adminActionUrl = '/admin/transactions?tab=withdrawal';
+        $admins = User::query()->where('is_admin', true)->get();
+
+        if ($admins->isNotEmpty()) {
+            Notification::send($admins, new AdminApprovalNotification(
+                title: 'Withdrawal approval required',
+                message: $adminMessage,
+                actionUrl: $adminActionUrl,
+            ));
+        } else {
+            $supportEmail = (string) (SiteSettings::get()['support_email'] ?? '');
+            if ($supportEmail !== '') {
+                Notification::route('mail', $supportEmail)->notify(new AdminApprovalNotification(
+                    title: 'Withdrawal approval required',
+                    message: $adminMessage,
+                    actionUrl: $adminActionUrl,
+                ));
+            }
+        }
 
         return response()->json([
             'message' => 'Withdrawal request submitted. Awaiting admin approval.',
