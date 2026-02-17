@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
   ArrowRight,
@@ -20,6 +20,9 @@ import {
   Award,
   User,
 } from 'lucide-react';
+import LiveChatEmbed from '../LiveChatEmbed';
+import { apiPublicSettings } from '../../lib/api';
+import type { PublicSettings } from '../../types';
 import type { AuthView } from './types';
 
 interface LandingMarketingProps {
@@ -100,8 +103,36 @@ const TradingViewMarketsWidget: React.FC = () => {
   );
 };
 
-const LandingMarketing: React.FC<LandingMarketingProps> = ({ onOpenAuth }) => (
-  <>
+const LandingMarketing: React.FC<LandingMarketingProps> = ({ onOpenAuth }) => {
+  const [publicSettings, setPublicSettings] = useState<PublicSettings | null>(null);
+
+  useEffect(() => {
+    let isActive = true;
+
+    const load = async () => {
+      try {
+        const settings = await apiPublicSettings();
+        if (isActive) {
+          setPublicSettings(settings);
+        }
+      } catch {
+        if (isActive) {
+          setPublicSettings(null);
+        }
+      }
+    };
+
+    void load();
+
+    return () => {
+      isActive = false;
+    };
+  }, []);
+
+  const supportEmail = publicSettings?.supportEmail || 'support@runwayalgo.com';
+
+  return (
+    <>
     {/* Navigation */}
     <nav className="flex items-center justify-between p-6 max-w-7xl mx-auto relative z-40">
       <div className="flex items-center gap-2">
@@ -493,9 +524,22 @@ const LandingMarketing: React.FC<LandingMarketingProps> = ({ onOpenAuth }) => (
           <p className="text-zinc-500 text-sm font-medium leading-relaxed mb-4">
             Need onboarding or account help? Reach the support desk for assistance with verification, security, and funding flows.
           </p>
-          <a href="mailto:support@runwayalgo.com" className="text-emerald-500 text-xs font-black uppercase tracking-widest hover:text-emerald-400 transition-colors">
-            support@runwayalgo.com
+          <a href={`mailto:${supportEmail}`} className="text-emerald-500 text-xs font-black uppercase tracking-widest hover:text-emerald-400 transition-colors">
+            {supportEmail}
           </a>
+          {publicSettings?.livechatEnabled && publicSettings.livechatEmbedCode ? (
+            <div className="mt-5 rounded-2xl border border-emerald-500/20 bg-emerald-500/5 p-4">
+              <LiveChatEmbed
+                enabled={publicSettings.livechatEnabled}
+                embedCode={publicSettings.livechatEmbedCode}
+                className="text-white"
+              />
+            </div>
+          ) : (
+            <p className="mt-4 text-[10px] font-black uppercase tracking-widest text-zinc-600">
+              Live chat is currently offline.
+            </p>
+          )}
         </section>
       </div>
       <div className="grid md:grid-cols-2 gap-6 mb-10">
@@ -527,6 +571,8 @@ const LandingMarketing: React.FC<LandingMarketingProps> = ({ onOpenAuth }) => (
       </div>
     </footer>
   </>
-);
+    </>
+  );
+};
 
 export default LandingMarketing;

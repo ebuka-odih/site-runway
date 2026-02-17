@@ -47,7 +47,7 @@ class ProfileController extends Controller
             $user->password = $validated['new_password'];
         }
 
-        unset($validated['current_password'], $validated['new_password']);
+        unset($validated['current_password'], $validated['new_password'], $validated['new_password_confirmation']);
 
         if ($validated !== []) {
             $user->fill($validated);

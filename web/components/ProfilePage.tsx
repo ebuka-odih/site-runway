@@ -11,11 +11,14 @@ import {
   UserCheck,
   Sparkles,
   Loader2,
+  MessageCircle,
 } from 'lucide-react';
 import { useMarket } from '../context/MarketContext';
-import type { ProfileData } from '../types';
+import LiveChatEmbed from './LiveChatEmbed';
+import { apiPublicSettings } from '../lib/api';
+import type { ProfileData, PublicSettings } from '../types';
 
-type ProfileView = 'menu' | 'identity' | 'security' | 'kyc' | 'notifications';
+type ProfileView = 'menu' | 'identity' | 'security' | 'kyc' | 'notifications' | 'support';
 
 const BackHeader = ({ title, subtitle, onBack }: { title: string; subtitle?: string; onBack: () => void }) => (
   <header className="px-4 py-6 border-b border-white/5 sticky top-0 bg-[#050505]/80 backdrop-blur-md z-40">
@@ -60,6 +63,9 @@ const ProfilePage: React.FC = () => {
   const [notificationEmailAlerts, setNotificationEmailAlerts] = useState(true);
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const passwordsMismatch = newPassword !== '' && confirmPassword !== '' && newPassword !== confirmPassword;
+  const [publicSettings, setPublicSettings] = useState<PublicSettings | null>(null);
 
   const syncFormState = (input: ProfileData) => {
     setName(input.name ?? '');
@@ -101,6 +107,29 @@ const ProfilePage: React.FC = () => {
       isActive = false;
     };
   }, [fetchProfile]);
+
+  useEffect(() => {
+    let isActive = true;
+
+    const loadSettings = async () => {
+      try {
+        const settings = await apiPublicSettings();
+        if (isActive) {
+          setPublicSettings(settings);
+        }
+      } catch {
+        if (isActive) {
+          setPublicSettings(null);
+        }
+      }
+    };
+
+    void loadSettings();
+
+    return () => {
+      isActive = false;
+    };
+  }, []);
 
   const displayName = profile?.name ?? user?.name ?? 'User';
   const displayEmail = profile?.email ?? user?.email ?? '';
@@ -148,15 +177,22 @@ const ProfilePage: React.FC = () => {
       return;
     }
 
+    if (newPassword !== confirmPassword) {
+      setError('New password and confirmation do not match.');
+      return;
+    }
+
     setIsSavingSecurity(true);
 
     try {
       await updateProfile({
         currentPassword,
         newPassword,
+        newPasswordConfirmation: confirmPassword,
       });
       setCurrentPassword('');
       setNewPassword('');
+      setConfirmPassword('');
       setSuccess('Password updated successfully.');
     } catch (exception) {
       const message = exception instanceof Error ? exception.message : 'Unable to update password.';
@@ -295,6 +331,18 @@ const ProfilePage: React.FC = () => {
                 className="w-full bg-[#121212] border border-white/5 rounded-xl py-4 px-4 text-sm font-bold text-white focus:outline-none focus:border-emerald-500/50 transition-all"
               />
             </div>
+            <div className="space-y-2">
+              <label className="text-[10px] font-black text-zinc-600 uppercase tracking-widest ml-1">Confirm New Password</label>
+              <input
+                type="password"
+                value={confirmPassword}
+                onChange={(event) => setConfirmPassword(event.target.value)}
+                className="w-full bg-[#121212] border border-white/5 rounded-xl py-4 px-4 text-sm font-bold text-white focus:outline-none focus:border-emerald-500/50 transition-all"
+              />
+              {passwordsMismatch && (
+                <p className="text-[11px] font-bold text-red-400">Passwords do not match.</p>
+              )}
+            </div>
           </div>
           <button
             type="submit"
@@ -364,6 +412,50 @@ const ProfilePage: React.FC = () => {
     );
   }
 
+  if (activeView === 'support') {
+    const supportEmail = publicSettings?.supportEmail || 'support@runwayalgo.com';
+
+    return (
+      <div className="animate-in slide-in-from-right duration-300 pb-20">
+        <BackHeader title="Support & live chat" subtitle="Support" onBack={handleBack} />
+        <div className="p-4 space-y-6">
+          <div className="bg-[#121212] border border-white/5 rounded-2xl p-6">
+            <h4 className="text-base font-black text-white">Contact Support</h4>
+            <p className="text-xs text-zinc-500 font-bold mt-2">
+              Reach our support desk for verification, security, or funding help.
+            </p>
+            <a
+              href={`mailto:${supportEmail}`}
+              className="inline-flex mt-4 text-emerald-500 text-xs font-black uppercase tracking-widest hover:text-emerald-400 transition-colors"
+            >
+              {supportEmail}
+            </a>
+          </div>
+
+          <div className="bg-[#121212] border border-white/5 rounded-2xl p-6">
+            <h4 className="text-base font-black text-white">Live Chat</h4>
+            <p className="text-xs text-zinc-500 font-bold mt-2">
+              Chat with our team directly if live chat is enabled.
+            </p>
+            {publicSettings?.livechatEnabled && publicSettings.livechatEmbedCode ? (
+              <div className="mt-4 rounded-2xl border border-emerald-500/20 bg-emerald-500/5 p-4">
+                <LiveChatEmbed
+                  enabled={publicSettings.livechatEnabled}
+                  embedCode={publicSettings.livechatEmbedCode}
+                  className="text-white"
+                />
+              </div>
+            ) : (
+              <p className="mt-4 text-[10px] font-black uppercase tracking-widest text-zinc-600">
+                Live chat is currently offline.
+              </p>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="animate-in fade-in duration-500 pb-20">
       <header className="p-6 pb-2">
@@ -420,6 +512,13 @@ const ProfilePage: React.FC = () => {
               <div className="flex items-center gap-4">
                 <Shield size={18} className="text-emerald-500" />
                 <span className="text-sm font-black text-white">Notifications</span>
+              </div>
+              <ChevronRight size={18} className="text-zinc-700" />
+            </button>
+            <button onClick={() => setActiveView('support')} className="w-full bg-[#121212] border border-white/5 rounded-2xl p-5 flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <MessageCircle size={18} className="text-emerald-500" />
+                <span className="text-sm font-black text-white">Support & Live Chat</span>
               </div>
               <ChevronRight size={18} className="text-zinc-700" />
             </button>

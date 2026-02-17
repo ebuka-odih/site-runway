@@ -21,6 +21,7 @@ class SettingsManagementTest extends TestCase
             'site_mode' => 'live',
             'deposits_enabled' => true,
             'withdrawals_enabled' => true,
+            'require_kyc_for_deposits' => false,
             'require_kyc_for_withdrawals' => true,
             'session_timeout_minutes' => 90,
             'support_email' => 'support@runwayalgo.test',

@@ -107,6 +107,19 @@ export interface AuthUser {
   notificationEmailAlerts?: boolean;
 }
 
+export interface PublicSettings {
+  siteMode: string;
+  depositsEnabled: boolean;
+  withdrawalsEnabled: boolean;
+  requireKycForDeposits: boolean;
+  requireKycForWithdrawals: boolean;
+  sessionTimeoutMinutes: number;
+  supportEmail: string;
+  livechatEnabled: boolean;
+  livechatProvider?: string | null;
+  livechatEmbedCode?: string | null;
+}
+
 export interface OrderItem {
   id: string;
   side: 'buy' | 'sell';

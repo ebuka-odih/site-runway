@@ -6,6 +6,7 @@ use App\Http\Controllers\Api\DashboardController;
 use App\Http\Controllers\Api\MarketController;
 use App\Http\Controllers\Api\NotificationController;
 use App\Http\Controllers\Api\OrderController;
+use App\Http\Controllers\Api\PublicSettingsController;
 use App\Http\Controllers\Api\ProfileController;
 use App\Http\Controllers\Api\WatchlistController;
 use App\Http\Controllers\Api\WalletController;
@@ -21,6 +22,8 @@ Route::prefix('v1')->group(function () {
             'version' => 'v1',
         ]);
     });
+
+    Route::get('/public/settings', [PublicSettingsController::class, 'show']);
 
     Route::post('/auth/register', [AuthController::class, 'register']);
     Route::post('/auth/verify-otp', [AuthController::class, 'verifyEmailOtp']);

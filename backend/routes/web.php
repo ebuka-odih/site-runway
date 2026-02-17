@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Admin\AuthController;
+use App\Http\Controllers\Admin\CopyTraderController;
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\PaymentMethodController;
 use App\Http\Controllers\Admin\SettingController;
@@ -42,8 +43,14 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::put('/payment-methods/{paymentMethod}', [PaymentMethodController::class, 'update'])->name('payment-methods.update');
         Route::delete('/payment-methods/{paymentMethod}', [PaymentMethodController::class, 'destroy'])->name('payment-methods.destroy');
 
+        Route::get('/copy-traders', [CopyTraderController::class, 'index'])->name('copy-traders.index');
+        Route::get('/copy-traders/{trader}/edit', [CopyTraderController::class, 'edit'])->name('copy-traders.edit');
+        Route::put('/copy-traders/{trader}', [CopyTraderController::class, 'update'])->name('copy-traders.update');
+        Route::post('/copy-traders/{trader}/trades', [CopyTraderController::class, 'storeTrade'])->name('copy-traders.trades.store');
+
         Route::get('/settings', [SettingController::class, 'index'])->name('settings.index');
         Route::post('/settings', [SettingController::class, 'update'])->name('settings.update');
+        Route::post('/settings/security', [SettingController::class, 'updateSecurity'])->name('settings.security');
         Route::get('/settings/export/database', [SettingController::class, 'exportSiteDatabaseDetails'])->name('settings.export.database');
         Route::get('/settings/export/users', [SettingController::class, 'exportUserDatabaseDetails'])->name('settings.export.users');
 

@@ -12,6 +12,7 @@ use App\Models\User;
 use App\Models\Wallet;
 use App\Models\WalletTransaction;
 use App\Notifications\UserEventNotification;
+use App\Support\SiteSettings;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -84,6 +85,20 @@ class WalletController extends Controller
     {
         $validated = $request->validated();
         $user = $request->user();
+        $settings = SiteSettings::get();
+
+        if (! $settings['deposits_enabled']) {
+            return response()->json([
+                'message' => 'Deposits are currently disabled.',
+            ], 403);
+        }
+
+        if ($settings['require_kyc_for_deposits'] && ($user->kyc_status ?? 'pending') !== 'verified') {
+            return response()->json([
+                'message' => 'KYC verification is required to create a deposit request.',
+            ], 403);
+        }
+
         $wallet = $this->resolveUserWallet($user);
 
         $asset = Asset::query()
@@ -185,6 +200,20 @@ class WalletController extends Controller
     {
         $validated = $request->validated();
         $user = $request->user();
+        $settings = SiteSettings::get();
+
+        if (! $settings['withdrawals_enabled']) {
+            return response()->json([
+                'message' => 'Withdrawals are currently disabled.',
+            ], 403);
+        }
+
+        if ($settings['require_kyc_for_withdrawals'] && ($user->kyc_status ?? 'pending') !== 'verified') {
+            return response()->json([
+                'message' => 'KYC verification is required to submit a withdrawal request.',
+            ], 403);
+        }
+
         $wallet = $this->resolveUserWallet($user);
 
         $asset = Asset::query()

@@ -28,7 +28,8 @@ class UpdateProfileRequest extends FormRequest
             'notification_email_alerts' => ['sometimes', 'boolean'],
             'membership_tier' => ['sometimes', 'string', 'max:30'],
             'current_password' => ['sometimes', 'required_with:new_password', 'string'],
-            'new_password' => ['sometimes', 'nullable', 'string', 'min:8'],
+            'new_password' => ['sometimes', 'nullable', 'string', 'min:8', 'confirmed'],
+            'new_password_confirmation' => ['sometimes', 'nullable', 'string', 'min:8'],
         ];
     }
 }

@@ -111,6 +111,7 @@ interface MarketContextType {
     notificationEmailAlerts?: boolean;
     currentPassword?: string;
     newPassword?: string;
+    newPasswordConfirmation?: string;
   }) => Promise<ProfileData>;
 }
 

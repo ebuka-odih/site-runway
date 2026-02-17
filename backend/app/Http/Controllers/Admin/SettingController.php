@@ -9,21 +9,18 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Schema;
 use Inertia\Inertia;
 use Inertia\Response;
 use Symfony\Component\HttpFoundation\StreamedResponse;
+use App\Support\SiteSettings;
 
 class SettingController extends Controller
 {
-    private const SETTINGS_CACHE_KEY = 'admin_panel_settings';
-
     public function index(Request $request): Response
     {
-        $settings = [
-            ...$this->defaultSettings(),
-            ...Cache::get(self::SETTINGS_CACHE_KEY, []),
-        ];
+        $settings = SiteSettings::get();
 
         return Inertia::render('Admin/Settings/Index', [
             'settings' => $settings,
@@ -105,6 +102,7 @@ class SettingController extends Controller
             'site_mode' => ['required', 'string', 'in:live,maintenance'],
             'deposits_enabled' => ['required', 'boolean'],
             'withdrawals_enabled' => ['required', 'boolean'],
+            'require_kyc_for_deposits' => ['required', 'boolean'],
             'require_kyc_for_withdrawals' => ['required', 'boolean'],
             'session_timeout_minutes' => ['required', 'integer', 'min:5', 'max:240'],
             'support_email' => ['required', 'email'],
@@ -113,29 +111,30 @@ class SettingController extends Controller
             'livechat_embed_code' => ['nullable', 'string', 'max:20000'],
         ]);
 
-        Cache::forever(self::SETTINGS_CACHE_KEY, $validated);
+        Cache::forever(SiteSettings::CACHE_KEY, $validated);
 
         return redirect()
             ->route('admin.settings.index')
             ->with('success', 'Admin settings were updated.');
     }
 
-    /**
-     * @return array<string, mixed>
-     */
-    private function defaultSettings(): array
+    public function updateSecurity(Request $request): RedirectResponse
     {
-        return [
-            'site_mode' => 'live',
-            'deposits_enabled' => true,
-            'withdrawals_enabled' => true,
-            'require_kyc_for_withdrawals' => true,
-            'session_timeout_minutes' => 60,
-            'support_email' => 'support@runwayalgo.test',
-            'livechat_enabled' => false,
-            'livechat_provider' => null,
-            'livechat_embed_code' => null,
-        ];
+        $validated = $request->validate([
+            'current_password' => ['required', 'string'],
+            'new_password' => ['required', 'string', 'min:8', 'confirmed'],
+        ]);
+
+        $user = $request->user();
+
+        if (! $user || ! Hash::check($validated['current_password'], $user->password)) {
+            return back()->with('error', 'Current password is incorrect.');
+        }
+
+        $user->password = Hash::make($validated['new_password']);
+        $user->save();
+
+        return back()->with('success', 'Admin password updated successfully.');
     }
 
     /**

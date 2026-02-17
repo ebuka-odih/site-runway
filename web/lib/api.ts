@@ -10,6 +10,7 @@ import type {
   OrderItem,
   PositionItem,
   ProfileData,
+  PublicSettings,
   SelectableAsset,
   TraderItem,
   UserNotificationItem,
@@ -223,6 +224,21 @@ function mapCopyTrade(raw: any): CopyTradeHistoryItem {
     executedAt: raw.executed_at ?? null,
     traderName: String(raw.copy_relationship?.trader?.display_name ?? ''),
     symbol: raw.asset?.symbol ?? null,
+  };
+}
+
+function mapPublicSettings(raw: any): PublicSettings {
+  return {
+    siteMode: String(raw.site_mode ?? 'live'),
+    depositsEnabled: Boolean(raw.deposits_enabled),
+    withdrawalsEnabled: Boolean(raw.withdrawals_enabled),
+    requireKycForDeposits: Boolean(raw.require_kyc_for_deposits),
+    requireKycForWithdrawals: Boolean(raw.require_kyc_for_withdrawals),
+    sessionTimeoutMinutes: toNumber(raw.session_timeout_minutes),
+    supportEmail: String(raw.support_email ?? ''),
+    livechatEnabled: Boolean(raw.livechat_enabled),
+    livechatProvider: raw.livechat_provider ?? null,
+    livechatEmbedCode: raw.livechat_embed_code ?? null,
   };
 }
 
@@ -749,6 +765,14 @@ export async function apiProfile(): Promise<ProfileData> {
   return mapAuthUser(payload.data) as ProfileData;
 }
 
+export async function apiPublicSettings(): Promise<PublicSettings> {
+  const payload = await request<any>('/public/settings', {
+    authenticated: false,
+  });
+
+  return mapPublicSettings(payload.data ?? {});
+}
+
 export async function apiUpdateProfile(input: {
   name?: string;
   phone?: string | null;
@@ -756,6 +780,7 @@ export async function apiUpdateProfile(input: {
   notificationEmailAlerts?: boolean;
   currentPassword?: string;
   newPassword?: string;
+  newPasswordConfirmation?: string;
 }): Promise<ProfileData> {
   const payload = await request<any>('/profile', {
     method: 'PATCH',
@@ -766,6 +791,7 @@ export async function apiUpdateProfile(input: {
       notification_email_alerts: input.notificationEmailAlerts,
       current_password: input.currentPassword,
       new_password: input.newPassword,
+      new_password_confirmation: input.newPasswordConfirmation,
     }),
   });
 
