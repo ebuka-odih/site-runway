@@ -1,7 +1,8 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Shield, Plus, ArrowUpRight, History, X, Copy, Check, Loader2, Sparkles, ChevronDown } from 'lucide-react';
 import { useMarket } from '../context/MarketContext';
-import type { DepositRequestItem, WalletSummaryData } from '../types';
+import type { DepositRequestItem, WalletSummaryData, WalletTransactionItem } from '../types';
+import WithdrawalStatusStepper from './WithdrawalStatusStepper';
 
 const WalletPage: React.FC = () => {
   const { fetchWalletSummary, fetchCopyFollowing, createDeposit, createWithdrawal, submitDepositProof } = useMarket();
@@ -20,6 +21,7 @@ const WalletPage: React.FC = () => {
   const [isCopied, setIsCopied] = useState(false);
   const [proofFile, setProofFile] = useState<File | null>(null);
   const [activeDeposit, setActiveDeposit] = useState<DepositRequestItem | null>(null);
+  const [activeWithdrawal, setActiveWithdrawal] = useState<WalletTransactionItem | null>(null);
   const [withdrawalAmount, setWithdrawalAmount] = useState('0.00');
   const [withdrawalCrypto, setWithdrawalCrypto] = useState('USDT');
   const [withdrawalDestination, setWithdrawalDestination] = useState('');
@@ -162,12 +164,13 @@ const WalletPage: React.FC = () => {
     setWithdrawalStatus('processing');
 
     try {
-      await createWithdrawal({
+      const transaction = await createWithdrawal({
         amount: parsedAmount,
         currency: withdrawalCrypto,
         destination: withdrawalDestination.trim(),
       });
 
+      setActiveWithdrawal(transaction);
       setWithdrawalStatus('success');
       setWithdrawalAmount('0.00');
       setWithdrawalDestination('');
@@ -200,6 +203,7 @@ const WalletPage: React.FC = () => {
     setTimeLeft(900);
     setProofFile(null);
     setActiveDeposit(null);
+    setActiveWithdrawal(null);
     setWithdrawalStatus('input');
   };
 
@@ -397,20 +401,12 @@ const WalletPage: React.FC = () => {
             </div>
           )}
 
-          {withdrawalStatus === 'success' && (
-            <div className="py-8 text-center space-y-5">
-              <div className="w-14 h-14 rounded-full bg-orange-500/10 flex items-center justify-center mx-auto">
-                <Check size={28} className="text-orange-400" />
-              </div>
-              <div>
-                <p className="text-lg font-black text-white">Withdrawal requested</p>
-                <p className="text-xs text-zinc-500 font-bold mt-1">
-                  Your request is pending admin approval.
-                </p>
-              </div>
+          {withdrawalStatus === 'success' && activeWithdrawal && (
+            <div className="py-2">
+              <WithdrawalStatusStepper transaction={activeWithdrawal} />
               <button
                 onClick={() => setIsWithdrawalFormOpen(false)}
-                className="w-full py-4 bg-orange-500 hover:bg-orange-400 text-black font-black rounded-xl uppercase tracking-widest text-sm transition-all shadow-xl shadow-orange-500/20 active:scale-[0.98]"
+                className="w-full py-4 mt-6 bg-white text-black font-black rounded-full uppercase tracking-widest text-sm transition-all shadow-xl active:scale-[0.98]"
               >
                 Done
               </button>
@@ -665,10 +661,18 @@ const WalletPage: React.FC = () => {
 
               <div className="space-y-4">
                 {pendingWithdrawals.map((withdrawal) => (
-                  <div key={withdrawal.id} className="flex items-center justify-between">
+                  <div
+                    key={withdrawal.id}
+                    onClick={() => {
+                      setActiveWithdrawal(withdrawal);
+                      setWithdrawalStatus('success');
+                      setIsWithdrawalFormOpen(true);
+                    }}
+                    className="flex items-center justify-between p-2 -mx-2 rounded-xl hover:bg-white/5 cursor-pointer transition-colors group"
+                  >
                     <div>
-                      <p className="text-base font-black text-white tabular-nums">
-                        ${withdrawal.amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                      <p className="text-base font-black text-white tabular-nums group-hover:text-emerald-400 transition-colors">
+                        ${Math.abs(withdrawal.amount).toLocaleString(undefined, { minimumFractionDigits: 2 })}
                       </p>
                       <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mt-0.5">
                         {withdrawal.symbol ?? 'Asset'} • {withdrawal.type}
