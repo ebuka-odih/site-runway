@@ -24,8 +24,9 @@ class StoreDepositRequest extends FormRequest
     {
         return [
             'amount' => ['required', 'numeric', 'gt:0'],
-            'currency' => ['required', 'string', Rule::in(['USD', 'USDT', 'BTC', 'ETH', 'SOL'])],
-            'network' => ['nullable', 'string', 'max:20'],
+            'payment_method_id' => ['nullable', 'uuid', Rule::exists('payment_methods', 'id')],
+            'currency' => ['required_without:payment_method_id', 'string', 'max:10'],
+            'network' => ['nullable', 'string', 'max:40'],
             'asset_id' => ['nullable', 'uuid', Rule::exists('assets', 'id')],
         ];
     }
