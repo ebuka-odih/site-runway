@@ -13,8 +13,41 @@ function parseDepositAmount(value: string): number {
   return Number.isFinite(parsed) ? parsed : Number.NaN;
 }
 
+function formatUsdAmount(value: number): string {
+  return value.toLocaleString(undefined, {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+}
+
+function formatTransferAmount(value: number, symbol: string): string {
+  const upperSymbol = symbol.toUpperCase();
+  const maximumFractionDigits = upperSymbol === 'BTC'
+    ? 8
+    : upperSymbol === 'ETH'
+      ? 6
+      : ['USDT', 'USDC', 'USD'].includes(upperSymbol)
+        ? 2
+        : 6;
+
+  const minimumFractionDigits = value >= 1 ? 2 : Math.min(6, maximumFractionDigits);
+
+  return value.toLocaleString(undefined, {
+    minimumFractionDigits,
+    maximumFractionDigits,
+  });
+}
+
 const WalletPage: React.FC = () => {
-  const { fetchWalletSummary, fetchCopyFollowing, createDeposit, createWithdrawal, submitDepositProof } = useMarket();
+  const {
+    fetchWalletSummary,
+    fetchCopyFollowing,
+    createDeposit,
+    createWithdrawal,
+    submitDepositProof,
+    marketAssets,
+    refreshMarketAssets,
+  } = useMarket();
   const [summary, setSummary] = useState<WalletSummaryData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -29,6 +62,8 @@ const WalletPage: React.FC = () => {
   const [isCopied, setIsCopied] = useState(false);
   const [proofFile, setProofFile] = useState<File | null>(null);
   const [activeDeposit, setActiveDeposit] = useState<DepositRequestItem | null>(null);
+  const [quotedTransferAmount, setQuotedTransferAmount] = useState<number | null>(null);
+  const [quotedTransferSymbol, setQuotedTransferSymbol] = useState<string>('');
   const [activeWithdrawal, setActiveWithdrawal] = useState<WalletTransactionItem | null>(null);
   const [withdrawalAmount, setWithdrawalAmount] = useState('0.00');
   const [withdrawalCrypto, setWithdrawalCrypto] = useState('USDT');
@@ -123,6 +158,11 @@ const WalletPage: React.FC = () => {
       return;
     }
 
+    if (!hasConversionQuote || !Number.isFinite(transferAmountInCurrency) || transferAmountInCurrency <= 0) {
+      setError('Unable to quote live conversion for this wallet right now. Please try again.');
+      return;
+    }
+
     try {
       const deposit = await createDeposit({
         amount: depositAmountValue,
@@ -134,6 +174,8 @@ const WalletPage: React.FC = () => {
       });
 
       setActiveDeposit(deposit);
+      setQuotedTransferAmount(transferAmountInCurrency);
+      setQuotedTransferSymbol(selectedCurrencySymbol || selectedDepositMethod.currency.toUpperCase());
       setModalStatus('payment');
       setTimeLeft(900);
     } catch (exception) {
@@ -231,6 +273,8 @@ const WalletPage: React.FC = () => {
     setTimeLeft(900);
     setProofFile(null);
     setActiveDeposit(null);
+    setQuotedTransferAmount(null);
+    setQuotedTransferSymbol('');
     setActiveWithdrawal(null);
     setWithdrawalStatus('input');
   };
@@ -265,7 +309,39 @@ const WalletPage: React.FC = () => {
   const depositNetwork = selectedDepositMethod?.network ?? '';
   const depositAmountValue = useMemo(() => parseDepositAmount(amount), [amount]);
   const isDepositAmountValid = Number.isFinite(depositAmountValue) && depositAmountValue > 0;
-  const displayDepositCurrency = selectedDepositMethod?.currency || activeDeposit?.currency || 'N/A';
+  const selectedCurrencySymbol = useMemo(
+    () => (selectedDepositMethod?.currency ?? '').trim().toUpperCase(),
+    [selectedDepositMethod?.currency],
+  );
+  const selectedCurrencyRateUsd = useMemo(() => {
+    if (!selectedCurrencySymbol) {
+      return Number.NaN;
+    }
+
+    if (['USD', 'USDT', 'USDC'].includes(selectedCurrencySymbol)) {
+      return 1;
+    }
+
+    const matchingAsset = marketAssets.find((asset) => asset.symbol.toUpperCase() === selectedCurrencySymbol);
+    const price = matchingAsset?.price;
+
+    return Number.isFinite(price) && (price as number) > 0 ? (price as number) : Number.NaN;
+  }, [marketAssets, selectedCurrencySymbol]);
+  const transferAmountInCurrency = useMemo(() => {
+    if (!isDepositAmountValid || !Number.isFinite(selectedCurrencyRateUsd) || selectedCurrencyRateUsd <= 0) {
+      return Number.NaN;
+    }
+
+    return depositAmountValue / selectedCurrencyRateUsd;
+  }, [depositAmountValue, isDepositAmountValid, selectedCurrencyRateUsd]);
+  const hasConversionQuote = Number.isFinite(transferAmountInCurrency) && transferAmountInCurrency > 0;
+  const canProceedToPayment = Boolean(selectedDepositMethod) && isDepositAmountValid && hasConversionQuote;
+  const displayTransferSymbol = quotedTransferSymbol || selectedCurrencySymbol || activeDeposit?.currency || 'N/A';
+  const displayTransferAmount = quotedTransferAmount ?? transferAmountInCurrency;
+  const displayUsdAmountText = isDepositAmountValid ? formatUsdAmount(depositAmountValue) : amount;
+  const displayTransferAmountText = Number.isFinite(displayTransferAmount) && displayTransferAmount > 0
+    ? formatTransferAmount(displayTransferAmount, displayTransferSymbol)
+    : '--';
 
   useEffect(() => {
     if (keyedDepositMethods.length === 0) {
@@ -279,6 +355,16 @@ const WalletPage: React.FC = () => {
       setSelectedDepositMethodId(keyedDepositMethods[0].selectionKey);
     }
   }, [keyedDepositMethods, selectedDepositMethodId]);
+
+  useEffect(() => {
+    if (!isDepositFormOpen || marketAssets.length > 0) {
+      return;
+    }
+
+    void refreshMarketAssets().catch(() => {
+      // Leave conversion disabled until prices are available.
+    });
+  }, [isDepositFormOpen, marketAssets.length, refreshMarketAssets]);
 
   if (isLoading) {
     return (
@@ -443,11 +529,20 @@ const WalletPage: React.FC = () => {
                   className="w-full bg-[#121212] border border-white/5 rounded-xl py-4 px-4 text-sm font-black text-white/80 focus:outline-none"
                 />
               </div>
+
+              {isDepositAmountValid && selectedCurrencySymbol && (
+                <p className="text-xs font-bold text-zinc-500">
+                  {hasConversionQuote
+                    ? `You will send approximately ${displayTransferAmountText} ${displayTransferSymbol} (for $${formatUsdAmount(depositAmountValue)} USD).`
+                    : `Live ${selectedCurrencySymbol} conversion is unavailable right now.`
+                  }
+                </p>
+              )}
             </div>
 
             <button
               onClick={() => void handleShowPayment()}
-              disabled={!selectedDepositMethod || !isDepositAmountValid}
+              disabled={!canProceedToPayment}
               className="w-full py-4 bg-emerald-500 text-black font-black rounded-xl uppercase tracking-widest text-sm hover:bg-emerald-400 disabled:bg-zinc-700 disabled:text-zinc-400 disabled:cursor-not-allowed transition-all shadow-xl shadow-emerald-500/20 active:scale-[0.98]"
             >
               Show Payment Window
@@ -598,7 +693,7 @@ const WalletPage: React.FC = () => {
                 </button>
 
                 <div className="text-center pt-2">
-                  <h3 className="text-2xl font-black text-white mb-2 tracking-tight">Send {displayDepositCurrency}</h3>
+                  <h3 className="text-2xl font-black text-white mb-2 tracking-tight">Send {displayTransferAmountText} {displayTransferSymbol}</h3>
                   <p className="text-zinc-500 text-sm font-bold">Complete payment and upload proof</p>
                 </div>
 
@@ -675,7 +770,7 @@ const WalletPage: React.FC = () => {
                   </div>
                   <h3 className="text-2xl font-black text-white mb-2">Deposit Submitted</h3>
                   <p className="text-zinc-500 text-sm font-bold max-w-[280px]">
-                    Your request for <span className="text-white">${amount} {displayDepositCurrency}</span> is being processed.
+                    Your request for <span className="text-white">${displayUsdAmountText} USD</span> (sending {displayTransferAmountText} {displayTransferSymbol}) is being processed.
                   </p>
                 </div>
 
