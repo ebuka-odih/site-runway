@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Shield, Plus, ArrowUpRight, History, X, Copy, Check, Loader2, Sparkles, ChevronDown } from 'lucide-react';
 import { useMarket } from '../context/MarketContext';
-import type { DepositRequestItem, WalletSummaryData, WalletTransactionItem } from '../types';
+import type { DepositMethodItem, DepositRequestItem, WalletSummaryData, WalletTransactionItem } from '../types';
 import WithdrawalStatusStepper from './WithdrawalStatusStepper';
 
 const WalletPage: React.FC = () => {
@@ -15,8 +15,7 @@ const WalletPage: React.FC = () => {
   const [isWithdrawalFormOpen, setIsWithdrawalFormOpen] = useState(false);
   const [modalStatus, setModalStatus] = useState<'input' | 'payment' | 'processing' | 'success'>('input');
   const [amount, setAmount] = useState('0.00');
-  const [crypto, setCrypto] = useState('USDT');
-  const [network, setNetwork] = useState('ERC 20');
+  const [selectedDepositMethodId, setSelectedDepositMethodId] = useState('');
   const [timeLeft, setTimeLeft] = useState(900);
   const [isCopied, setIsCopied] = useState(false);
   const [proofFile, setProofFile] = useState<File | null>(null);
@@ -85,24 +84,38 @@ const WalletPage: React.FC = () => {
   };
 
   const handleCopy = () => {
-    const address = activeDeposit?.walletAddress ?? '0x906b2533218Df3581da06c697B51eF29f8c86381';
+    const address = activeDeposit?.walletAddress ?? selectedDepositMethod?.walletAddress;
+
+    if (!address) {
+      setError('No wallet address is available for this payment method.');
+      return;
+    }
+
     navigator.clipboard.writeText(address);
     setIsCopied(true);
     setTimeout(() => setIsCopied(false), 2000);
   };
 
   const handleShowPayment = async () => {
-    if (parseFloat(amount) <= 0) {
+    const parsedAmount = parseFloat(amount);
+
+    if (!Number.isFinite(parsedAmount) || parsedAmount <= 0) {
       return;
     }
 
     setError(null);
 
+    if (!selectedDepositMethod) {
+      setError('No active admin deposit wallet is configured for this account.');
+      return;
+    }
+
     try {
       const deposit = await createDeposit({
-        amount: parseFloat(amount),
-        currency: crypto,
-        network,
+        amount: parsedAmount,
+        currency: selectedDepositMethod.currency,
+        network: selectedDepositMethod.network ?? undefined,
+        paymentMethodId: selectedDepositMethod.id || undefined,
       });
 
       setActiveDeposit(deposit);
@@ -216,6 +229,31 @@ const WalletPage: React.FC = () => {
     transactions.filter((transaction) => transaction.type === 'withdrawal' && transaction.status === 'pending')
   ), [transactions]);
   const pendingDeposits = summary?.pendingDeposits ?? [];
+  const depositMethods = summary?.depositMethods ?? [];
+
+  const selectedDepositMethod = useMemo<DepositMethodItem | undefined>(() => {
+    if (depositMethods.length === 0) {
+      return undefined;
+    }
+
+    return depositMethods.find((method) => method.id === selectedDepositMethodId) ?? depositMethods[0];
+  }, [depositMethods, selectedDepositMethodId]);
+
+  const depositCurrency = selectedDepositMethod?.currency ?? '';
+  const depositNetwork = selectedDepositMethod?.network ?? '';
+
+  useEffect(() => {
+    if (depositMethods.length === 0) {
+      if (selectedDepositMethodId !== '') {
+        setSelectedDepositMethodId('');
+      }
+      return;
+    }
+
+    if (!depositMethods.some((method) => method.id === selectedDepositMethodId)) {
+      setSelectedDepositMethodId(depositMethods[0].id);
+    }
+  }, [depositMethods, selectedDepositMethodId]);
 
   if (isLoading) {
     return (
@@ -340,16 +378,22 @@ const WalletPage: React.FC = () => {
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-[10px] font-black text-zinc-600 uppercase tracking-widest ml-1">Cryptocurrency</label>
+                <label className="text-[10px] font-black text-zinc-600 uppercase tracking-widest ml-1">Payment Method</label>
                 <div className="relative">
                   <select
-                    value={crypto}
-                    onChange={(event) => setCrypto(event.target.value)}
+                    value={selectedDepositMethodId}
+                    onChange={(event) => setSelectedDepositMethodId(event.target.value)}
+                    disabled={depositMethods.length === 0}
                     className="w-full bg-[#121212] border border-white/5 rounded-xl py-4 px-4 text-sm font-black text-white appearance-none focus:outline-none focus:border-emerald-500/50 transition-all"
                   >
-                    <option>USDT</option>
-                    <option>BTC</option>
-                    <option>ETH</option>
+                    {depositMethods.length === 0 && (
+                      <option value="">No active admin payment method</option>
+                    )}
+                    {depositMethods.map((method) => (
+                      <option key={method.id} value={method.id}>
+                        {method.name} · {method.currency}{method.network ? ` (${method.network})` : ''}
+                      </option>
+                    ))}
                   </select>
                   <ChevronDown size={18} className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-500 pointer-events-none" />
                 </div>
@@ -357,23 +401,28 @@ const WalletPage: React.FC = () => {
 
               <div className="space-y-1.5">
                 <label className="text-[10px] font-black text-zinc-600 uppercase tracking-widest ml-1">Network</label>
-                <div className="relative">
-                  <select
-                    value={network}
-                    onChange={(event) => setNetwork(event.target.value)}
-                    className="w-full bg-[#121212] border border-white/5 rounded-xl py-4 px-4 text-sm font-black text-white appearance-none focus:outline-none focus:border-emerald-500/50 transition-all"
-                  >
-                    <option>ERC 20</option>
-                    <option>TRC 20</option>
-                    <option>BEP 20</option>
-                  </select>
-                  <ChevronDown size={18} className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-500 pointer-events-none" />
-                </div>
+                <input
+                  type="text"
+                  value={depositNetwork || 'Default'}
+                  disabled
+                  className="w-full bg-[#121212] border border-white/5 rounded-xl py-4 px-4 text-sm font-black text-white/80 focus:outline-none"
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-black text-zinc-600 uppercase tracking-widest ml-1">Currency</label>
+                <input
+                  type="text"
+                  value={depositCurrency || 'N/A'}
+                  disabled
+                  className="w-full bg-[#121212] border border-white/5 rounded-xl py-4 px-4 text-sm font-black text-white/80 focus:outline-none"
+                />
               </div>
             </div>
 
             <button
               onClick={() => void handleShowPayment()}
+              disabled={!selectedDepositMethod}
               className="w-full py-4 bg-emerald-500 text-black font-black rounded-xl uppercase tracking-widest text-sm hover:bg-emerald-400 transition-all shadow-xl shadow-emerald-500/20 active:scale-[0.98]"
             >
               Show Payment Window
@@ -524,7 +573,7 @@ const WalletPage: React.FC = () => {
                 </button>
 
                 <div className="text-center pt-2">
-                  <h3 className="text-2xl font-black text-white mb-2 tracking-tight">Send {crypto}</h3>
+                  <h3 className="text-2xl font-black text-white mb-2 tracking-tight">Send {activeDeposit?.currency ?? depositCurrency}</h3>
                   <p className="text-zinc-500 text-sm font-bold">Complete payment and upload proof</p>
                 </div>
 
@@ -532,7 +581,7 @@ const WalletPage: React.FC = () => {
                   <label className="text-[10px] font-black text-zinc-600 uppercase tracking-widest ml-1">Wallet Address</label>
                   <div className="bg-[#0a0a0a] border border-white/5 rounded-2xl p-4 break-all">
                     <p className="text-xs font-black text-white leading-relaxed font-mono">
-                      {activeDeposit?.walletAddress ?? '0x906b2533218Df3581da06c697B51eF29f8c86381'}
+                      {activeDeposit?.walletAddress ?? selectedDepositMethod?.walletAddress ?? 'Unavailable'}
                     </p>
                   </div>
                   <button
@@ -601,7 +650,7 @@ const WalletPage: React.FC = () => {
                   </div>
                   <h3 className="text-2xl font-black text-white mb-2">Deposit Submitted</h3>
                   <p className="text-zinc-500 text-sm font-bold max-w-[280px]">
-                    Your request for <span className="text-white">${amount} {crypto}</span> is being processed.
+                    Your request for <span className="text-white">${amount} {activeDeposit?.currency ?? depositCurrency}</span> is being processed.
                   </p>
                 </div>
 

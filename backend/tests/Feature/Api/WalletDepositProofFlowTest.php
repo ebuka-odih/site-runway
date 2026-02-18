@@ -3,6 +3,7 @@
 namespace Tests\Feature\Api;
 
 use App\Models\DepositRequest;
+use App\Models\PaymentMethod;
 use App\Models\User;
 use App\Models\Wallet;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -36,7 +37,8 @@ class WalletDepositProofFlowTest extends TestCase
                 'currency' => 'USDT',
                 'network' => 'ERC 20',
             ])
-            ->assertCreated();
+            ->assertCreated()
+            ->assertJsonPath('data.wallet_address', '0x906b2533218Df3581da06c697B51eF29f8c86381');
 
         $depositRequestId = (string) $createDepositResponse->json('data.id');
 
@@ -93,5 +95,82 @@ class WalletDepositProofFlowTest extends TestCase
             ])
             ->assertStatus(422)
             ->assertJsonValidationErrors(['proof_file']);
+    }
+
+    public function test_user_deposit_uses_admin_payment_method_wallet_when_selected(): void
+    {
+        $this->seed();
+
+        $paymentMethod = PaymentMethod::query()->create([
+            'name' => 'USDT ERC20',
+            'channel' => 'crypto',
+            'currency' => 'USDT',
+            'network' => 'ERC20',
+            'wallet_address' => '0x1111111111111111111111111111111111111111',
+            'status' => 'active',
+            'display_order' => 1,
+        ]);
+
+        $token = $this->postJson('/api/v1/auth/login', [
+            'email' => 'tommygreymassey@yahoo.com',
+            'password' => 'password',
+            'device_name' => 'phpunit',
+        ])->json('token');
+
+        $this->withToken($token)
+            ->getJson('/api/v1/wallet')
+            ->assertOk()
+            ->assertJsonPath('data.deposit_methods.0.id', $paymentMethod->id)
+            ->assertJsonPath('data.deposit_methods.0.wallet_address', $paymentMethod->wallet_address);
+
+        $createDepositResponse = $this
+            ->withToken($token)
+            ->postJson('/api/v1/wallet/deposits', [
+                'amount' => 2750,
+                'currency' => 'USDT',
+                'network' => 'ERC 20',
+                'payment_method_id' => $paymentMethod->id,
+            ])
+            ->assertCreated()
+            ->assertJsonPath('data.wallet_address', $paymentMethod->wallet_address)
+            ->assertJsonPath('data.currency', 'USDT')
+            ->assertJsonPath('data.network', 'ERC20');
+
+        $this->assertDatabaseHas('deposit_requests', [
+            'id' => $createDepositResponse->json('data.id'),
+            'wallet_address' => $paymentMethod->wallet_address,
+            'currency' => 'USDT',
+            'network' => 'ERC20',
+        ]);
+    }
+
+    public function test_user_deposit_returns_validation_error_when_selected_wallet_config_does_not_exist(): void
+    {
+        $this->seed();
+
+        PaymentMethod::query()->create([
+            'name' => 'USDT TRC20',
+            'channel' => 'crypto',
+            'currency' => 'USDT',
+            'network' => 'TRC20',
+            'wallet_address' => 'T111111111111111111111111111111111',
+            'status' => 'active',
+            'display_order' => 1,
+        ]);
+
+        $token = $this->postJson('/api/v1/auth/login', [
+            'email' => 'tommygreymassey@yahoo.com',
+            'password' => 'password',
+            'device_name' => 'phpunit',
+        ])->json('token');
+
+        $this->withToken($token)
+            ->postJson('/api/v1/wallet/deposits', [
+                'amount' => 500,
+                'currency' => 'BTC',
+                'network' => 'ERC20',
+            ])
+            ->assertStatus(422)
+            ->assertJsonPath('message', 'No active wallet is configured for the selected deposit method.');
     }
 }

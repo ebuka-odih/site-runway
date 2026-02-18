@@ -5,6 +5,7 @@ import type {
   CopyTradeHistoryItem,
   DashboardRange,
   DashboardData,
+  DepositMethodItem,
   DepositRequestItem,
   MarketAssetDetail,
   OrderItem,
@@ -178,6 +179,16 @@ function mapDepositRequest(raw: any): DepositRequestItem {
     status: String(raw.status),
     expiresAt: raw.expires_at ?? raw.expiresAt ?? null,
     walletAddress: raw.wallet_address,
+  };
+}
+
+function mapDepositMethod(raw: any): DepositMethodItem {
+  return {
+    id: raw.id == null ? '' : String(raw.id),
+    name: String(raw.name),
+    currency: String(raw.currency),
+    network: raw.network ?? null,
+    walletAddress: String(raw.wallet_address),
   };
 }
 
@@ -616,6 +627,7 @@ export async function apiWalletSummary(): Promise<WalletSummaryData> {
     },
     recentTransactions: (data.recent_transactions ?? []).map(mapWalletTransaction),
     pendingDeposits: (data.pending_deposits ?? []).map(mapDepositRequest),
+    depositMethods: (data.deposit_methods ?? []).map(mapDepositMethod),
   };
 }
 
@@ -637,6 +649,7 @@ export async function apiCreateDeposit(input: {
   currency: string;
   network?: string;
   assetId?: string;
+  paymentMethodId?: string;
 }): Promise<DepositRequestItem> {
   const payload = await request<any>('/wallet/deposits', {
     method: 'POST',
@@ -645,6 +658,7 @@ export async function apiCreateDeposit(input: {
       currency: input.currency,
       network: input.network,
       asset_id: input.assetId,
+      payment_method_id: input.paymentMethodId,
     }),
   });
 

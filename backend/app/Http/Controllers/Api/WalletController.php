@@ -8,6 +8,7 @@ use App\Http\Requests\StoreWithdrawalRequest;
 use App\Http\Requests\SubmitDepositProofRequest;
 use App\Models\Asset;
 use App\Models\DepositRequest;
+use App\Models\PaymentMethod;
 use App\Models\User;
 use App\Models\Wallet;
 use App\Models\WalletTransaction;
@@ -16,14 +17,21 @@ use App\Notifications\UserEventNotification;
 use App\Support\SiteSettings;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
 
 class WalletController extends Controller
 {
+    private const LEGACY_DEPOSIT_WALLET_ADDRESS = '0x906b2533218Df3581da06c697B51eF29f8c86381';
+
     public function summary(Request $request): JsonResponse
     {
         $wallet = $this->resolveUserWallet($request->user());
+        $depositMethods = $this->availableDepositMethods();
+        $summaryDepositMethods = $depositMethods->isNotEmpty()
+            ? $depositMethods
+            : collect([$this->legacyDepositMethodPayload()]);
 
         $wallet->load([
             'transactions' => fn ($query) => $query->with('asset:id,symbol')->latest('occurred_at')->limit(10),
@@ -60,6 +68,7 @@ class WalletController extends Controller
                         'status' => $deposit->status,
                         'expires_at' => optional($deposit->expires_at)->toIso8601String(),
                     ]),
+                'deposit_methods' => $summaryDepositMethods->values(),
             ],
         ]);
     }
@@ -102,17 +111,35 @@ class WalletController extends Controller
         }
 
         $wallet = $this->resolveUserWallet($user);
+        $depositMethods = $this->availableDepositMethods();
+        $selectedMethod = $this->resolveDepositMethod($validated, $depositMethods);
+
+        if ($selectedMethod === null && $depositMethods->isNotEmpty()) {
+            return response()->json([
+                'message' => 'No active wallet is configured for the selected deposit method.',
+            ], 422);
+        }
+
+        $selectedCurrency = $selectedMethod['currency'] ?? strtoupper((string) ($validated['currency'] ?? ''));
+        $selectedNetwork = $selectedMethod['network'] ?? ($validated['network'] ?? null);
+        $selectedWalletAddress = $selectedMethod['wallet_address'] ?? self::LEGACY_DEPOSIT_WALLET_ADDRESS;
+
+        if ($selectedCurrency === '') {
+            return response()->json([
+                'message' => 'A valid deposit currency is required.',
+            ], 422);
+        }
 
         $asset = Asset::query()
-            ->where('symbol', $validated['currency'])
+            ->where('symbol', $selectedCurrency)
             ->first();
 
         $deposit = $wallet->depositRequests()->create([
             'asset_id' => $validated['asset_id'] ?? $asset?->id,
             'amount' => $validated['amount'],
-            'currency' => $validated['currency'],
-            'network' => $validated['network'] ?? null,
-            'wallet_address' => '0x906b2533218Df3581da06c697B51eF29f8c86381',
+            'currency' => $selectedCurrency,
+            'network' => $selectedNetwork,
+            'wallet_address' => $selectedWalletAddress,
             'status' => 'payment',
             'expires_at' => now()->addMinutes(15),
         ]);
@@ -454,6 +481,107 @@ class WalletController extends Controller
         }
 
         return max($walletValue, $userValue);
+    }
+
+    /**
+     * @return Collection<int, array{id: string, name: string, currency: string, network: string|null, wallet_address: string}>
+     */
+    private function availableDepositMethods(): Collection
+    {
+        return PaymentMethod::query()
+            ->where('channel', 'crypto')
+            ->where('status', 'active')
+            ->orderBy('display_order')
+            ->orderBy('name')
+            ->get()
+            ->map(function (PaymentMethod $method): ?array {
+                $walletAddress = $this->paymentMethodWalletAddress($method);
+
+                if ($walletAddress === null) {
+                    return null;
+                }
+
+                $network = trim((string) ($method->network ?? ''));
+
+                return [
+                    'id' => $method->id,
+                    'name' => $method->name,
+                    'currency' => strtoupper((string) $method->currency),
+                    'network' => $network === '' ? null : $network,
+                    'wallet_address' => $walletAddress,
+                ];
+            })
+            ->filter()
+            ->values();
+    }
+
+    /**
+     * @param  array<string, mixed>  $validated
+     * @param  Collection<int, array{id: string, name: string, currency: string, network: string|null, wallet_address: string}>  $methods
+     * @return array{id: string, name: string, currency: string, network: string|null, wallet_address: string}|null
+     */
+    private function resolveDepositMethod(array $validated, Collection $methods): ?array
+    {
+        if ($methods->isEmpty()) {
+            return null;
+        }
+
+        $paymentMethodId = isset($validated['payment_method_id']) ? (string) $validated['payment_method_id'] : '';
+
+        if ($paymentMethodId !== '') {
+            return $methods->first(fn (array $method) => $method['id'] === $paymentMethodId);
+        }
+
+        $currency = strtoupper((string) ($validated['currency'] ?? ''));
+        $network = trim((string) ($validated['network'] ?? ''));
+
+        if ($currency === '') {
+            return null;
+        }
+
+        $currencyMethods = $methods->where('currency', $currency)->values();
+
+        if ($currencyMethods->isEmpty()) {
+            return null;
+        }
+
+        if ($network === '') {
+            return $currencyMethods->first();
+        }
+
+        $normalizedNetwork = $this->normalizeNetwork($network);
+
+        return $currencyMethods->first(
+            fn (array $method) => $this->normalizeNetwork((string) ($method['network'] ?? '')) === $normalizedNetwork
+        );
+    }
+
+    private function paymentMethodWalletAddress(PaymentMethod $method): ?string
+    {
+        $legacyWalletAddress = data_get($method->settings ?? [], 'wallet_address');
+        $walletAddress = trim((string) ($method->wallet_address
+            ?? (is_string($legacyWalletAddress) ? $legacyWalletAddress : '')));
+
+        return $walletAddress === '' ? null : $walletAddress;
+    }
+
+    private function normalizeNetwork(string $network): string
+    {
+        return strtoupper((string) preg_replace('/[^a-z0-9]+/i', '', $network));
+    }
+
+    /**
+     * @return array{id: string, name: string, currency: string, network: string|null, wallet_address: string}
+     */
+    private function legacyDepositMethodPayload(): array
+    {
+        return [
+            'id' => '',
+            'name' => 'Default Crypto Wallet',
+            'currency' => 'USDT',
+            'network' => 'ERC 20',
+            'wallet_address' => self::LEGACY_DEPOSIT_WALLET_ADDRESS,
+        ];
     }
 
     private function isEffectivelyZero(float $value): bool

@@ -86,7 +86,13 @@ interface MarketContextType {
   }) => Promise<OrderItem>;
   fetchWalletSummary: () => Promise<WalletSummaryData>;
   fetchWalletTransactions: (params?: { type?: string; status?: string }) => Promise<WalletTransactionItem[]>;
-  createDeposit: (input: { amount: number; currency: string; network?: string; assetId?: string }) => Promise<DepositRequestItem>;
+  createDeposit: (input: {
+    amount: number;
+    currency: string;
+    network?: string;
+    assetId?: string;
+    paymentMethodId?: string;
+  }) => Promise<DepositRequestItem>;
   createWithdrawal: (input: { amount: number; currency: string; network?: string; destination: string; assetId?: string }) => Promise<WalletTransactionItem>;
   submitDepositProof: (
     depositRequestId: string,

@@ -198,6 +198,7 @@ export interface WalletSummaryData {
   };
   recentTransactions: WalletTransactionItem[];
   pendingDeposits: DepositRequestItem[];
+  depositMethods: DepositMethodItem[];
 }
 
 export interface DepositRequestItem {
@@ -208,6 +209,14 @@ export interface DepositRequestItem {
   status: string;
   expiresAt?: string | null;
   walletAddress?: string;
+}
+
+export interface DepositMethodItem {
+  id: string;
+  name: string;
+  currency: string;
+  network?: string | null;
+  walletAddress: string;
 }
 
 export interface TraderItem {
