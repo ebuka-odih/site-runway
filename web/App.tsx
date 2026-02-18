@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { BrowserRouter, Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
+import { AlertTriangle } from 'lucide-react';
 import Header from './components/Header';
 import PortfolioCard from './components/PortfolioCard';
 import Analytics from './components/Analytics';
@@ -54,7 +55,7 @@ const resolveActiveTab = (pathname: string): string => {
 const isDashboardRoute = (pathname: string): boolean => pathname.startsWith('/dashboard/');
 
 const AppContent: React.FC = () => {
-  const { isAuthenticated, isBootstrapping, login, authError } = useMarket();
+  const { isAuthenticated, isBootstrapping, login, authError, user } = useMarket();
   const location = useLocation();
   const navigate = useNavigate();
   const activeTab = useMemo(() => resolveActiveTab(location.pathname), [location.pathname]);
@@ -116,6 +117,14 @@ const AppContent: React.FC = () => {
     navigate(nextRoute);
   };
 
+  const kycStatus = String(user?.kycStatus ?? 'pending').toLowerCase();
+  const requiresAdminVerification = isAuthenticated && kycStatus !== 'verified';
+  const formattedKycStatus = kycStatus
+    .split('_')
+    .filter((token) => token.length > 0)
+    .map((token) => token.charAt(0).toUpperCase() + token.slice(1))
+    .join(' ');
+
   if (isBootstrapping) {
     return (
       <div className="min-h-screen bg-[#050505] flex items-center justify-center">
@@ -151,6 +160,29 @@ const AppContent: React.FC = () => {
   if (selectedAsset) {
     return (
       <div className={`w-full ${DASHBOARD_MAX_WIDTH_CLASS} mx-auto min-h-screen relative bg-[#050505]`}>
+        {requiresAdminVerification && (
+          <div className="mx-4 mt-4 rounded-2xl border border-amber-500/30 bg-amber-500/10 p-4">
+            <div className="flex items-start gap-3">
+              <AlertTriangle size={18} className="mt-0.5 text-amber-400" />
+              <div className="min-w-0 flex-1">
+                <p className="text-xs font-black uppercase tracking-widest text-amber-300">
+                  Account Verification Required
+                </p>
+                <p className="mt-1 text-sm font-medium text-amber-100">
+                  Your admin verification is still {formattedKycStatus || 'Pending'}. Complete your KYC details and the second OTP verification step.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => navigate('/dashboard/profile?section=kyc')}
+                  className="mt-3 rounded-xl border border-amber-400/40 bg-amber-400/10 px-3 py-2 text-[11px] font-black uppercase tracking-widest text-amber-200 transition hover:bg-amber-400/20"
+                >
+                  Verify Account
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         <AssetDetail asset={selectedAsset} onBack={() => setSelectedAsset(null)} />
         <BottomNav
           activeTab={activeTab}
@@ -167,6 +199,29 @@ const AppContent: React.FC = () => {
       <div className="fixed top-1/2 left-0 w-64 h-64 bg-emerald-500/5 blur-[120px] pointer-events-none -z-10" />
 
       {activeTab !== 'Profile' && <Header />}
+
+      {requiresAdminVerification && (
+        <div className="mx-4 mt-4 rounded-2xl border border-amber-500/30 bg-amber-500/10 p-4">
+          <div className="flex items-start gap-3">
+            <AlertTriangle size={18} className="mt-0.5 text-amber-400" />
+            <div className="min-w-0 flex-1">
+              <p className="text-xs font-black uppercase tracking-widest text-amber-300">
+                Account Verification Required
+              </p>
+              <p className="mt-1 text-sm font-medium text-amber-100">
+                Your admin verification is still {formattedKycStatus || 'Pending'}. Complete your KYC details and the second OTP verification step.
+              </p>
+              <button
+                type="button"
+                onClick={() => navigate('/dashboard/profile?section=kyc')}
+                className="mt-3 rounded-xl border border-amber-400/40 bg-amber-400/10 px-3 py-2 text-[11px] font-black uppercase tracking-widest text-amber-200 transition hover:bg-amber-400/20"
+              >
+                Verify Account
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <main>
         <Routes>

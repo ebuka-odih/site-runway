@@ -350,7 +350,7 @@ export async function apiRegister(input: {
   currency?: string;
   phone: string;
   password: string;
-}): Promise<{ email: string; debugOtp?: string }> {
+}): Promise<{ email: string }> {
   const payload = await request<any>('/auth/register', {
     method: 'POST',
     authenticated: false,
@@ -367,7 +367,6 @@ export async function apiRegister(input: {
 
   return {
     email: String(payload.email),
-    debugOtp: toNullableString(payload.debug_otp) ?? undefined,
   };
 }
 
@@ -388,28 +387,20 @@ export async function apiVerifyEmailOtp(email: string, otp: string, deviceName =
   };
 }
 
-export async function apiResendEmailOtp(email: string): Promise<{ debugOtp?: string }> {
-  const payload = await request<any>('/auth/resend-otp', {
+export async function apiResendEmailOtp(email: string): Promise<void> {
+  await request('/auth/resend-otp', {
     method: 'POST',
     authenticated: false,
     body: JSON.stringify({ email }),
   });
-
-  return {
-    debugOtp: toNullableString(payload.debug_otp) ?? undefined,
-  };
 }
 
-export async function apiForgotPassword(email: string): Promise<{ debugOtp?: string }> {
-  const payload = await request<any>('/auth/forgot-password', {
+export async function apiForgotPassword(email: string): Promise<void> {
+  await request('/auth/forgot-password', {
     method: 'POST',
     authenticated: false,
     body: JSON.stringify({ email }),
   });
-
-  return {
-    debugOtp: toNullableString(payload.debug_otp) ?? undefined,
-  };
 }
 
 export async function apiResetPasswordWithOtp(email: string, otp: string, password: string): Promise<void> {

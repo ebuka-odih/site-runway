@@ -13,6 +13,7 @@ import {
   Loader2,
   MessageCircle,
 } from 'lucide-react';
+import { useLocation } from 'react-router-dom';
 import { useMarket } from '../context/MarketContext';
 import LiveChatEmbed from './LiveChatEmbed';
 import { apiPublicSettings } from '../lib/api';
@@ -46,6 +47,7 @@ function formatStatus(value: string | null | undefined): string {
 }
 
 const ProfilePage: React.FC = () => {
+  const location = useLocation();
   const { user, fetchProfile, updateProfile, logout } = useMarket();
   const [activeView, setActiveView] = useState<ProfileView>('menu');
   const [profile, setProfile] = useState<ProfileData | null>(null);
@@ -228,6 +230,15 @@ const ProfilePage: React.FC = () => {
     setIsLoggingOut(true);
     await logout();
   };
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const section = params.get('section');
+
+    if (section === 'kyc') {
+      setActiveView('kyc');
+    }
+  }, [location.search]);
 
   if (isLoading) {
     return (
