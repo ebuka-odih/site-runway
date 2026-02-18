@@ -11,6 +11,7 @@ use App\Models\Trader;
 use App\Models\User;
 use App\Models\Wallet;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
@@ -179,18 +180,7 @@ class CopyTradingController extends Controller
                 $wallet->cash_balance = $cashBalance - $copyFee;
                 $wallet->save();
 
-                $wallet->transactions()->create([
-                    'type' => 'copy_fee',
-                    'status' => 'approved',
-                    'direction' => 'debit',
-                    'amount' => $copyFee,
-                    'notes' => 'Copy trader fee charged on activation',
-                    'occurred_at' => now(),
-                    'metadata' => [
-                        'trader_id' => $trader->id,
-                        'trader_name' => $trader->display_name,
-                    ],
-                ]);
+                $this->recordCopyFeeTransaction($wallet, $copyFee, $trader);
             }
 
             $relationship = CopyRelationship::query()->updateOrCreate(
@@ -276,5 +266,49 @@ class CopyTradingController extends Controller
             'profit_loss' => (float) $user->profit_balance,
             'currency' => 'USD',
         ]);
+    }
+
+    private function recordCopyFeeTransaction(Wallet $wallet, float $copyFee, Trader $trader): void
+    {
+        $payload = [
+            'status' => 'approved',
+            'direction' => 'debit',
+            'amount' => $copyFee,
+            'notes' => 'Copy trader fee charged on activation',
+            'occurred_at' => now(),
+            'metadata' => [
+                'trader_id' => $trader->id,
+                'trader_name' => $trader->display_name,
+            ],
+        ];
+
+        try {
+            $wallet->transactions()->create([
+                ...$payload,
+                'type' => 'copy_fee',
+            ]);
+        } catch (QueryException $exception) {
+            if (! $this->isWalletTransactionTypeEnumMismatch($exception)) {
+                throw $exception;
+            }
+
+            // Backward compatibility for environments where enum migrations are pending.
+            $wallet->transactions()->create([
+                ...$payload,
+                'type' => 'copy_allocation',
+            ]);
+        }
+    }
+
+    private function isWalletTransactionTypeEnumMismatch(QueryException $exception): bool
+    {
+        $message = strtolower($exception->getMessage());
+
+        return str_contains($message, 'wallet_transactions')
+            && (
+                str_contains($message, 'data truncated')
+                || str_contains($message, 'incorrect enum value')
+                || str_contains($message, 'check constraint failed: type')
+            );
     }
 }
