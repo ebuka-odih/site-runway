@@ -4,6 +4,15 @@ import { useMarket } from '../context/MarketContext';
 import type { DepositMethodItem, DepositRequestItem, WalletSummaryData, WalletTransactionItem } from '../types';
 import WithdrawalStatusStepper from './WithdrawalStatusStepper';
 
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+function parseDepositAmount(value: string): number {
+  const normalized = value.replace(/[^0-9.]/g, '').trim();
+  const parsed = Number.parseFloat(normalized);
+
+  return Number.isFinite(parsed) ? parsed : Number.NaN;
+}
+
 const WalletPage: React.FC = () => {
   const { fetchWalletSummary, fetchCopyFollowing, createDeposit, createWithdrawal, submitDepositProof } = useMarket();
   const [summary, setSummary] = useState<WalletSummaryData | null>(null);
@@ -97,9 +106,8 @@ const WalletPage: React.FC = () => {
   };
 
   const handleShowPayment = async () => {
-    const parsedAmount = parseFloat(amount);
-
-    if (!Number.isFinite(parsedAmount) || parsedAmount <= 0) {
+    if (!isDepositAmountValid) {
+      setError('Please enter a valid deposit amount.');
       return;
     }
 
@@ -110,12 +118,19 @@ const WalletPage: React.FC = () => {
       return;
     }
 
+    if (!selectedDepositMethod.currency) {
+      setError('Selected payment method is missing a currency.');
+      return;
+    }
+
     try {
       const deposit = await createDeposit({
-        amount: parsedAmount,
+        amount: depositAmountValue,
         currency: selectedDepositMethod.currency,
         network: selectedDepositMethod.network ?? undefined,
-        paymentMethodId: selectedDepositMethod.id || undefined,
+        paymentMethodId: selectedDepositMethod.paymentMethodId && UUID_PATTERN.test(selectedDepositMethod.paymentMethodId)
+          ? selectedDepositMethod.paymentMethodId
+          : undefined,
       });
 
       setActiveDeposit(deposit);
@@ -241,6 +256,9 @@ const WalletPage: React.FC = () => {
 
   const depositCurrency = selectedDepositMethod?.currency ?? '';
   const depositNetwork = selectedDepositMethod?.network ?? '';
+  const depositAmountValue = useMemo(() => parseDepositAmount(amount), [amount]);
+  const isDepositAmountValid = Number.isFinite(depositAmountValue) && depositAmountValue > 0;
+  const displayDepositCurrency = selectedDepositMethod?.currency || activeDeposit?.currency || 'N/A';
 
   useEffect(() => {
     if (depositMethods.length === 0) {
@@ -422,8 +440,8 @@ const WalletPage: React.FC = () => {
 
             <button
               onClick={() => void handleShowPayment()}
-              disabled={!selectedDepositMethod}
-              className="w-full py-4 bg-emerald-500 text-black font-black rounded-xl uppercase tracking-widest text-sm hover:bg-emerald-400 transition-all shadow-xl shadow-emerald-500/20 active:scale-[0.98]"
+              disabled={!selectedDepositMethod || !isDepositAmountValid}
+              className="w-full py-4 bg-emerald-500 text-black font-black rounded-xl uppercase tracking-widest text-sm hover:bg-emerald-400 disabled:bg-zinc-700 disabled:text-zinc-400 disabled:cursor-not-allowed transition-all shadow-xl shadow-emerald-500/20 active:scale-[0.98]"
             >
               Show Payment Window
             </button>
@@ -573,7 +591,7 @@ const WalletPage: React.FC = () => {
                 </button>
 
                 <div className="text-center pt-2">
-                  <h3 className="text-2xl font-black text-white mb-2 tracking-tight">Send {activeDeposit?.currency ?? depositCurrency}</h3>
+                  <h3 className="text-2xl font-black text-white mb-2 tracking-tight">Send {displayDepositCurrency}</h3>
                   <p className="text-zinc-500 text-sm font-bold">Complete payment and upload proof</p>
                 </div>
 
@@ -650,7 +668,7 @@ const WalletPage: React.FC = () => {
                   </div>
                   <h3 className="text-2xl font-black text-white mb-2">Deposit Submitted</h3>
                   <p className="text-zinc-500 text-sm font-bold max-w-[280px]">
-                    Your request for <span className="text-white">${amount} {activeDeposit?.currency ?? depositCurrency}</span> is being processed.
+                    Your request for <span className="text-white">${amount} {displayDepositCurrency}</span> is being processed.
                   </p>
                 </div>
 

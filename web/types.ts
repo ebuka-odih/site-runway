@@ -213,6 +213,7 @@ export interface DepositRequestItem {
 
 export interface DepositMethodItem {
   id: string;
+  paymentMethodId?: string | null;
   name: string;
   currency: string;
   network?: string | null;

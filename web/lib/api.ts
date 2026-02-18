@@ -183,12 +183,27 @@ function mapDepositRequest(raw: any): DepositRequestItem {
 }
 
 function mapDepositMethod(raw: any): DepositMethodItem {
+  const walletAddress = toNullableString(
+    raw.wallet_address
+    ?? raw.walletAddress
+    ?? raw.address
+    ?? raw.wallet
+    ?? raw.settings?.wallet_address,
+  ) ?? '';
+  const currency = String(raw.currency ?? raw.asset_symbol ?? raw.symbol ?? '').trim().toUpperCase();
+  const network = toNullableString(raw.network ?? raw.chain ?? raw.protocol);
+  const name = String(raw.name ?? `${currency || 'Crypto'}${network ? ` ${network}` : ''} Wallet`).trim();
+  const paymentMethodId = toNullableString(raw.id);
+  const localSelectionId = paymentMethodId
+    ?? [name, currency, network ?? '', walletAddress].join('|');
+
   return {
-    id: raw.id == null ? '' : String(raw.id),
-    name: String(raw.name),
-    currency: String(raw.currency),
-    network: raw.network ?? null,
-    walletAddress: String(raw.wallet_address),
+    id: localSelectionId,
+    paymentMethodId,
+    name,
+    currency,
+    network,
+    walletAddress,
   };
 }
 
