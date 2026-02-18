@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Shield, Plus, ArrowUpRight, History, X, Copy, Check, Loader2, Sparkles, ChevronDown } from 'lucide-react';
 import { useMarket } from '../context/MarketContext';
 import type { DepositMethodItem, DepositRequestItem, WalletSummaryData, WalletTransactionItem } from '../types';
@@ -38,6 +38,42 @@ function formatTransferAmount(value: number, symbol: string): string {
   });
 }
 
+function normalizeCurrencySymbol(value: string): string {
+  const normalized = value.replace(/[^a-z0-9]/gi, '').trim().toUpperCase();
+
+  if (normalized === '') {
+    return '';
+  }
+
+  const aliases: Record<string, string> = {
+    XBT: 'BTC',
+    BITCOIN: 'BTC',
+    ETHEREUM: 'ETH',
+    TETHER: 'USDT',
+    USDCOIN: 'USDC',
+    DOLLAR: 'USD',
+    USDOLLAR: 'USD',
+    SOLANA: 'SOL',
+    TRON: 'TRX',
+    RIPPLE: 'XRP',
+    DOGECOIN: 'DOGE',
+    CARDANO: 'ADA',
+    AVALANCHE: 'AVAX',
+    POLYGON: 'MATIC',
+    FANTOM: 'FTM',
+  };
+
+  const alias = aliases[normalized];
+  if (alias) {
+    return alias;
+  }
+
+  const knownSymbols = ['USDT', 'USDC', 'BTC', 'ETH', 'SOL', 'TRX', 'XRP', 'BNB', 'ADA', 'AVAX', 'DOGE', 'MATIC', 'FTM', 'USD'];
+  const symbolMatch = knownSymbols.find((symbol) => normalized.includes(symbol));
+
+  return symbolMatch ?? normalized;
+}
+
 const WalletPage: React.FC = () => {
   const {
     fetchWalletSummary,
@@ -69,6 +105,7 @@ const WalletPage: React.FC = () => {
   const [withdrawalCrypto, setWithdrawalCrypto] = useState('USDT');
   const [withdrawalDestination, setWithdrawalDestination] = useState('');
   const [withdrawalStatus, setWithdrawalStatus] = useState<'input' | 'processing' | 'success'>('input');
+  const quoteRefreshSymbolRef = useRef<string>('');
 
   const loadCopyStatus = async () => {
     try {
@@ -310,7 +347,7 @@ const WalletPage: React.FC = () => {
   const depositAmountValue = useMemo(() => parseDepositAmount(amount), [amount]);
   const isDepositAmountValid = Number.isFinite(depositAmountValue) && depositAmountValue > 0;
   const selectedCurrencySymbol = useMemo(
-    () => (selectedDepositMethod?.currency ?? '').trim().toUpperCase(),
+    () => normalizeCurrencySymbol(selectedDepositMethod?.currency ?? ''),
     [selectedDepositMethod?.currency],
   );
   const selectedCurrencyRateUsd = useMemo(() => {
@@ -322,7 +359,11 @@ const WalletPage: React.FC = () => {
       return 1;
     }
 
-    const matchingAsset = marketAssets.find((asset) => asset.symbol.toUpperCase() === selectedCurrencySymbol);
+    const matchingAsset = marketAssets.find((asset) => {
+      const symbolMatch = normalizeCurrencySymbol(asset.symbol) === selectedCurrencySymbol;
+      const nameMatch = normalizeCurrencySymbol(asset.name) === selectedCurrencySymbol;
+      return symbolMatch || nameMatch;
+    });
     const price = matchingAsset?.price;
 
     return Number.isFinite(price) && (price as number) > 0 ? (price as number) : Number.NaN;
@@ -365,6 +406,29 @@ const WalletPage: React.FC = () => {
       // Leave conversion disabled until prices are available.
     });
   }, [isDepositFormOpen, marketAssets.length, refreshMarketAssets]);
+
+  useEffect(() => {
+    if (!isDepositFormOpen || !selectedCurrencySymbol) {
+      return;
+    }
+
+    if (['USD', 'USDT', 'USDC'].includes(selectedCurrencySymbol)) {
+      return;
+    }
+
+    if (Number.isFinite(selectedCurrencyRateUsd) && selectedCurrencyRateUsd > 0) {
+      return;
+    }
+
+    if (quoteRefreshSymbolRef.current === selectedCurrencySymbol) {
+      return;
+    }
+
+    quoteRefreshSymbolRef.current = selectedCurrencySymbol;
+    void refreshMarketAssets().catch(() => {
+      // Keep the warning message visible if refresh fails.
+    });
+  }, [isDepositFormOpen, refreshMarketAssets, selectedCurrencyRateUsd, selectedCurrencySymbol]);
 
   if (isLoading) {
     return (
@@ -530,11 +594,13 @@ const WalletPage: React.FC = () => {
                 />
               </div>
 
-              {isDepositAmountValid && selectedCurrencySymbol && (
+              {selectedCurrencySymbol && (
                 <p className="text-xs font-bold text-zinc-500">
-                  {hasConversionQuote
-                    ? `You will send approximately ${displayTransferAmountText} ${displayTransferSymbol} (for $${formatUsdAmount(depositAmountValue)} USD).`
-                    : `Live ${selectedCurrencySymbol} conversion is unavailable right now.`
+                  {!isDepositAmountValid
+                    ? 'Enter USD amount to see conversion.'
+                    : hasConversionQuote
+                      ? `You will send approximately ${displayTransferAmountText} ${displayTransferSymbol} (for $${formatUsdAmount(depositAmountValue)} USD).`
+                      : `Live ${selectedCurrencySymbol} conversion is unavailable right now.`
                   }
                 </p>
               )}
