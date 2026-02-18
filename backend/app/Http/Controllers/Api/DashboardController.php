@@ -325,7 +325,9 @@ class DashboardController extends Controller
                     $envelope = 1 - (($progress - 0.5) * ($progress - 0.5));
                     $drift = sin(($progress * M_PI * 1.1) + $phase) * 0.0004 * $trendScale;
                     $noise = ($waveOne + $waveTwo) * $cashNoiseScale * $envelope;
-                    $portfolioValue = max(0.01, $cashBalance * (1 + $drift + $noise));
+                    $simulatedValue = $cashBalance * (1 + $drift + $noise);
+                    $minimumValue = $cashBalance > 0 ? min(0.01, $cashBalance) : 0.0;
+                    $portfolioValue = max($minimumValue, $simulatedValue);
 
                     return [
                         'time' => $timeLabel,

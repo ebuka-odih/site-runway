@@ -1,0 +1,29 @@
+{
+  "name": "video-studio",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Standalone Remotion workspace for RunwayAlgo product videos",
+  "scripts": {
+    "studio": "remotion studio src/index.ts",
+    "render:60": "remotion render src/index.ts RunwayFeatureTour60 out/runway-feature-tour-60.mp4",
+    "render:120": "remotion render src/index.ts RunwayFeatureTour120 out/runway-feature-tour-120.mp4",
+    "render:180": "remotion render src/index.ts RunwayFeatureTour180 out/runway-feature-tour-180.mp4",
+    "bundle": "remotion bundle src/index.ts",
+    "check": "tsc --noEmit"
+  },
+  "type": "module",
+  "license": "UNLICENSED",
+  "dependencies": {
+    "@remotion/transitions": "^4.0.424",
+    "react": "^19.2.4",
+    "react-dom": "^19.2.4",
+    "remotion": "^4.0.424"
+  },
+  "devDependencies": {
+    "@remotion/cli": "^4.0.424",
+    "@types/node": "^25.2.3",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
+    "typescript": "^5.9.3"
+  }
+}
