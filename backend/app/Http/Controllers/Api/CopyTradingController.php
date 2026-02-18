@@ -136,6 +136,7 @@ class CopyTradingController extends Controller
 
         $shouldCharge = ! $existingRelationship || $existingRelationship->status !== 'active';
         $copyFee = (float) $trader->copy_fee;
+        $allocationAmount = $copyFee;
         $wallet = null;
 
         if ($shouldCharge && $copyFee > 0) {
@@ -158,6 +159,7 @@ class CopyTradingController extends Controller
             $existingRelationship,
             $shouldCharge,
             $copyFee,
+            $allocationAmount,
             &$wallet,
             &$relationship
         ) {
@@ -197,7 +199,7 @@ class CopyTradingController extends Controller
                     'trader_id' => $validated['trader_id'],
                 ],
                 [
-                    'allocation_amount' => $validated['allocation_amount'],
+                    'allocation_amount' => $allocationAmount,
                     'copy_ratio' => $validated['copy_ratio'],
                     'status' => 'active',
                     'started_at' => now(),

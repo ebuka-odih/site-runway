@@ -24,7 +24,7 @@ class FollowTraderRequest extends FormRequest
     {
         return [
             'trader_id' => ['required', 'uuid', Rule::exists('traders', 'id')],
-            'allocation_amount' => ['required', 'numeric', 'gte:100'],
+            'allocation_amount' => ['sometimes', 'numeric', 'gte:0'],
             'copy_ratio' => ['required', 'numeric', 'between:0.5,5'],
         ];
     }

@@ -23,7 +23,6 @@ class UpdateCopyRelationshipRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'allocation_amount' => ['sometimes', 'numeric', 'gte:100'],
             'copy_ratio' => ['sometimes', 'numeric', 'between:0.5,5'],
             'status' => ['sometimes', Rule::in(['active', 'paused', 'closed'])],
         ];

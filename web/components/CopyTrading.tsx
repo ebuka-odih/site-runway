@@ -45,7 +45,7 @@ const CopyTrading: React.FC = () => {
   const [selectedTrader, setSelectedTrader] = useState<TraderItem | null>(null);
   const [selectedRelationship, setSelectedRelationship] = useState<CopyRelationshipItem | null>(null);
   const [isEditing, setIsEditing] = useState(false);
-  const [allocation, setAllocation] = useState('100');
+  const [allocation, setAllocation] = useState('0.00');
   const [copyRatio, setCopyRatio] = useState(2);
   const [modalStatus, setModalStatus] = useState<'input' | 'processing' | 'success'>('input');
 
@@ -120,7 +120,7 @@ const CopyTrading: React.FC = () => {
     setSelectedTrader(trader);
     setSelectedRelationship(followingTraderMap.get(trader.id) ?? null);
     setIsEditing(false);
-    setAllocation('100');
+    setAllocation(trader.copyFee.toFixed(2));
     setCopyRatio(2);
     setModalStatus('input');
   };
@@ -147,7 +147,7 @@ const CopyTrading: React.FC = () => {
     setSelectedTrader(trader);
     setSelectedRelationship(relationship);
     setIsEditing(true);
-    setAllocation(relationship.allocation.toString());
+    setAllocation(relationship.allocation.toFixed(2));
     setCopyRatio(relationship.copyRatio);
     setModalStatus('input');
   };
@@ -160,18 +160,15 @@ const CopyTrading: React.FC = () => {
     setModalStatus('processing');
 
     try {
-      const amount = parseFloat(allocation);
-
       if (isEditing && selectedRelationship) {
         await updateCopyRelationship(selectedRelationship.id, {
-          allocationAmount: amount,
           copyRatio,
           status: 'active',
         });
       } else {
         await followTrader({
           traderId: selectedTrader.id,
-          allocationAmount: amount,
+          allocationAmount: selectedTrader.copyFee,
           copyRatio,
         });
       }
@@ -502,7 +499,11 @@ const CopyTrading: React.FC = () => {
                       className="w-full bg-[#0a0a0a]/80 border border-white/10 rounded-2xl py-4 px-4 text-xl font-black text-white cursor-not-allowed focus:outline-none transition-all placeholder:text-zinc-800"
                       placeholder="100"
                     />
-                    {!isEditing && <p className="text-[10px] font-black text-zinc-600 uppercase tracking-widest px-1">Min: $100</p>}
+                    {!isEditing && (
+                      <p className="text-[10px] font-black text-zinc-600 uppercase tracking-widest px-1">
+                        Auto-filled from trader bot fee.
+                      </p>
+                    )}
                   </div>
 
                   <div className="space-y-4 pt-2">
