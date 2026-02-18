@@ -8,7 +8,10 @@ use App\Models\User;
 use App\Notifications\AuthOtpNotification;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Notification;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
@@ -19,6 +22,8 @@ class AuthController extends Controller
     private const DEFAULT_COUNTRY = 'United States';
 
     private const DEFAULT_CURRENCY = 'USD';
+
+    private const PENDING_REGISTRATION_CACHE_PREFIX = 'auth:pending_registration:';
 
     /**
      * @var array<int, string>
@@ -31,9 +36,23 @@ class AuthController extends Controller
 
     public function login(LoginRequest $request): JsonResponse
     {
-        $user = User::query()->where('email', $request->string('email'))->first();
+        $normalizedEmail = strtolower((string) $request->string('email'));
+        $user = User::query()->where('email', $normalizedEmail)->first();
 
-        if (! $user || ! Hash::check($request->string('password'), $user->password)) {
+        if (! $user) {
+            if ($this->pendingRegistrationPayload($normalizedEmail) !== null) {
+                return response()->json([
+                    'message' => 'Email verification is pending. Complete OTP verification to continue.',
+                    'requires_verification' => true,
+                ], 403);
+            }
+
+            return response()->json([
+                'message' => 'The provided credentials are incorrect.',
+            ], 422);
+        }
+
+        if (! Hash::check($request->string('password'), $user->password)) {
             return response()->json([
                 'message' => 'The provided credentials are incorrect.',
             ], 422);
@@ -69,30 +88,33 @@ class AuthController extends Controller
 
         $normalizedCountry = $this->normalizeCountry($validated['country'] ?? null);
         $normalizedCurrency = $this->normalizeCurrency($validated['currency'] ?? null);
+        $normalizedEmail = strtolower($validated['email']);
 
-        $user = User::query()->create([
+        $pendingRegistration = [
             'username' => $validated['username'],
             'name' => $validated['name'],
-            'email' => strtolower($validated['email']),
+            'email' => $normalizedEmail,
             'country' => $normalizedCountry,
             'phone' => $validated['phone'],
-            'password' => $validated['password'],
-            'membership_tier' => 'free',
-            'kyc_status' => 'pending',
-            'notification_email_alerts' => true,
-            'timezone' => null,
-            'email_verified_at' => null,
-        ]);
-
-        $user->wallet()->firstOrCreate([], [
+            'password_hash' => Hash::make($validated['password']),
             'currency' => $normalizedCurrency,
-        ]);
+        ];
 
-        $otp = $this->issueOtp($user, 'email_verification');
+        $otp = str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT);
+        $expiresAt = now()->addMinutes(self::OTP_EXPIRY_MINUTES);
+        $cacheKey = $this->pendingRegistrationCacheKey($normalizedEmail);
+
+        Cache::put($cacheKey, [
+            'registration' => $pendingRegistration,
+            'otp_hash' => Hash::make($otp),
+            'otp_expires_at' => $expiresAt->toIso8601String(),
+        ], $expiresAt);
+
+        $this->dispatchOtpToEmail($normalizedEmail, $otp, 'email_verification');
 
         return response()->json(array_merge([
-            'message' => 'Account created. Verify your email with the OTP we sent.',
-            'email' => $user->email,
+            'message' => 'Verification OTP sent. Verify your email to complete account creation.',
+            'email' => $normalizedEmail,
             'otp_expires_in_minutes' => self::OTP_EXPIRY_MINUTES,
         ], $this->debugOtpPayload($otp)), 201);
     }
@@ -105,12 +127,84 @@ class AuthController extends Controller
             'device_name' => ['sometimes', 'string', 'max:100'],
         ]);
 
+        $normalizedEmail = strtolower($validated['email']);
+
         /** @var User|null $user */
-        $user = User::query()->where('email', strtolower($validated['email']))->first();
+        $user = User::query()->where('email', $normalizedEmail)->first();
 
         if (! $user) {
-            throw ValidationException::withMessages([
-                'email' => ['No account exists for this email address.'],
+            $pendingRegistration = $this->pendingRegistrationPayload($normalizedEmail);
+
+            if ($pendingRegistration === null) {
+                throw ValidationException::withMessages([
+                    'email' => ['No pending account exists for this email address. Register first.'],
+                ]);
+            }
+
+            $this->assertValidOtp(
+                $validated['otp'],
+                is_string($pendingRegistration['otp_hash'] ?? null) ? $pendingRegistration['otp_hash'] : null,
+                $pendingRegistration['otp_expires_at'] ?? null,
+                'The verification code is invalid or expired.',
+            );
+
+            $registration = $pendingRegistration['registration'] ?? null;
+
+            if (! is_array($registration)) {
+                throw ValidationException::withMessages([
+                    'email' => ['Registration payload is invalid or expired. Please register again.'],
+                ]);
+            }
+
+            if (User::query()->where('email', $normalizedEmail)->exists()) {
+                throw ValidationException::withMessages([
+                    'email' => ['An account with this email already exists. Please log in instead.'],
+                ]);
+            }
+
+            if (User::query()->where('username', (string) ($registration['username'] ?? ''))->exists()) {
+                throw ValidationException::withMessages([
+                    'username' => ['This username is no longer available. Please register again with a different username.'],
+                ]);
+            }
+
+            /** @var array{user: User, token: string} $creation */
+            $creation = DB::transaction(function () use ($registration, $normalizedEmail, $validated): array {
+                $user = User::query()->create([
+                    'username' => (string) ($registration['username'] ?? ''),
+                    'name' => (string) ($registration['name'] ?? ''),
+                    'email' => $normalizedEmail,
+                    'country' => (string) ($registration['country'] ?? self::DEFAULT_COUNTRY),
+                    'phone' => (string) ($registration['phone'] ?? ''),
+                    'password' => (string) ($registration['password_hash'] ?? ''),
+                    'membership_tier' => 'free',
+                    'kyc_status' => 'pending',
+                    'notification_email_alerts' => true,
+                    'timezone' => null,
+                    'email_verified_at' => now(),
+                    'email_otp_code' => null,
+                    'email_otp_expires_at' => null,
+                ]);
+
+                $user->wallet()->firstOrCreate([], [
+                    'currency' => (string) ($registration['currency'] ?? self::DEFAULT_CURRENCY),
+                ]);
+
+                $token = $user->createToken($validated['device_name'] ?? 'web-client')->plainTextToken;
+
+                return [
+                    'user' => $user,
+                    'token' => $token,
+                ];
+            });
+
+            Cache::forget($this->pendingRegistrationCacheKey($normalizedEmail));
+
+            return response()->json([
+                'message' => 'Email verified successfully.',
+                'token' => $creation['token'],
+                'token_type' => 'Bearer',
+                'user' => $this->authUser($creation['user']),
             ]);
         }
 
@@ -149,13 +243,35 @@ class AuthController extends Controller
             'email' => ['required', 'email', 'max:255'],
         ]);
 
+        $normalizedEmail = strtolower($validated['email']);
+
         /** @var User|null $user */
-        $user = User::query()->where('email', strtolower($validated['email']))->first();
+        $user = User::query()->where('email', $normalizedEmail)->first();
 
         if (! $user) {
-            throw ValidationException::withMessages([
-                'email' => ['No account exists for this email address.'],
-            ]);
+            $pendingRegistration = $this->pendingRegistrationPayload($normalizedEmail);
+
+            if ($pendingRegistration === null || ! is_array($pendingRegistration['registration'] ?? null)) {
+                throw ValidationException::withMessages([
+                    'email' => ['No pending account exists for this email address. Register first.'],
+                ]);
+            }
+
+            $otp = str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT);
+            $expiresAt = now()->addMinutes(self::OTP_EXPIRY_MINUTES);
+
+            Cache::put($this->pendingRegistrationCacheKey($normalizedEmail), [
+                'registration' => $pendingRegistration['registration'],
+                'otp_hash' => Hash::make($otp),
+                'otp_expires_at' => $expiresAt->toIso8601String(),
+            ], $expiresAt);
+
+            $this->dispatchOtpToEmail($normalizedEmail, $otp, 'email_verification');
+
+            return response()->json(array_merge([
+                'message' => 'A new verification code has been sent.',
+                'otp_expires_in_minutes' => self::OTP_EXPIRY_MINUTES,
+            ], $this->debugOtpPayload($otp)));
         }
 
         if ($user->email_verified_at) {
@@ -291,9 +407,41 @@ class AuthController extends Controller
         return $otp;
     }
 
+    private function dispatchOtpToEmail(string $email, string $otp, string $purpose): void
+    {
+        Notification::route('mail', $email)->notify(new AuthOtpNotification($otp, $purpose));
+    }
+
+    private function pendingRegistrationCacheKey(string $email): string
+    {
+        return self::PENDING_REGISTRATION_CACHE_PREFIX.sha1(strtolower(trim($email)));
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    private function pendingRegistrationPayload(string $email): ?array
+    {
+        $payload = Cache::get($this->pendingRegistrationCacheKey($email));
+
+        return is_array($payload) ? $payload : null;
+    }
+
     private function assertValidOtp(string $otp, ?string $hashedOtp, mixed $expiresAt, string $message): void
     {
-        if (! $hashedOtp || ! $expiresAt || now()->greaterThan($expiresAt) || ! Hash::check($otp, $hashedOtp)) {
+        $expiresAtTimestamp = null;
+
+        if ($expiresAt instanceof \DateTimeInterface) {
+            $expiresAtTimestamp = $expiresAt;
+        } elseif (is_string($expiresAt)) {
+            try {
+                $expiresAtTimestamp = now()->parse($expiresAt);
+            } catch (\Throwable) {
+                $expiresAtTimestamp = null;
+            }
+        }
+
+        if (! $hashedOtp || ! $expiresAtTimestamp || now()->greaterThan($expiresAtTimestamp) || ! Hash::check($otp, $hashedOtp)) {
             throw ValidationException::withMessages([
                 'otp' => [$message],
             ]);

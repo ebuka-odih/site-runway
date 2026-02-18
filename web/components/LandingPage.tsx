@@ -130,7 +130,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLogin, authError }) => {
       setVerifyEmail(payload.email);
       setVerifyOtp(payload.debugOtp ?? '');
       setDebugOtp(payload.debugOtp ?? null);
-      setAuthNotice('Account created. Enter the OTP sent to your email to verify.');
+      setAuthNotice('Verification OTP sent. Enter the code from your email to complete signup.');
       setAuthView('verify');
     } catch (error) {
       setLocalError(getErrorMessage(error, 'Unable to create account right now.'));

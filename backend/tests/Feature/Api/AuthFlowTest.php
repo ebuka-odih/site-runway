@@ -34,14 +34,18 @@ class AuthFlowTest extends TestCase
                 'debug_otp',
             ]);
 
-        /** @var User $user */
-        $user = User::query()->where('email', 'algo@example.com')->firstOrFail();
         $otp = (string) $registerResponse->json('debug_otp');
 
-        Notification::assertSentTo($user, AuthOtpNotification::class);
+        Notification::assertSentOnDemand(
+            AuthOtpNotification::class,
+            function (object $notification, array $channels, object $notifiable): bool {
+                return $notifiable->routeNotificationFor('mail') === 'algo@example.com';
+            }
+        );
 
-        $this->assertNull($user->email_verified_at);
-        $this->assertSame('USD', $user->wallet?->currency);
+        $this->assertDatabaseMissing('users', [
+            'email' => 'algo@example.com',
+        ]);
 
         $this->postJson('/api/v1/auth/login', [
             'email' => 'algo@example.com',
@@ -62,7 +66,10 @@ class AuthFlowTest extends TestCase
                 'user' => ['id', 'username', 'name', 'email'],
             ]);
 
-        $this->assertNotNull($user->fresh()->email_verified_at);
+        /** @var User $user */
+        $user = User::query()->where('email', 'algo@example.com')->firstOrFail();
+        $this->assertNotNull($user->email_verified_at);
+        $this->assertSame('USD', $user->wallet?->currency);
 
         $this->postJson('/api/v1/auth/login', [
             'email' => 'algo@example.com',
@@ -84,6 +91,13 @@ class AuthFlowTest extends TestCase
         ]);
 
         $registerResponse->assertCreated();
+        $otp = (string) $registerResponse->json('debug_otp');
+
+        $this->postJson('/api/v1/auth/verify-otp', [
+            'email' => 'currency@example.com',
+            'otp' => $otp,
+            'device_name' => 'phpunit',
+        ])->assertOk();
 
         /** @var User $user */
         $user = User::query()->where('email', 'currency@example.com')->firstOrFail();
