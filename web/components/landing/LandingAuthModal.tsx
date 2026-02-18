@@ -20,7 +20,6 @@ interface LandingAuthModalProps {
   currencies: readonly string[];
   authNotice: string | null;
   currentError: string | null;
-  debugOtp: string | null;
   setEmail: (value: string) => void;
   setPassword: (value: string) => void;
   setSignupField: (key: keyof SignupFormState, value: string) => void;
@@ -57,7 +56,6 @@ const LandingAuthModal: React.FC<LandingAuthModalProps> = ({
   currencies,
   authNotice,
   currentError,
-  debugOtp,
   setEmail,
   setPassword,
   setSignupField,
@@ -348,11 +346,6 @@ const LandingAuthModal: React.FC<LandingAuthModalProps> = ({
             {currentError && (
               <p className="text-red-400 text-xs font-bold text-center">
                 {currentError}
-              </p>
-            )}
-            {debugOtp && (
-              <p className="text-[10px] text-zinc-500 text-center font-bold uppercase tracking-widest">
-                Dev OTP: <span className="text-emerald-500">{debugOtp}</span>
               </p>
             )}
           </div>

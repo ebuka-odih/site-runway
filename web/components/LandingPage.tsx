@@ -40,13 +40,11 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLogin, authError }) => {
   const [resetPassword, setResetPassword] = useState('');
   const [authNotice, setAuthNotice] = useState<string | null>(null);
   const [localError, setLocalError] = useState<string | null>(null);
-  const [debugOtp, setDebugOtp] = useState<string | null>(null);
 
   const switchAuthView = (view: AuthView) => {
     setAuthView(view);
     setAuthNotice(null);
     setLocalError(null);
-    setDebugOtp(null);
   };
 
   const openAuth = (view: AuthView = 'login') => {
@@ -109,7 +107,6 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLogin, authError }) => {
     event.preventDefault();
     setLocalError(null);
     setAuthNotice(null);
-    setDebugOtp(null);
     setIsSubmitting(true);
 
     try {
@@ -128,8 +125,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLogin, authError }) => {
       });
 
       setVerifyEmail(payload.email);
-      setVerifyOtp(payload.debugOtp ?? '');
-      setDebugOtp(payload.debugOtp ?? null);
+      setVerifyOtp('');
       setAuthNotice('Verification OTP sent. Enter the code from your email to complete signup.');
       setAuthView('verify');
     } catch (error) {
@@ -159,13 +155,11 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLogin, authError }) => {
   const handleResendOtp = async () => {
     setLocalError(null);
     setAuthNotice(null);
-    setDebugOtp(null);
     setIsSubmitting(true);
 
     try {
-      const payload = await apiResendEmailOtp(verifyEmail.trim().toLowerCase());
-      setVerifyOtp(payload.debugOtp ?? '');
-      setDebugOtp(payload.debugOtp ?? null);
+      await apiResendEmailOtp(verifyEmail.trim().toLowerCase());
+      setVerifyOtp('');
       setAuthNotice('A fresh OTP has been sent.');
     } catch (error) {
       setLocalError(getErrorMessage(error, 'Unable to resend OTP right now.'));
@@ -178,16 +172,14 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLogin, authError }) => {
     event.preventDefault();
     setLocalError(null);
     setAuthNotice(null);
-    setDebugOtp(null);
     setIsSubmitting(true);
 
     try {
-      const payload = await apiForgotPassword(forgotEmail.trim().toLowerCase());
+      await apiForgotPassword(forgotEmail.trim().toLowerCase());
       const normalizedEmail = forgotEmail.trim().toLowerCase();
 
       setResetEmail(normalizedEmail);
-      setResetOtp(payload.debugOtp ?? '');
-      setDebugOtp(payload.debugOtp ?? null);
+      setResetOtp('');
       setAuthNotice('OTP sent. Enter it with your new password.');
       setAuthView('reset');
     } catch (error) {
@@ -249,7 +241,6 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLogin, authError }) => {
         currencies={BASE_CURRENCIES}
         authNotice={authNotice}
         currentError={currentError}
-        debugOtp={debugOtp}
         setEmail={setEmail}
         setPassword={setPassword}
         setSignupField={setSignupField}
