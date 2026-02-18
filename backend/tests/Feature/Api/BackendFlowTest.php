@@ -270,6 +270,50 @@ class BackendFlowTest extends TestCase
         ));
     }
 
+    public function test_dashboard_stays_flat_for_cash_only_user_without_positions(): void
+    {
+        $user = User::factory()->create([
+            'email' => 'cash-only@example.com',
+            'balance' => 500,
+            'profit_balance' => 0,
+            'holding_balance' => 0,
+        ]);
+
+        $user->wallet()->create([
+            'currency' => 'USD',
+            'cash_balance' => 500,
+            'investing_balance' => 0,
+            'profit_loss' => 0,
+        ]);
+
+        $token = $this->postJson('/api/v1/auth/login', [
+            'email' => $user->email,
+            'password' => 'password',
+            'device_name' => 'phpunit',
+        ])->json('token');
+
+        $dashboardResponse = $this
+            ->withToken($token)
+            ->getJson('/api/v1/dashboard?range=24h');
+
+        $dashboardResponse
+            ->assertOk()
+            ->assertJsonPath('data.portfolio.value', 500)
+            ->assertJsonPath('data.portfolio.buying_power', 500)
+            ->assertJsonPath('data.portfolio.holdings_value', 0)
+            ->assertJsonPath('data.portfolio.daily_change', 0)
+            ->assertJsonPath('data.portfolio.daily_change_percent', 0);
+
+        $history = collect($dashboardResponse->json('data.portfolio.history'));
+        $this->assertCount(96, $history);
+        $this->assertTrue($history->every(
+            fn (array $point): bool => abs((float) data_get($point, 'value', 0) - 500) < 0.00000001
+        ));
+        $this->assertTrue($history->every(
+            fn (array $point): bool => abs((float) data_get($point, 'holdings_value', 0)) < 0.00000001
+        ));
+    }
+
     public function test_dashboard_history_includes_holdings_value_series(): void
     {
         $this->seed();

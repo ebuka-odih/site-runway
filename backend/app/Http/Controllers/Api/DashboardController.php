@@ -21,15 +21,15 @@ class DashboardController extends Controller
     private const HEATMAP_ITEM_LIMIT = 6;
 
     /**
-     * @var array<string, array{points: int, interval_minutes: int, trend_scale: float, noise_scale: float, cash_noise_scale: float}>
+     * @var array<string, array{points: int, interval_minutes: int, trend_scale: float, noise_scale: float}>
      */
     private const RANGE_CONFIG = [
-        '24h' => ['points' => 96, 'interval_minutes' => 15, 'trend_scale' => 1.0, 'noise_scale' => 0.65, 'cash_noise_scale' => 0.0007],
-        '1w' => ['points' => 84, 'interval_minutes' => 120, 'trend_scale' => 1.6, 'noise_scale' => 0.95, 'cash_noise_scale' => 0.0010],
-        '1m' => ['points' => 120, 'interval_minutes' => 360, 'trend_scale' => 2.2, 'noise_scale' => 1.2, 'cash_noise_scale' => 0.0014],
-        '3m' => ['points' => 132, 'interval_minutes' => 960, 'trend_scale' => 3.0, 'noise_scale' => 1.45, 'cash_noise_scale' => 0.0018],
-        '6m' => ['points' => 156, 'interval_minutes' => 1920, 'trend_scale' => 4.2, 'noise_scale' => 1.75, 'cash_noise_scale' => 0.0021],
-        '1y' => ['points' => 208, 'interval_minutes' => 2520, 'trend_scale' => 5.5, 'noise_scale' => 2.1, 'cash_noise_scale' => 0.0025],
+        '24h' => ['points' => 96, 'interval_minutes' => 15, 'trend_scale' => 1.0, 'noise_scale' => 0.65],
+        '1w' => ['points' => 84, 'interval_minutes' => 120, 'trend_scale' => 1.6, 'noise_scale' => 0.95],
+        '1m' => ['points' => 120, 'interval_minutes' => 360, 'trend_scale' => 2.2, 'noise_scale' => 1.2],
+        '3m' => ['points' => 132, 'interval_minutes' => 960, 'trend_scale' => 3.0, 'noise_scale' => 1.45],
+        '6m' => ['points' => 156, 'interval_minutes' => 1920, 'trend_scale' => 4.2, 'noise_scale' => 1.75],
+        '1y' => ['points' => 208, 'interval_minutes' => 2520, 'trend_scale' => 5.5, 'noise_scale' => 2.1],
     ];
 
     public function index(Request $request, PortfolioSnapshotService $portfolioSnapshotService): JsonResponse
@@ -308,33 +308,22 @@ class DashboardController extends Controller
         $intervalMinutes = $config['interval_minutes'];
         $trendScale = $config['trend_scale'];
         $noiseScale = $config['noise_scale'];
-        $cashNoiseScale = $config['cash_noise_scale'];
         $now = now();
         $hasPositions = $positions->isNotEmpty();
 
         $history = collect(range(0, $points - 1))
-            ->map(function (int $index) use ($positions, $cashBalance, $points, $intervalMinutes, $now, $trendScale, $noiseScale, $cashNoiseScale, $range, $hasPositions) {
+            ->map(function (int $index) use ($positions, $cashBalance, $points, $intervalMinutes, $now, $trendScale, $noiseScale, $range, $hasPositions) {
                 $progress = $points > 1 ? $index / ($points - 1) : 1.0;
                 $timestamp = $now->copy()->subMinutes(($points - 1 - $index) * $intervalMinutes);
                 $timeLabel = $this->formatHistoryTime($timestamp, $range);
 
                 if (! $hasPositions) {
-                    $phase = deg2rad((float) (crc32($range) % 360));
-                    $waveOne = sin(($progress * M_PI * 2.8) + $phase) * 0.65;
-                    $waveTwo = cos(($progress * M_PI * 7.5) + ($phase / 2)) * 0.35;
-                    $envelope = 1 - (($progress - 0.5) * ($progress - 0.5));
-                    $drift = sin(($progress * M_PI * 1.1) + $phase) * 0.0004 * $trendScale;
-                    $noise = ($waveOne + $waveTwo) * $cashNoiseScale * $envelope;
-                    $simulatedValue = $cashBalance * (1 + $drift + $noise);
-                    $minimumValue = $cashBalance > 0 ? min(0.01, $cashBalance) : 0.0;
-                    $portfolioValue = max($minimumValue, $simulatedValue);
-
                     return [
                         'time' => $timeLabel,
                         'timestamp' => $timestamp->getTimestampMs(),
-                        'value' => round($portfolioValue, 2),
+                        'value' => round($cashBalance, 2),
                         'buying_power' => round($cashBalance, 2),
-                        'holdings_value' => round(max(0, $portfolioValue - $cashBalance), 2),
+                        'holdings_value' => 0.0,
                     ];
                 }
 
