@@ -245,14 +245,21 @@ const WalletPage: React.FC = () => {
   ), [transactions]);
   const pendingDeposits = summary?.pendingDeposits ?? [];
   const depositMethods = summary?.depositMethods ?? [];
+  const keyedDepositMethods = useMemo(
+    () => depositMethods.map((method, index) => ({
+      ...method,
+      selectionKey: `${method.id || 'payment-method'}:${index}`,
+    })),
+    [depositMethods],
+  );
 
-  const selectedDepositMethod = useMemo<DepositMethodItem | undefined>(() => {
-    if (depositMethods.length === 0) {
+  const selectedDepositMethod = useMemo<(DepositMethodItem & { selectionKey: string }) | undefined>(() => {
+    if (keyedDepositMethods.length === 0) {
       return undefined;
     }
 
-    return depositMethods.find((method) => method.id === selectedDepositMethodId) ?? depositMethods[0];
-  }, [depositMethods, selectedDepositMethodId]);
+    return keyedDepositMethods.find((method) => method.selectionKey === selectedDepositMethodId) ?? keyedDepositMethods[0];
+  }, [keyedDepositMethods, selectedDepositMethodId]);
 
   const depositCurrency = selectedDepositMethod?.currency ?? '';
   const depositNetwork = selectedDepositMethod?.network ?? '';
@@ -261,17 +268,17 @@ const WalletPage: React.FC = () => {
   const displayDepositCurrency = selectedDepositMethod?.currency || activeDeposit?.currency || 'N/A';
 
   useEffect(() => {
-    if (depositMethods.length === 0) {
+    if (keyedDepositMethods.length === 0) {
       if (selectedDepositMethodId !== '') {
         setSelectedDepositMethodId('');
       }
       return;
     }
 
-    if (!depositMethods.some((method) => method.id === selectedDepositMethodId)) {
-      setSelectedDepositMethodId(depositMethods[0].id);
+    if (!keyedDepositMethods.some((method) => method.selectionKey === selectedDepositMethodId)) {
+      setSelectedDepositMethodId(keyedDepositMethods[0].selectionKey);
     }
-  }, [depositMethods, selectedDepositMethodId]);
+  }, [keyedDepositMethods, selectedDepositMethodId]);
 
   if (isLoading) {
     return (
@@ -401,14 +408,14 @@ const WalletPage: React.FC = () => {
                   <select
                     value={selectedDepositMethodId}
                     onChange={(event) => setSelectedDepositMethodId(event.target.value)}
-                    disabled={depositMethods.length === 0}
+                    disabled={keyedDepositMethods.length === 0}
                     className="w-full bg-[#121212] border border-white/5 rounded-xl py-4 px-4 text-sm font-black text-white appearance-none focus:outline-none focus:border-emerald-500/50 transition-all"
                   >
-                    {depositMethods.length === 0 && (
+                    {keyedDepositMethods.length === 0 && (
                       <option value="">No active admin payment method</option>
                     )}
-                    {depositMethods.map((method) => (
-                      <option key={method.id} value={method.id}>
+                    {keyedDepositMethods.map((method) => (
+                      <option key={method.selectionKey} value={method.selectionKey}>
                         {method.name} · {method.currency}{method.network ? ` (${method.network})` : ''}
                       </option>
                     ))}
