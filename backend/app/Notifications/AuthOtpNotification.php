@@ -27,11 +27,20 @@ class AuthOtpNotification extends Notification
 
     public function toMail(object $notifiable): MailMessage
     {
-        $isVerification = $this->purpose === 'email_verification';
-        $subject = $isVerification ? 'Verify your email address' : 'Password reset OTP';
-        $headline = $isVerification
-            ? 'Use this one-time password to verify your account.'
-            : 'Use this one-time password to reset your password.';
+        [$subject, $headline] = match ($this->purpose) {
+            'email_verification' => [
+                'Verify your email address',
+                'Use this one-time password to verify your account.',
+            ],
+            'kyc_verification' => [
+                'KYC verification OTP',
+                'Use this one-time password to complete your KYC submission.',
+            ],
+            default => [
+                'Password reset OTP',
+                'Use this one-time password to reset your password.',
+            ],
+        };
 
         return (new MailMessage)
             ->subject($subject)

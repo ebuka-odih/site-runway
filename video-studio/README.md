@@ -8,9 +8,14 @@ This is an isolated Remotion workspace for marketing/product videos. It does not
   - `RunwayFeatureTour60` (1:00)
   - `RunwayFeatureTour120` (2:00)
   - `RunwayFeatureTour180` (3:00)
+- 3 centered mission compositions (new single-column layout):
+  - `RunwayMissionCentered60` (1:00)
+  - `RunwayMissionCentered120` (2:00)
+  - `RunwayMissionCentered180` (3:00)
 - Scene transitions (fade/slide/wipe)
 - Animated data cards to highlight card-centric platform metrics
 - A detailed production blueprint in `VIDEO_PLAN.md`
+- Centered mission blueprint in `VIDEO_PLAN_CENTERED.md`
 
 ## Commands
 
@@ -25,6 +30,14 @@ Render outputs:
 npm run render:60
 npm run render:120
 npm run render:180
+```
+
+Centered mission renders:
+
+```bash
+npm run render:centered60
+npm run render:centered120
+npm run render:centered180
 ```
 
 Generated files are saved in:

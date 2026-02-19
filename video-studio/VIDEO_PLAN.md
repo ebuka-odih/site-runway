@@ -5,87 +5,86 @@ Primary edit preset: 2:00 (`RunwayFeatureTour120`)
 
 ## Story objective
 
-Show the complete user journey from landing page trust + positioning into dashboard utility, with special focus on card-based data clarity, smooth transitions, and premium motion.
+Communicate what RunwayAlgo stands for: fast execution, multi-asset access (stocks + crypto), strategy leverage through copy trading, and trust in operations.
 
 ## Scene-by-scene plan (2:00 baseline)
 
-1. **Intro Brand Snapshot (00:00-00:08)**
+1. **Mission Hook (00:00-00:08)**
    - Route context: `landing /`
-   - Focus: Brand reveal, value signal, high-level metrics.
-   - Transition in/out: Fade in, fade to hero.
+   - Focus: Immediate value statement, outcome-first framing.
+   - Message line: Trade faster, see clearer, act with confidence.
 
-2. **Landing Hero + CTA (00:08-00:20)**
+2. **Platform Promise (00:08-00:20)**
    - Route context: `landing /`
-   - Focus: Headline, "Access Terminal" CTA, floating market motifs.
-   - Transition in/out: Directional slide to market scanner.
+   - Focus: RunwayAlgo as an execution engine, not a passive dashboard.
+   - Message line: One platform for active decision-making.
 
-3. **Market Scanner Block (00:20-00:34)**
+3. **Multi-Asset Coverage (00:20-00:34)**
    - Route context: `/#markets`
-   - Focus: US stocks + crypto + ETF visibility.
-   - Transition in/out: Wipe into features grid.
+   - Focus: Stocks and crypto in one unified market intelligence flow.
+   - Message line: Spot opportunities across markets in real time.
 
-4. **Core Feature Cards (00:34-00:48)**
+4. **Core Advantage Stack (00:34-00:48)**
    - Route context: `/#copy-trading` and `#security-node`
-   - Focus: Lightning execution, copy trading, military-grade safety.
-   - Transition in/out: Slide into authenticated dashboard.
+   - Focus: Execution speed, copy strategy leverage, trust controls.
+   - Message line: Speed + intelligence + control.
 
-5. **Dashboard Home (00:48-01:04)**
+5. **Capital Awareness (00:48-01:04)**
    - Route context: `/dashboard/home`
-   - Focus: `PortfolioCard`, `AssetList`, `Analytics` card data.
-   - Transition in/out: Slide to trade flow.
+   - Focus: Exposure, risk, and allocation clarity before trade entry.
+   - Message line: Know position first, then execute.
 
-6. **Trade Hub (01:04-01:18)**
+6. **Stock + Crypto Execution (01:04-01:18)**
    - Route context: `/dashboard/trade`
-   - Focus: Live tabs, asset rows, trading desk CTA.
-   - Transition in/out: Fade into copy module.
+   - Focus: Fast transition from market scan to trade action.
+   - Message line: Execute without friction across asset classes.
 
-7. **Copy Trading (01:18-01:32)**
+7. **Copy Trading Edge (01:18-01:32)**
    - Route context: `/dashboard/copy`
-   - Focus: Discover/follow/history tabs + summary cards.
-   - Transition in/out: Slide into wallet/security.
+   - Focus: Discover traders, allocate capital, track outcomes.
+   - Message line: Amplify strategy with disciplined copying.
 
-8. **Wallet + Profile Trust Layer (01:32-01:46)**
+8. **Trust + Operational Control (01:32-01:46)**
    - Route context: `/dashboard/wallet` + `/dashboard/profile`
-   - Focus: Funding lifecycle, status steps, account/security controls.
-   - Transition in/out: Wipe into final CTA.
+   - Focus: Funding transparency, account controls, security assurance.
+   - Message line: Built for serious trading operations.
 
-9. **Outro + Final CTA (01:46-02:00)**
+9. **Mission Recap + CTA (01:46-02:00)**
    - Route context: landing CTA recap
-   - Focus: Positioning summary, closing action line.
-   - Transition in/out: Controlled fade out.
+   - Focus: Final reinforcement of platform stand and action invite.
+   - Message line: Trade stocks and crypto faster with RunwayAlgo.
 
 ## Duration strategy
 
-- **1:00 version**: Keep all 9 scenes but reduce hold times per scene.
-- **2:00 version**: Recommended default for balanced storytelling.
-- **3:00 version**: Extend dashboard scenes (Home, Trade, Copy, Wallet/Profile) for deeper feature explanation.
+- **1:00 version**: High-impact mission reel. Keep all pillars but tighten each segment.
+- **2:00 version**: Recommended default. Full value narrative with clear proof moments.
+- **3:00 version**: Deep dive. Extend execution and copy-trading scenes for stronger conversion intent.
 
-## Card-focused coverage plan
+## Messaging priorities
 
-Prioritize these card-heavy modules in footage captures and overlays:
+Keep this order of importance in every cut:
 
-1. `web/components/PortfolioCard.tsx`
-2. `web/components/Analytics.tsx`
-3. `web/components/AssetList.tsx`
-4. `web/components/CopyTrading.tsx`
-5. `web/components/WalletPage.tsx`
+1. Multi-asset capability (stock + crypto)
+2. Fast execution and decision speed
+3. Copy trading as practical strategy leverage
+4. Trust, control, and reliability
+5. Clear invitation to start
 
 ## Transition and animation language
 
-- Scene transitions: alternating fade, directional slide, and wipe.
+- Scene transitions: fade, directional slide, and wipe to maintain momentum.
 - In-scene animation:
-  - Staggered bullet reveals for narrative pacing.
-  - Spring entrance for metric cards.
-  - Dynamic chart-bar movement to avoid static UI moments.
+  - Staggered narrative reveals to support story flow.
+  - Metric card animations to reinforce value claims.
+  - Dynamic market motion to communicate live opportunity.
 - Keep camera movement minimal and deliberate (no aggressive zoom jitter).
 
 ## Capture order recommendation
 
-1. Landing: hero, markets, features, CTA.
-2. Dashboard Home.
-3. Trade tab.
-4. Copy tab.
-5. Wallet and Profile.
-6. Closing CTA on landing.
+1. Landing mission and market coverage moments.
+2. Trade flow showing stock and crypto execution.
+3. Copy trading strategy flow.
+4. Trust and control scenes (wallet/profile).
+5. Final mission recap and CTA.
 
 This order minimizes re-navigation overhead and keeps motion continuity coherent in post.

@@ -4,7 +4,6 @@ import {
   Camera,
   User,
   Shield,
-  CheckCircle,
   ChevronRight,
   LogOut,
   Lock,
@@ -16,8 +15,8 @@ import {
 import { useLocation } from 'react-router-dom';
 import { useMarket } from '../context/MarketContext';
 import LiveChatEmbed from './LiveChatEmbed';
-import { apiPublicSettings } from '../lib/api';
-import type { ProfileData, PublicSettings } from '../types';
+import { apiConfirmKycOtp, apiPublicSettings, apiSendKycOtp, apiSubmitKyc } from '../lib/api';
+import type { KycDocumentType, ProfileData, PublicSettings } from '../types';
 
 type ProfileView = 'menu' | 'identity' | 'security' | 'kyc' | 'notifications' | 'support';
 
@@ -67,6 +66,15 @@ const ProfilePage: React.FC = () => {
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const passwordsMismatch = newPassword !== '' && confirmPassword !== '' && newPassword !== confirmPassword;
+  const [kycAddress, setKycAddress] = useState('');
+  const [kycCity, setKycCity] = useState('');
+  const [kycCountry, setKycCountry] = useState('');
+  const [kycDocumentType, setKycDocumentType] = useState<KycDocumentType>('drivers_license');
+  const [kycDocumentFile, setKycDocumentFile] = useState<File | null>(null);
+  const [kycOtp, setKycOtp] = useState('');
+  const [isSendingKycOtp, setIsSendingKycOtp] = useState(false);
+  const [isSubmittingKyc, setIsSubmittingKyc] = useState(false);
+  const [isConfirmingKycOtp, setIsConfirmingKycOtp] = useState(false);
   const [publicSettings, setPublicSettings] = useState<PublicSettings | null>(null);
 
   const syncFormState = (input: ProfileData) => {
@@ -74,6 +82,10 @@ const ProfilePage: React.FC = () => {
     setPhone(input.phone ?? '');
     setTimezone(input.timezone ?? 'America/New_York');
     setNotificationEmailAlerts(Boolean(input.notificationEmailAlerts));
+    setKycAddress(input.kycSubmission?.address ?? '');
+    setKycCity(input.kycSubmission?.city ?? '');
+    setKycCountry(input.kycSubmission?.country ?? input.country ?? '');
+    setKycDocumentType((input.kycSubmission?.documentType ?? 'drivers_license') as KycDocumentType);
   };
 
   useEffect(() => {
@@ -201,6 +213,88 @@ const ProfilePage: React.FC = () => {
       setError(message);
     } finally {
       setIsSavingSecurity(false);
+    }
+  };
+
+  const handleSendKycOtp = async () => {
+    setError(null);
+    setSuccess(null);
+    setIsSendingKycOtp(true);
+
+    try {
+      await apiSendKycOtp();
+      setSuccess('A KYC verification OTP has been sent to your email.');
+    } catch (exception) {
+      const message = exception instanceof Error ? exception.message : 'Unable to send verification OTP.';
+      setError(message);
+    } finally {
+      setIsSendingKycOtp(false);
+    }
+  };
+
+  const handleKycSubmit = async (event: React.FormEvent) => {
+    event.preventDefault();
+    setError(null);
+    setSuccess(null);
+
+    if (!kycAddress.trim() || !kycCity.trim() || !kycCountry.trim()) {
+      setError('Address, city, and country are required for KYC.');
+      return;
+    }
+
+    if (!kycDocumentFile) {
+      setError('Please upload your identity document.');
+      return;
+    }
+
+    setIsSubmittingKyc(true);
+
+    try {
+      const updated = await apiSubmitKyc({
+        address: kycAddress.trim(),
+        city: kycCity.trim(),
+        country: kycCountry.trim(),
+        documentType: kycDocumentType,
+        documentFile: kycDocumentFile,
+      });
+
+      setProfile(updated);
+      syncFormState(updated);
+      setKycDocumentFile(null);
+      setSuccess('KYC details saved. Enter the OTP sent to your email to complete your submission.');
+    } catch (exception) {
+      const message = exception instanceof Error ? exception.message : 'Unable to submit KYC details.';
+      setError(message);
+    } finally {
+      setIsSubmittingKyc(false);
+    }
+  };
+
+  const handleKycOtpConfirm = async (event: React.FormEvent) => {
+    event.preventDefault();
+    setError(null);
+    setSuccess(null);
+
+    if (!/^\d{6}$/.test(kycOtp)) {
+      setError('Enter the 6-digit OTP sent to your email.');
+      return;
+    }
+
+    setIsConfirmingKycOtp(true);
+
+    try {
+      const updated = await apiConfirmKycOtp({
+        otp: kycOtp.trim(),
+      });
+      setProfile(updated);
+      syncFormState(updated);
+      setKycOtp('');
+      setSuccess('KYC submitted successfully. Admin review is pending.');
+    } catch (exception) {
+      const message = exception instanceof Error ? exception.message : 'Unable to confirm KYC OTP.';
+      setError(message);
+    } finally {
+      setIsConfirmingKycOtp(false);
     }
   };
 
@@ -368,25 +462,202 @@ const ProfilePage: React.FC = () => {
   }
 
   if (activeView === 'kyc') {
-    const isVerified = (profile?.kycStatus ?? user?.kycStatus ?? 'pending') === 'verified';
+    const kycStatus = String(profile?.kycStatus ?? user?.kycStatus ?? 'pending').toLowerCase();
+    const kycSubmissionStatus = String(profile?.kycSubmission?.status ?? '').toLowerCase();
+    const isVerified = kycStatus === 'verified';
+    const isAwaitingOtp = kycSubmissionStatus === 'awaiting_otp';
+    const isUnderReview = kycSubmissionStatus === 'pending';
+    const statusTone = isVerified
+      ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-200'
+      : isAwaitingOtp
+        ? 'bg-cyan-500/10 border-cyan-500/30 text-cyan-200'
+      : kycStatus === 'rejected'
+        ? 'bg-rose-500/10 border-rose-500/30 text-rose-200'
+        : 'bg-amber-500/10 border-amber-500/30 text-amber-200';
+    const documentTypeLabels: Record<KycDocumentType, string> = {
+      drivers_license: 'Driver License',
+      international_passport: 'International Passport',
+      national_id_card: 'National ID Card',
+    };
+    const resolvedDocumentType = (profile?.kycSubmission?.documentType ?? kycDocumentType) as KycDocumentType;
+    const statusLabel = isAwaitingOtp
+      ? 'Awaiting OTP Confirmation'
+      : isUnderReview
+        ? 'Pending Admin Review'
+        : formatStatus(profile?.kycStatus ?? user?.kycStatus);
+    const isKycFormLocked = isVerified || isUnderReview;
 
     return (
       <div className="animate-in slide-in-from-right duration-300 pb-20">
-        <BackHeader title="Verification overview" subtitle="KYC" onBack={handleBack} />
+        <BackHeader title="KYC Verification" subtitle="KYC" onBack={handleBack} />
         <div className="p-4 space-y-6">
-          <div className="bg-[#0c1a12] border border-emerald-500/20 rounded-2xl p-6 flex items-center gap-4">
-            <CheckCircle className="text-emerald-500" size={24} />
-            <p className="text-sm font-black text-white">KYC Status: {formatStatus(profile?.kycStatus ?? user?.kycStatus)}</p>
+          {error && <div className="bg-red-500/10 border border-red-500/20 rounded-xl px-4 py-3 text-sm font-bold text-red-300">{error}</div>}
+          {success && <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-xl px-4 py-3 text-sm font-bold text-emerald-300">{success}</div>}
+
+          <div className={`rounded-2xl border p-5 ${statusTone}`}>
+            <p className="text-[10px] font-black uppercase tracking-widest">Current Status</p>
+            <p className="mt-2 text-sm font-black">KYC Status: {statusLabel}</p>
+            {profile?.kycSubmission?.reviewNotes ? (
+              <p className="mt-2 text-xs font-medium opacity-90">Admin note: {profile.kycSubmission.reviewNotes}</p>
+            ) : null}
           </div>
-          <div className="space-y-4">
-            <div className="bg-[#121212] border border-white/5 rounded-2xl p-6">
-              <h4 className="text-lg font-black text-white">Identity Verification</h4>
-              <div className={`flex items-center gap-1.5 mt-1 ${isVerified ? 'text-emerald-500' : 'text-yellow-500'}`}>
-                <CheckCircle size={14} />
-                <span className="text-[10px] font-black uppercase tracking-widest">{isVerified ? 'Verified' : 'In Review'}</span>
+
+          {isAwaitingOtp ? (
+            <>
+              <div className="bg-[#121212] border border-white/5 rounded-2xl p-6 space-y-4">
+                <h4 className="text-base font-black text-white">KYC Details Received</h4>
+                <p className="text-xs text-zinc-500 font-bold">
+                  We saved your KYC details. Confirm with the OTP sent to your email to send this to admin for review.
+                </p>
+                <div className="grid gap-3 sm:grid-cols-2 text-sm text-zinc-300">
+                  <p><span className="text-zinc-500">Address:</span> {profile?.kycSubmission?.address || '-'}</p>
+                  <p><span className="text-zinc-500">City:</span> {profile?.kycSubmission?.city || '-'}</p>
+                  <p><span className="text-zinc-500">Country:</span> {profile?.kycSubmission?.country || '-'}</p>
+                  <p><span className="text-zinc-500">Document:</span> {documentTypeLabels[resolvedDocumentType]}</p>
+                </div>
               </div>
-            </div>
-          </div>
+
+              <form onSubmit={(event) => void handleKycOtpConfirm(event)} className="bg-[#121212] border border-white/5 rounded-2xl p-6 space-y-4">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <h4 className="text-base font-black text-white">Second OTP Verification</h4>
+                    <p className="text-xs text-zinc-500 font-bold mt-1">Enter the OTP from your email to finalize KYC submission.</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => void handleSendKycOtp()}
+                    disabled={isSendingKycOtp || isVerified}
+                    className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-2 text-[11px] font-black uppercase tracking-widest text-emerald-300 disabled:opacity-50"
+                  >
+                    {isSendingKycOtp ? 'Sending...' : 'Resend OTP'}
+                  </button>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-zinc-600 uppercase tracking-widest ml-1">KYC OTP</label>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    maxLength={6}
+                    value={kycOtp}
+                    onChange={(event) => setKycOtp(event.target.value.replace(/\D/g, '').slice(0, 6))}
+                    disabled={isVerified}
+                    className="w-full bg-[#0f0f0f] border border-white/5 rounded-xl py-4 px-4 text-sm font-black tracking-[0.35em] text-white focus:outline-none focus:border-emerald-500/50 disabled:opacity-60"
+                    placeholder="000000"
+                  />
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={isConfirmingKycOtp || isVerified}
+                  className="w-full py-4 bg-[#10b981] hover:bg-[#059669] disabled:opacity-60 text-black font-black rounded-xl uppercase tracking-widest text-sm shadow-xl"
+                >
+                  {isVerified ? 'Already Verified' : isConfirmingKycOtp ? 'Confirming...' : 'Confirm OTP & Submit KYC'}
+                </button>
+              </form>
+            </>
+          ) : (
+            <form onSubmit={(event) => void handleKycSubmit(event)} className="bg-[#121212] border border-white/5 rounded-2xl p-6 space-y-4">
+              <h4 className="text-base font-black text-white">KYC Details</h4>
+
+              <div className="space-y-2">
+                <label className="text-[10px] font-black text-zinc-600 uppercase tracking-widest ml-1">Address</label>
+                <input
+                  type="text"
+                  value={kycAddress}
+                  onChange={(event) => setKycAddress(event.target.value)}
+                  disabled={isKycFormLocked}
+                  className="w-full bg-[#0f0f0f] border border-white/5 rounded-xl py-4 px-4 text-sm font-bold text-white focus:outline-none focus:border-emerald-500/50 disabled:opacity-60"
+                  placeholder="Street address"
+                />
+              </div>
+
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-zinc-600 uppercase tracking-widest ml-1">City</label>
+                  <input
+                    type="text"
+                    value={kycCity}
+                    onChange={(event) => setKycCity(event.target.value)}
+                    disabled={isKycFormLocked}
+                    className="w-full bg-[#0f0f0f] border border-white/5 rounded-xl py-4 px-4 text-sm font-bold text-white focus:outline-none focus:border-emerald-500/50 disabled:opacity-60"
+                    placeholder="City"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-zinc-600 uppercase tracking-widest ml-1">Country</label>
+                  <input
+                    type="text"
+                    value={kycCountry}
+                    onChange={(event) => setKycCountry(event.target.value)}
+                    disabled={isKycFormLocked}
+                    className="w-full bg-[#0f0f0f] border border-white/5 rounded-xl py-4 px-4 text-sm font-bold text-white focus:outline-none focus:border-emerald-500/50 disabled:opacity-60"
+                    placeholder="Country"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-[10px] font-black text-zinc-600 uppercase tracking-widest ml-1">Document Type</label>
+                <select
+                  value={kycDocumentType}
+                  onChange={(event) => setKycDocumentType(event.target.value as KycDocumentType)}
+                  disabled={isKycFormLocked}
+                  className="w-full bg-[#0f0f0f] border border-white/5 rounded-xl py-4 px-4 text-sm font-bold text-white focus:outline-none focus:border-emerald-500/50 disabled:opacity-60"
+                >
+                  <option value="drivers_license">Driver License</option>
+                  <option value="international_passport">International Passport</option>
+                  <option value="national_id_card">National ID Card</option>
+                </select>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-[10px] font-black text-zinc-600 uppercase tracking-widest ml-1">Upload Document</label>
+                <input
+                  type="file"
+                  accept=".jpg,.jpeg,.png,.webp,.pdf"
+                  onChange={(event) => setKycDocumentFile(event.target.files?.[0] ?? null)}
+                  disabled={isKycFormLocked}
+                  className="w-full bg-[#0f0f0f] border border-white/5 rounded-xl py-3 px-4 text-sm font-bold text-zinc-300 file:mr-3 file:rounded-lg file:border-0 file:bg-emerald-500/20 file:px-3 file:py-2 file:text-xs file:font-black file:text-emerald-300 disabled:opacity-60"
+                />
+                {profile?.kycSubmission?.id && !kycDocumentFile ? (
+                  <p className="text-[11px] text-zinc-500 font-medium">
+                    Existing document: {documentTypeLabels[resolvedDocumentType]}
+                  </p>
+                ) : null}
+              </div>
+
+              <button
+                type="submit"
+                disabled={isSubmittingKyc || isKycFormLocked}
+                className="w-full py-4 bg-[#10b981] hover:bg-[#059669] disabled:opacity-60 text-black font-black rounded-xl uppercase tracking-widest text-sm shadow-xl"
+              >
+                {isVerified
+                  ? 'Already Verified'
+                  : isUnderReview
+                    ? 'Pending Admin Review'
+                    : isSubmittingKyc
+                      ? 'Submitting...'
+                      : 'Continue To OTP Verification'}
+              </button>
+            </form>
+          )}
+
+          {!isVerified && !isUnderReview && !isAwaitingOtp && (
+            <p className="text-xs font-bold text-amber-200 bg-amber-500/10 border border-amber-500/20 rounded-xl px-4 py-3">
+              After you submit these details, we email you a second OTP. Enter that OTP to send your KYC to admin for review.
+            </p>
+          )}
+          {isUnderReview && (
+            <p className="text-xs font-bold text-amber-200 bg-amber-500/10 border border-amber-500/20 rounded-xl px-4 py-3">
+              Your KYC submission is currently under admin review.
+            </p>
+          )}
+          {profile?.kycSubmission?.submittedAt ? (
+            <p className="text-[11px] text-zinc-500 font-medium">
+              Last submitted: {new Date(profile.kycSubmission.submittedAt).toLocaleString()}
+            </p>
+          ) : null}
         </div>
       </div>
     );

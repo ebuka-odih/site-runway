@@ -8,6 +8,9 @@
     "render:60": "remotion render src/index.ts RunwayFeatureTour60 out/runway-feature-tour-60.mp4",
     "render:120": "remotion render src/index.ts RunwayFeatureTour120 out/runway-feature-tour-120.mp4",
     "render:180": "remotion render src/index.ts RunwayFeatureTour180 out/runway-feature-tour-180.mp4",
+    "render:centered60": "remotion render src/index.ts RunwayMissionCentered60 out/runway-mission-centered-60.mp4",
+    "render:centered120": "remotion render src/index.ts RunwayMissionCentered120 out/runway-mission-centered-120.mp4",
+    "render:centered180": "remotion render src/index.ts RunwayMissionCentered180 out/runway-mission-centered-180.mp4",
     "bundle": "remotion bundle src/index.ts",
     "check": "tsc --noEmit"
   },

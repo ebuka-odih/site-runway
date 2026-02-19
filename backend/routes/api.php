@@ -70,5 +70,8 @@ Route::prefix('v1')->group(function () {
 
         Route::get('/profile', [ProfileController::class, 'show']);
         Route::patch('/profile', [ProfileController::class, 'update']);
+        Route::post('/profile/kyc/send-otp', [ProfileController::class, 'sendKycOtp']);
+        Route::post('/profile/kyc/submit', [ProfileController::class, 'submitKyc']);
+        Route::post('/profile/kyc/confirm', [ProfileController::class, 'confirmKyc']);
     });
 });

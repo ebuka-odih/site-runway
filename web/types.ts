@@ -268,6 +268,21 @@ export interface CopyTradeHistoryItem {
   symbol?: string | null;
 }
 
+export type KycDocumentType = 'drivers_license' | 'international_passport' | 'national_id_card';
+
+export interface KycSubmissionData {
+  id: string;
+  status: string;
+  address: string;
+  city: string;
+  country: string;
+  documentType: KycDocumentType;
+  submittedAt?: string | null;
+  reviewedAt?: string | null;
+  reviewNotes?: string | null;
+}
+
 export interface ProfileData extends AuthUser {
   notificationEmailAlerts: boolean;
+  kycSubmission?: KycSubmissionData | null;
 }

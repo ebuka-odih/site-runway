@@ -3,6 +3,8 @@ import type {
   CopyFollowingSummary,
   CopyRelationshipItem,
   CopyTradeHistoryItem,
+  KycDocumentType,
+  KycSubmissionData,
   DashboardRange,
   DashboardData,
   DepositMethodItem,
@@ -66,6 +68,36 @@ function mapAuthUser(raw: any): AuthUser {
     notificationEmailAlerts: typeof raw.notification_email_alerts === 'boolean'
       ? raw.notification_email_alerts
       : raw.notificationEmailAlerts,
+  };
+}
+
+function mapKycSubmission(raw: any): KycSubmissionData | null {
+  if (!raw || typeof raw !== 'object') {
+    return null;
+  }
+
+  return {
+    id: String(raw.id ?? ''),
+    status: String(raw.status ?? 'pending'),
+    address: String(raw.address ?? ''),
+    city: String(raw.city ?? ''),
+    country: String(raw.country ?? ''),
+    documentType: String(raw.document_type ?? raw.documentType ?? 'drivers_license') as KycDocumentType,
+    submittedAt: raw.submitted_at ?? raw.submittedAt ?? null,
+    reviewedAt: raw.reviewed_at ?? raw.reviewedAt ?? null,
+    reviewNotes: raw.review_notes ?? raw.reviewNotes ?? null,
+  };
+}
+
+function mapProfile(raw: any): ProfileData {
+  const authUser = mapAuthUser(raw);
+
+  return {
+    ...authUser,
+    notificationEmailAlerts: typeof raw.notification_email_alerts === 'boolean'
+      ? raw.notification_email_alerts
+      : Boolean(raw.notificationEmailAlerts ?? authUser.notificationEmailAlerts),
+    kycSubmission: mapKycSubmission(raw.kyc_submission ?? raw.kycSubmission),
   };
 }
 
@@ -784,7 +816,7 @@ export async function apiCloseCopyRelationship(id: string): Promise<void> {
 
 export async function apiProfile(): Promise<ProfileData> {
   const payload = await request<any>('/profile');
-  return mapAuthUser(payload.data) as ProfileData;
+  return mapProfile(payload.data);
 }
 
 export async function apiPublicSettings(): Promise<PublicSettings> {
@@ -817,5 +849,44 @@ export async function apiUpdateProfile(input: {
     }),
   });
 
-  return mapAuthUser(payload.data) as ProfileData;
+  return mapProfile(payload.data);
+}
+
+export async function apiSendKycOtp(): Promise<void> {
+  await request('/profile/kyc/send-otp', {
+    method: 'POST',
+  });
+}
+
+export async function apiSubmitKyc(input: {
+  address: string;
+  city: string;
+  country: string;
+  documentType: KycDocumentType;
+  documentFile: File;
+}): Promise<ProfileData> {
+  const formData = new FormData();
+  formData.append('address', input.address);
+  formData.append('city', input.city);
+  formData.append('country', input.country);
+  formData.append('document_type', input.documentType);
+  formData.append('document_file', input.documentFile);
+
+  const payload = await request<any>('/profile/kyc/submit', {
+    method: 'POST',
+    body: formData,
+  });
+
+  return mapProfile(payload.data);
+}
+
+export async function apiConfirmKycOtp(input: { otp: string }): Promise<ProfileData> {
+  const payload = await request<any>('/profile/kyc/confirm', {
+    method: 'POST',
+    body: JSON.stringify({
+      otp: input.otp,
+    }),
+  });
+
+  return mapProfile(payload.data);
 }

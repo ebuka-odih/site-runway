@@ -3,6 +3,7 @@
 use App\Http\Controllers\Admin\AuthController;
 use App\Http\Controllers\Admin\CopyTraderController;
 use App\Http\Controllers\Admin\DashboardController;
+use App\Http\Controllers\Admin\KycVerificationController;
 use App\Http\Controllers\Admin\PaymentMethodController;
 use App\Http\Controllers\Admin\SettingController;
 use App\Http\Controllers\Admin\TransactionController;
@@ -50,6 +51,11 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::put('/copy-traders/{trader}', [CopyTraderController::class, 'update'])->name('copy-traders.update');
         Route::post('/copy-traders/{trader}/trades', [CopyTraderController::class, 'storeTrade'])->name('copy-traders.trades.store');
         Route::delete('/copy-traders/{trader}', [CopyTraderController::class, 'destroy'])->name('copy-traders.destroy');
+
+        Route::get('/kyc', [KycVerificationController::class, 'index'])->name('kyc.index');
+        Route::get('/kyc/{kycSubmission}/document', [KycVerificationController::class, 'showDocument'])->name('kyc.document');
+        Route::post('/kyc/{kycSubmission}/approve', [KycVerificationController::class, 'approve'])->name('kyc.approve');
+        Route::post('/kyc/{kycSubmission}/decline', [KycVerificationController::class, 'decline'])->name('kyc.decline');
 
         Route::get('/settings', [SettingController::class, 'index'])->name('settings.index');
         Route::post('/settings', [SettingController::class, 'update'])->name('settings.update');

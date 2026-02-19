@@ -40,6 +40,8 @@ class User extends Authenticatable
         'email_otp_expires_at',
         'password_reset_otp_code',
         'password_reset_otp_expires_at',
+        'kyc_otp_code',
+        'kyc_otp_expires_at',
     ];
 
     /**
@@ -52,6 +54,7 @@ class User extends Authenticatable
         'remember_token',
         'email_otp_code',
         'password_reset_otp_code',
+        'kyc_otp_code',
     ];
 
     /**
@@ -71,6 +74,7 @@ class User extends Authenticatable
             'holding_balance' => 'decimal:8',
             'email_otp_expires_at' => 'datetime',
             'password_reset_otp_expires_at' => 'datetime',
+            'kyc_otp_expires_at' => 'datetime',
         ];
     }
 
@@ -102,5 +106,10 @@ class User extends Authenticatable
     public function copyRelationships(): HasMany
     {
         return $this->hasMany(CopyRelationship::class);
+    }
+
+    public function kycSubmission(): HasOne
+    {
+        return $this->hasOne(KycSubmission::class);
     }
 }

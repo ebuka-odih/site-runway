@@ -9,6 +9,7 @@ export default function AdminLayout({ title, children }) {
     const navigation = [
         { name: 'Dashboard', short: 'Home', href: adminPath(url) },
         { name: 'Transactions', short: 'Txns', href: adminPath(url, 'transactions') },
+        { name: 'KYC Reviews', short: 'KYC', href: adminPath(url, 'kyc') },
         { name: 'Copy Traders', short: 'Copy', href: adminPath(url, 'copy-traders') },
         { name: 'Users', short: 'Users', href: adminPath(url, 'users') },
         { name: 'Payment Methods', short: 'Pay', href: adminPath(url, 'payment-methods') },
@@ -141,7 +142,10 @@ export default function AdminLayout({ title, children }) {
             </div>
 
             <nav className="fixed inset-x-0 bottom-0 z-30 border-t border-slate-800 bg-slate-950/95 px-2 py-2 backdrop-blur lg:hidden">
-                <div className="grid grid-cols-6 gap-1">
+                <div
+                    className="grid gap-1"
+                    style={{ gridTemplateColumns: `repeat(${navigation.length}, minmax(0, 1fr))` }}
+                >
                     {navigation.map((item) => (
                         <Link
                             key={item.name}
