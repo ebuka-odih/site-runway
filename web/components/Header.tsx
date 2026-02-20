@@ -4,7 +4,11 @@ import { useNavigate } from 'react-router-dom';
 import { useMarket } from '../context/MarketContext';
 import type { UserNotificationItem } from '../types';
 
-const Header: React.FC = () => {
+interface HeaderProps {
+  profileRoute?: string;
+}
+
+const Header: React.FC<HeaderProps> = ({ profileRoute = '/dashboard/profile' }) => {
   const navigate = useNavigate();
   const {
     notifications,
@@ -102,7 +106,7 @@ const Header: React.FC = () => {
         <button
           type="button"
           className="p-2 hover:bg-zinc-800 rounded-full transition-colors"
-          onClick={() => navigate('/dashboard/profile')}
+          onClick={() => navigate(profileRoute)}
           aria-label="Open profile settings"
         >
           <Settings size={20} />
