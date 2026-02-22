@@ -7,10 +7,10 @@ use App\Models\KycSubmission;
 use App\Notifications\UserEventNotification;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Http\Response as HttpResponse;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 use Inertia\Response;
+use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
 
 class KycVerificationController extends Controller
 {
@@ -49,7 +49,7 @@ class KycVerificationController extends Controller
         ]);
     }
 
-    public function showDocument(KycSubmission $kycSubmission): HttpResponse
+    public function showDocument(KycSubmission $kycSubmission): SymfonyResponse
     {
         $path = trim((string) $kycSubmission->id_document_path);
 
