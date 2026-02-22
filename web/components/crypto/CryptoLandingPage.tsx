@@ -20,6 +20,20 @@ const BASE_CURRENCIES = ['USD', 'EUR', 'GBP'] as const;
 const DEFAULT_SIGNUP_COUNTRY = 'United States';
 
 const TOP_PAIRS = ['BTC/USDT', 'ETH/USDT', 'SOL/USDT', 'XRP/USDT'];
+const FEATURE_ITEMS = [
+  {
+    title: 'AI Signal Layer',
+    body: 'Context-aware alerts, momentum shifts, and volatility snapshots tuned for crypto sessions.',
+  },
+  {
+    title: 'Fast Execution',
+    body: 'Route-ready order flow with low-latency updates for intraday and swing setups.',
+  },
+  {
+    title: 'Risk Controls',
+    body: 'Position sizing, watchlist discipline, and structured entries directly from one terminal.',
+  },
+];
 
 const CryptoLandingPage: React.FC<CryptoLandingPageProps> = ({ onLogin, authError }) => {
   const [showLogin, setShowLogin] = useState(false);
@@ -326,11 +340,62 @@ const CryptoLandingPage: React.FC<CryptoLandingPageProps> = ({ onLogin, authErro
         </footer>
       </section>
 
+      <section className="mx-auto w-full max-w-6xl px-6 pb-10">
+        <div className="grid gap-4 md:grid-cols-3">
+          {FEATURE_ITEMS.map((item) => (
+            <article key={item.title} className="rounded-2xl border border-cyan-300/20 bg-slate-950/70 p-5">
+              <p className="text-xs font-black uppercase tracking-[0.2em] text-cyan-300">{item.title}</p>
+              <p className="mt-3 text-sm text-zinc-200">{item.body}</p>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <section className="mx-auto w-full max-w-6xl px-6 pb-12">
+        <div className="grid gap-5 lg:grid-cols-2">
+          <article className="rounded-3xl border border-white/10 bg-slate-950/80 p-6">
+            <p className="text-[10px] font-black uppercase tracking-[0.24em] text-cyan-300">Execution Stack</p>
+            <h3 className="mt-3 text-2xl font-black text-white">Built For Real Crypto Sessions</h3>
+            <ul className="mt-4 space-y-3 text-sm text-zinc-200">
+              <li>Always-on market visibility across majors and fast movers.</li>
+              <li>Unified watchlist, trade flow, and wallet context.</li>
+              <li>Signal-first workflow designed for high-volatility windows.</li>
+            </ul>
+          </article>
+
+          <article className="rounded-3xl border border-cyan-300/20 bg-gradient-to-br from-cyan-400/10 via-blue-500/10 to-slate-950/90 p-6">
+            <p className="text-[10px] font-black uppercase tracking-[0.24em] text-cyan-200">Get Started</p>
+            <h3 className="mt-3 text-2xl font-black text-white">Open Your Crypto Terminal</h3>
+            <p className="mt-3 text-sm text-zinc-200">
+              Create an account, verify your email, and enter the `env` dashboard to begin trading.
+            </p>
+            <div className="mt-6 flex flex-wrap gap-3">
+              <button
+                type="button"
+                onClick={() => openAuth('signup')}
+                className="rounded-2xl bg-cyan-400 px-5 py-3 text-xs font-black uppercase tracking-[0.2em] text-black transition hover:bg-cyan-300"
+              >
+                Create Account
+              </button>
+              <button
+                type="button"
+                onClick={() => openAuth('login')}
+                className="rounded-2xl border border-cyan-300/40 px-5 py-3 text-xs font-black uppercase tracking-[0.2em] text-cyan-100 transition hover:border-cyan-200"
+              >
+                Sign In
+              </button>
+            </div>
+          </article>
+        </div>
+      </section>
+
       <LandingAuthModal
         show={showLogin}
         authView={authView}
         isSubmitting={isSubmitting}
         submitLabel={submitLabel}
+        theme="crypto"
+        brandName="env"
         closeAuth={closeAuth}
         email={email}
         password={password}

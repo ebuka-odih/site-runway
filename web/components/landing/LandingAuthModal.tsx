@@ -7,6 +7,8 @@ interface LandingAuthModalProps {
   authView: AuthView;
   isSubmitting: boolean;
   submitLabel: string;
+  theme?: 'default' | 'crypto';
+  brandName?: string;
   closeAuth: () => void;
   email: string;
   password: string;
@@ -43,6 +45,8 @@ const LandingAuthModal: React.FC<LandingAuthModalProps> = ({
   authView,
   isSubmitting,
   submitLabel,
+  theme = 'default',
+  brandName = 'RunwayAlgo',
   closeAuth,
   email,
   password,
@@ -77,12 +81,18 @@ const LandingAuthModal: React.FC<LandingAuthModalProps> = ({
     return null;
   }
 
+  const isCryptoTheme = theme === 'crypto';
+  const inputClass = `w-full bg-[#0a0a0a] border border-white/5 rounded-2xl py-4 px-4 text-sm font-bold text-white focus:outline-none transition-all placeholder:text-zinc-700 ${isCryptoTheme ? 'focus:border-cyan-400/40' : 'focus:border-emerald-500/40'}`;
+  const inputWithIconClass = `w-full bg-[#0a0a0a] border border-white/5 rounded-2xl py-4 pl-12 pr-4 text-sm font-bold text-white focus:outline-none transition-all placeholder:text-zinc-700 ${isCryptoTheme ? 'focus:border-cyan-400/40' : 'focus:border-emerald-500/40'}`;
+  const linkButtonClass = `text-[10px] font-black uppercase tracking-widest ${isCryptoTheme ? 'text-cyan-400 hover:text-cyan-300' : 'text-emerald-500 hover:text-emerald-400'}`;
+  const primaryActionClass = `w-full py-4 text-black font-black rounded-2xl uppercase tracking-[0.2em] text-sm shadow-xl active:scale-[0.98] transition-all ${isCryptoTheme ? 'bg-cyan-400 hover:bg-cyan-300 shadow-cyan-500/10' : 'bg-emerald-500 hover:bg-emerald-400 shadow-emerald-500/10'}`;
+
   return (
     <div className="fixed inset-0 z-[100] bg-black/80 backdrop-blur-xl flex items-center justify-center p-4 animate-in fade-in duration-300">
       <div className="w-full max-w-md bg-[#121212] border border-white/10 rounded-[40px] p-8 md:p-12 shadow-2xl relative overflow-hidden animate-in zoom-in-95 duration-300">
         {/* Background blur inside modal */}
-        <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/10 blur-[60px] rounded-full -translate-y-1/2 translate-x-1/2" />
-        <div className="absolute bottom-0 left-0 w-32 h-32 bg-emerald-500/10 blur-[60px] rounded-full translate-y-1/2 -translate-x-1/2" />
+        <div className={`absolute top-0 right-0 w-32 h-32 blur-[60px] rounded-full -translate-y-1/2 translate-x-1/2 ${isCryptoTheme ? 'bg-cyan-500/10' : 'bg-emerald-500/10'}`} />
+        <div className={`absolute bottom-0 left-0 w-32 h-32 blur-[60px] rounded-full translate-y-1/2 -translate-x-1/2 ${isCryptoTheme ? 'bg-cyan-500/10' : 'bg-emerald-500/10'}`} />
 
         <button
           onClick={closeAuth}
@@ -92,10 +102,10 @@ const LandingAuthModal: React.FC<LandingAuthModalProps> = ({
         </button>
 
         <div className="flex flex-col items-center mb-10">
-          <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center shadow-lg shadow-emerald-500/20 mb-6">
+          <div className={`w-16 h-16 rounded-2xl bg-gradient-to-br flex items-center justify-center shadow-lg mb-6 ${isCryptoTheme ? 'from-cyan-300 to-blue-500 shadow-cyan-500/20' : 'from-emerald-400 to-emerald-600 shadow-emerald-500/20'}`}>
             <TrendingUp className="text-black" size={32} strokeWidth={3} />
           </div>
-          <h2 className="text-3xl font-black text-white tracking-tight text-center uppercase italic">RunwayAlgo</h2>
+          <h2 className="text-3xl font-black text-white tracking-tight text-center uppercase italic">{brandName}</h2>
           {authView === 'login' && <p className="text-zinc-500 font-bold text-sm mt-2">Welcome back to the terminal.</p>}
           {authView === 'signup' && <p className="text-zinc-500 font-bold text-sm mt-2">Create your account with email only.</p>}
           {authView === 'verify' && <p className="text-zinc-500 font-bold text-sm mt-2">Verify your email with a 6-digit OTP.</p>}
@@ -106,8 +116,8 @@ const LandingAuthModal: React.FC<LandingAuthModalProps> = ({
         {isSubmitting ? (
           <div className="py-12 flex flex-col items-center justify-center animate-in fade-in zoom-in-95">
             <div className="relative mb-8">
-              <Loader2 size={48} className="text-emerald-500 animate-spin" strokeWidth={3} />
-              <div className="absolute inset-0 bg-emerald-500/20 blur-2xl animate-pulse" />
+              <Loader2 size={48} className={`animate-spin ${isCryptoTheme ? 'text-cyan-400' : 'text-emerald-500'}`} strokeWidth={3} />
+              <div className={`absolute inset-0 blur-2xl animate-pulse ${isCryptoTheme ? 'bg-cyan-500/20' : 'bg-emerald-500/20'}`} />
             </div>
             <h3 className="text-xl font-black text-white mb-2 uppercase tracking-widest">{submitLabel}</h3>
             <p className="text-zinc-500 text-xs font-bold uppercase tracking-widest">Please wait...</p>
@@ -118,23 +128,23 @@ const LandingAuthModal: React.FC<LandingAuthModalProps> = ({
               <form onSubmit={handleLogin} className="space-y-6">
                 <div className="space-y-4">
                   <div className="relative group">
-                    <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-600 group-focus-within:text-emerald-500 transition-colors" size={20} />
+                    <Mail className={`absolute left-4 top-1/2 -translate-y-1/2 text-zinc-600 transition-colors ${isCryptoTheme ? 'group-focus-within:text-cyan-400' : 'group-focus-within:text-emerald-500'}`} size={20} />
                     <input
                       type="email"
                       required
                       placeholder="Email address"
-                      className="w-full bg-[#0a0a0a] border border-white/5 rounded-2xl py-4 pl-12 pr-4 text-sm font-bold text-white focus:outline-none focus:border-emerald-500/40 transition-all placeholder:text-zinc-700"
+                      className={inputWithIconClass}
                       value={email}
                       onChange={(event) => setEmail(event.target.value)}
                     />
                   </div>
                   <div className="relative group">
-                    <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-600 group-focus-within:text-emerald-500 transition-colors" size={20} />
+                    <Lock className={`absolute left-4 top-1/2 -translate-y-1/2 text-zinc-600 transition-colors ${isCryptoTheme ? 'group-focus-within:text-cyan-400' : 'group-focus-within:text-emerald-500'}`} size={20} />
                     <input
                       type="password"
                       required
                       placeholder="Password"
-                      className="w-full bg-[#0a0a0a] border border-white/5 rounded-2xl py-4 pl-12 pr-4 text-sm font-bold text-white focus:outline-none focus:border-emerald-500/40 transition-all placeholder:text-zinc-700"
+                      className={inputWithIconClass}
                       value={password}
                       onChange={(event) => setPassword(event.target.value)}
                     />
@@ -144,21 +154,21 @@ const LandingAuthModal: React.FC<LandingAuthModalProps> = ({
                   <button
                     type="button"
                     onClick={() => switchAuthView('forgot')}
-                    className="text-[10px] font-black text-emerald-500 uppercase tracking-widest hover:text-emerald-400"
+                    className={linkButtonClass}
                   >
                     Forgot password?
                   </button>
                   <button
                     type="button"
                     onClick={() => switchAuthView('signup')}
-                    className="text-[10px] font-black text-emerald-500 uppercase tracking-widest hover:text-emerald-400"
+                    className={linkButtonClass}
                   >
                     Create account
                   </button>
                 </div>
                 <button
                   type="submit"
-                  className="w-full py-4 bg-emerald-500 hover:bg-emerald-400 text-black font-black rounded-2xl uppercase tracking-[0.2em] text-sm shadow-xl shadow-emerald-500/10 active:scale-[0.98] transition-all"
+                  className={primaryActionClass}
                 >
                   Enter Terminal
                 </button>
@@ -171,7 +181,7 @@ const LandingAuthModal: React.FC<LandingAuthModalProps> = ({
                   type="text"
                   required
                   placeholder="Full name"
-                  className="w-full bg-[#0a0a0a] border border-white/5 rounded-2xl py-4 px-4 text-sm font-bold text-white focus:outline-none focus:border-emerald-500/40 transition-all placeholder:text-zinc-700"
+                  className={inputClass}
                   value={signupForm.name}
                   onChange={(event) => setSignupField('name', event.target.value)}
                 />
@@ -179,13 +189,13 @@ const LandingAuthModal: React.FC<LandingAuthModalProps> = ({
                   type="email"
                   required
                   placeholder="Email address"
-                  className="w-full bg-[#0a0a0a] border border-white/5 rounded-2xl py-4 px-4 text-sm font-bold text-white focus:outline-none focus:border-emerald-500/40 transition-all placeholder:text-zinc-700"
+                  className={inputClass}
                   value={signupForm.email}
                   onChange={(event) => setSignupField('email', event.target.value)}
                 />
                 <select
                   required
-                  className="w-full bg-[#0a0a0a] border border-white/5 rounded-2xl py-4 px-4 text-sm font-bold text-white focus:outline-none focus:border-emerald-500/40 transition-all"
+                  className={inputClass}
                   value={signupForm.currency}
                   onChange={(event) => setSignupField('currency', event.target.value)}
                 >
@@ -199,7 +209,7 @@ const LandingAuthModal: React.FC<LandingAuthModalProps> = ({
                   type="tel"
                   required
                   placeholder="Phone number"
-                  className="w-full bg-[#0a0a0a] border border-white/5 rounded-2xl py-4 px-4 text-sm font-bold text-white focus:outline-none focus:border-emerald-500/40 transition-all placeholder:text-zinc-700"
+                  className={inputClass}
                   value={signupForm.phone}
                   onChange={(event) => setSignupField('phone', event.target.value)}
                 />
@@ -208,19 +218,19 @@ const LandingAuthModal: React.FC<LandingAuthModalProps> = ({
                   required
                   minLength={8}
                   placeholder="Password"
-                  className="w-full bg-[#0a0a0a] border border-white/5 rounded-2xl py-4 px-4 text-sm font-bold text-white focus:outline-none focus:border-emerald-500/40 transition-all placeholder:text-zinc-700"
+                  className={inputClass}
                   value={signupForm.password}
                   onChange={(event) => setSignupField('password', event.target.value)}
                 />
                 <button
                   type="submit"
-                  className="w-full py-4 bg-emerald-500 hover:bg-emerald-400 text-black font-black rounded-2xl uppercase tracking-[0.2em] text-sm shadow-xl shadow-emerald-500/10 active:scale-[0.98] transition-all"
+                  className={primaryActionClass}
                 >
                   Create Account
                 </button>
                 <p className="text-center text-[10px] font-bold text-zinc-600">
                   ALREADY REGISTERED?{' '}
-                  <button type="button" onClick={() => switchAuthView('login')} className="text-emerald-500 font-black uppercase tracking-widest">
+                  <button type="button" onClick={() => switchAuthView('login')} className={`font-black uppercase tracking-widest ${isCryptoTheme ? 'text-cyan-400' : 'text-emerald-500'}`}>
                     LOGIN
                   </button>
                 </p>
@@ -233,7 +243,7 @@ const LandingAuthModal: React.FC<LandingAuthModalProps> = ({
                   type="email"
                   required
                   placeholder="Email address"
-                  className="w-full bg-[#0a0a0a] border border-white/5 rounded-2xl py-4 px-4 text-sm font-bold text-white focus:outline-none focus:border-emerald-500/40 transition-all placeholder:text-zinc-700"
+                  className={inputClass}
                   value={verifyEmail}
                   onChange={(event) => setVerifyEmail(event.target.value)}
                 />
@@ -244,26 +254,26 @@ const LandingAuthModal: React.FC<LandingAuthModalProps> = ({
                   pattern="[0-9]{6}"
                   maxLength={6}
                   placeholder="6-digit OTP"
-                  className="w-full bg-[#0a0a0a] border border-white/5 rounded-2xl py-4 px-4 text-sm font-bold tracking-[0.3em] text-white focus:outline-none focus:border-emerald-500/40 transition-all placeholder:text-zinc-700"
+                  className={inputClass}
                   value={verifyOtp}
                   onChange={(event) => setVerifyOtp(event.target.value.replace(/\D/g, '').slice(0, 6))}
                 />
                 <button
                   type="submit"
-                  className="w-full py-4 bg-emerald-500 hover:bg-emerald-400 text-black font-black rounded-2xl uppercase tracking-[0.2em] text-sm shadow-xl shadow-emerald-500/10 active:scale-[0.98] transition-all"
+                  className={primaryActionClass}
                 >
                   Verify Email
                 </button>
                 <button
                   type="button"
                   onClick={handleResendOtp}
-                  className="w-full py-3 border border-white/10 rounded-2xl text-[10px] font-black text-zinc-300 uppercase tracking-widest hover:border-emerald-500/40 transition-colors"
+                  className={`w-full py-3 border border-white/10 rounded-2xl text-[10px] font-black text-zinc-300 uppercase tracking-widest transition-colors ${isCryptoTheme ? 'hover:border-cyan-400/40' : 'hover:border-emerald-500/40'}`}
                 >
                   Resend OTP
                 </button>
                 <p className="text-center text-[10px] font-bold text-zinc-600">
                   WRONG ACCOUNT?{' '}
-                  <button type="button" onClick={() => switchAuthView('signup')} className="text-emerald-500 font-black uppercase tracking-widest">
+                  <button type="button" onClick={() => switchAuthView('signup')} className={`font-black uppercase tracking-widest ${isCryptoTheme ? 'text-cyan-400' : 'text-emerald-500'}`}>
                     SIGN UP AGAIN
                   </button>
                 </p>
@@ -276,19 +286,19 @@ const LandingAuthModal: React.FC<LandingAuthModalProps> = ({
                   type="email"
                   required
                   placeholder="Email address"
-                  className="w-full bg-[#0a0a0a] border border-white/5 rounded-2xl py-4 px-4 text-sm font-bold text-white focus:outline-none focus:border-emerald-500/40 transition-all placeholder:text-zinc-700"
+                  className={inputClass}
                   value={forgotEmail}
                   onChange={(event) => setForgotEmail(event.target.value)}
                 />
                 <button
                   type="submit"
-                  className="w-full py-4 bg-emerald-500 hover:bg-emerald-400 text-black font-black rounded-2xl uppercase tracking-[0.2em] text-sm shadow-xl shadow-emerald-500/10 active:scale-[0.98] transition-all"
+                  className={primaryActionClass}
                 >
                   Send OTP
                 </button>
                 <p className="text-center text-[10px] font-bold text-zinc-600">
                   REMEMBERED IT?{' '}
-                  <button type="button" onClick={() => switchAuthView('login')} className="text-emerald-500 font-black uppercase tracking-widest">
+                  <button type="button" onClick={() => switchAuthView('login')} className={`font-black uppercase tracking-widest ${isCryptoTheme ? 'text-cyan-400' : 'text-emerald-500'}`}>
                     BACK TO LOGIN
                   </button>
                 </p>
@@ -301,7 +311,7 @@ const LandingAuthModal: React.FC<LandingAuthModalProps> = ({
                   type="email"
                   required
                   placeholder="Email address"
-                  className="w-full bg-[#0a0a0a] border border-white/5 rounded-2xl py-4 px-4 text-sm font-bold text-white focus:outline-none focus:border-emerald-500/40 transition-all placeholder:text-zinc-700"
+                  className={inputClass}
                   value={resetEmail}
                   onChange={(event) => setResetEmail(event.target.value)}
                 />
@@ -312,7 +322,7 @@ const LandingAuthModal: React.FC<LandingAuthModalProps> = ({
                   pattern="[0-9]{6}"
                   maxLength={6}
                   placeholder="6-digit OTP"
-                  className="w-full bg-[#0a0a0a] border border-white/5 rounded-2xl py-4 px-4 text-sm font-bold tracking-[0.3em] text-white focus:outline-none focus:border-emerald-500/40 transition-all placeholder:text-zinc-700"
+                  className={inputClass}
                   value={resetOtp}
                   onChange={(event) => setResetOtp(event.target.value.replace(/\D/g, '').slice(0, 6))}
                 />
@@ -321,19 +331,19 @@ const LandingAuthModal: React.FC<LandingAuthModalProps> = ({
                   required
                   minLength={8}
                   placeholder="New password"
-                  className="w-full bg-[#0a0a0a] border border-white/5 rounded-2xl py-4 px-4 text-sm font-bold text-white focus:outline-none focus:border-emerald-500/40 transition-all placeholder:text-zinc-700"
+                  className={inputClass}
                   value={resetPassword}
                   onChange={(event) => setResetPassword(event.target.value)}
                 />
                 <button
                   type="submit"
-                  className="w-full py-4 bg-emerald-500 hover:bg-emerald-400 text-black font-black rounded-2xl uppercase tracking-[0.2em] text-sm shadow-xl shadow-emerald-500/10 active:scale-[0.98] transition-all"
+                  className={primaryActionClass}
                 >
                   Reset Password
                 </button>
                 <p className="text-center text-[10px] font-bold text-zinc-600">
                   NEED LOGIN?{' '}
-                  <button type="button" onClick={() => switchAuthView('login')} className="text-emerald-500 font-black uppercase tracking-widest">
+                  <button type="button" onClick={() => switchAuthView('login')} className={`font-black uppercase tracking-widest ${isCryptoTheme ? 'text-cyan-400' : 'text-emerald-500'}`}>
                     BACK TO LOGIN
                   </button>
                 </p>
@@ -341,7 +351,7 @@ const LandingAuthModal: React.FC<LandingAuthModalProps> = ({
             )}
 
             {authNotice && (
-              <p className="text-emerald-400 text-xs font-bold text-center">{authNotice}</p>
+              <p className={`text-xs font-bold text-center ${isCryptoTheme ? 'text-cyan-300' : 'text-emerald-400'}`}>{authNotice}</p>
             )}
             {currentError && (
               <p className="text-red-400 text-xs font-bold text-center">
