@@ -78,7 +78,11 @@ const resolveDashboardMode = (pathname: string): DashboardMode => {
     return 'crypto';
   }
 
-  return 'default';
+  if (pathname === '/dashboard' || isDefaultDashboardRoute(pathname)) {
+    return 'default';
+  }
+
+  return 'crypto';
 };
 
 const AppContent: React.FC = () => {
@@ -103,9 +107,9 @@ const AppContent: React.FC = () => {
     const currentPath = location.pathname;
 
     if (currentPath === '/' || currentPath === '/dashboard') {
-      const savedRoute = localStorage.getItem(DASHBOARD_LAST_ROUTE_KEYS.default);
-      const fallbackRoute = TAB_TO_ROUTE.default.Home;
-      const nextRoute = savedRoute && isDefaultDashboardRoute(savedRoute)
+      const savedRoute = localStorage.getItem(DASHBOARD_LAST_ROUTE_KEYS.crypto);
+      const fallbackRoute = TAB_TO_ROUTE.crypto.Home;
+      const nextRoute = savedRoute && isCryptoDashboardRoute(savedRoute)
         ? savedRoute
         : fallbackRoute;
 
@@ -195,6 +199,15 @@ const AppContent: React.FC = () => {
         <Route
           path="/"
           element={(
+            <CryptoLandingPage
+              onLogin={login}
+              authError={authError}
+            />
+          )}
+        />
+        <Route
+          path="/classic"
+          element={(
             <LandingPage
               onLogin={login}
               authError={authError}
@@ -268,7 +281,7 @@ const AppContent: React.FC = () => {
       <div className={`fixed bottom-0 right-0 w-64 h-64 blur-[120px] pointer-events-none -z-10 ${isCryptoMode ? 'bg-blue-500/10' : 'bg-emerald-500/5'}`} />
       <div className={`fixed top-1/2 left-0 w-64 h-64 blur-[120px] pointer-events-none -z-10 ${isCryptoMode ? 'bg-cyan-500/10' : 'bg-emerald-500/5'}`} />
 
-      {activeTab !== 'Profile' && <Header profileRoute={activeRouteMap.Profile} />}
+      {activeTab !== 'Profile' && <Header profileRoute={activeRouteMap.Profile} brandName={isCryptoMode ? 'env' : 'RunwayAlgo'} />}
 
       {requiresAdminVerification && (
         <div className="mx-4 mt-4 rounded-2xl border border-amber-500/30 bg-amber-500/10 p-4">

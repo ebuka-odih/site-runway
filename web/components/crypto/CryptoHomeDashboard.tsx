@@ -4,6 +4,7 @@ import AssetList from '../AssetList';
 import Analytics from '../Analytics';
 import Heatmap from '../Heatmap';
 import type { SelectableAsset } from '../../types';
+import CryptoMarketsWidget from './CryptoMarketsWidget';
 
 interface CryptoHomeDashboardProps {
   onAssetClick: (asset: SelectableAsset) => void;
@@ -19,6 +20,8 @@ const CryptoHomeDashboard: React.FC<CryptoHomeDashboardProps> = ({ onAssetClick,
         Monitor fast-moving crypto pairs, react to volatility, and manage wallet activity in one focused workspace.
       </p>
     </section>
+
+    <CryptoMarketsWidget />
 
     <PortfolioCard />
     <div className="h-2 bg-black/40 border-y border-white/5 my-2" />

@@ -6,9 +6,10 @@ import type { UserNotificationItem } from '../types';
 
 interface HeaderProps {
   profileRoute?: string;
+  brandName?: string;
 }
 
-const Header: React.FC<HeaderProps> = ({ profileRoute = '/dashboard/profile' }) => {
+const Header: React.FC<HeaderProps> = ({ profileRoute = '/dashboard/profile', brandName = 'RunwayAlgo' }) => {
   const navigate = useNavigate();
   const {
     notifications,
@@ -85,7 +86,7 @@ const Header: React.FC<HeaderProps> = ({ profileRoute = '/dashboard/profile' }) 
           </svg>
         </div>
         <div>
-          <h1 className="text-lg font-bold tracking-tight text-white leading-none">RunwayAlgo</h1>
+          <h1 className="text-lg font-bold tracking-tight text-white leading-none">{brandName}</h1>
         </div>
       </div>
 

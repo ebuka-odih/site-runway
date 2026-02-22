@@ -227,7 +227,7 @@ const CryptoLandingPage: React.FC<CryptoLandingPageProps> = ({ onLogin, authErro
               <span className="text-lg font-black">C</span>
             </div>
             <div>
-              <p className="text-sm font-black tracking-[0.25em] text-cyan-200 uppercase">RunwayAlgo</p>
+              <p className="text-sm font-black tracking-[0.25em] text-cyan-200 uppercase">env</p>
               <p className="text-xs text-zinc-300">Crypto Edition</p>
             </div>
           </div>
