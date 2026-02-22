@@ -15,12 +15,12 @@ import WalletPage from './components/WalletPage';
 import ProfilePage from './components/ProfilePage';
 import WatchlistPage from './components/WatchlistPage';
 import LandingPage from './components/LandingPage';
-import CryptoLandingPage from './components/crypto/CryptoLandingPage';
 import CryptoHomeDashboard from './components/crypto/CryptoHomeDashboard';
-import AboutUsPage from './components/landing/AboutUsPage';
-import PrivacyPolicyPage from './components/landing/PrivacyPolicyPage';
-import RiskDisclosurePage from './components/landing/RiskDisclosurePage';
-import TermsOfServicePage from './components/landing/TermsOfServicePage';
+import CryptoCloneLayout from './components/crypto-clone/Layout';
+import CryptoCloneHome from './components/crypto-clone/pages/Home';
+import CryptoCloneAbout from './components/crypto-clone/pages/About';
+import CryptoClonePrivacy from './components/crypto-clone/pages/Privacy';
+import CryptoCloneTerms from './components/crypto-clone/pages/Terms';
 import { MarketProvider, useMarket } from './context/MarketContext';
 import type { SelectableAsset } from './types';
 
@@ -196,15 +196,14 @@ const AppContent: React.FC = () => {
   if (!isAuthenticated) {
     return (
       <Routes>
-        <Route
-          path="/"
-          element={(
-            <CryptoLandingPage
-              onLogin={login}
-              authError={authError}
-            />
-          )}
-        />
+        <Route path="/" element={<CryptoCloneLayout />}>
+          <Route index element={<CryptoCloneHome />} />
+          <Route path="about" element={<CryptoCloneAbout />} />
+          <Route path="privacy" element={<CryptoClonePrivacy />} />
+          <Route path="terms" element={<CryptoCloneTerms />} />
+          <Route path="risk" element={<CryptoCloneTerms />} />
+        </Route>
+        <Route path="/crypto" element={<Navigate to="/" replace />} />
         <Route
           path="/classic"
           element={(
@@ -214,20 +213,11 @@ const AppContent: React.FC = () => {
             />
           )}
         />
-        <Route
-          path="/crypto"
-          element={(
-            <CryptoLandingPage
-              onLogin={login}
-              authError={authError}
-            />
-          )}
-        />
-        <Route path="/about-us" element={<AboutUsPage />} />
-        <Route path="/risk-disclosure" element={<RiskDisclosurePage />} />
-        <Route path="/privacy-policy" element={<PrivacyPolicyPage />} />
-        <Route path="/terms-of-service" element={<TermsOfServicePage />} />
-        <Route path="/crypto/*" element={<Navigate to="/crypto" replace />} />
+        <Route path="/about-us" element={<Navigate to="/about" replace />} />
+        <Route path="/risk-disclosure" element={<Navigate to="/risk" replace />} />
+        <Route path="/privacy-policy" element={<Navigate to="/privacy" replace />} />
+        <Route path="/terms-of-service" element={<Navigate to="/terms" replace />} />
+        <Route path="/crypto/*" element={<Navigate to="/" replace />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     );
