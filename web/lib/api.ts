@@ -475,6 +475,14 @@ export async function apiDashboard(range?: DashboardRange): Promise<DashboardDat
       holdingsValue: data.portfolio?.holdings_value == null
         ? undefined
         : toNumber(data.portfolio?.holdings_value, undefined as unknown as number),
+      investingTotal: data.portfolio?.investing_total == null
+        ? undefined
+        : toNumber(data.portfolio?.investing_total, undefined as unknown as number),
+      assetProfit: data.portfolio?.asset_profit == null
+        ? (data.portfolio?.trade_profit == null
+          ? undefined
+          : toNumber(data.portfolio?.trade_profit, undefined as unknown as number))
+        : toNumber(data.portfolio?.asset_profit, undefined as unknown as number),
       totalProfit: data.portfolio?.profit_balance == null
         ? undefined
         : toNumber(data.portfolio?.profit_balance, undefined as unknown as number),

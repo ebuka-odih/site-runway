@@ -86,6 +86,7 @@ class DashboardController extends Controller
         }
 
         $profitBalance = round($tradingProfitBalance + $copyProfitBalance + $fundedProfitBalance, 8);
+        $investingTotal = round($holdingBalance + $persistedProfitBalance + $tradingProfitBalance, 8);
         $profitPercent = $holdingBalance > 0
             ? ($profitBalance / $holdingBalance) * 100
             : 0.0;
@@ -174,9 +175,11 @@ class DashboardController extends Controller
                     'value' => round($portfolioValue, 2),
                     'buying_power' => round($cashBalance, 2),
                     'holdings_value' => round($holdingBalance, 2),
+                    'investing_total' => round($investingTotal, 2),
                     'profit_balance' => round($profitBalance, 2),
                     'profit_percent' => round($profitPercent, 2),
                     'trade_profit' => round($tradingProfitBalance, 2),
+                    'asset_profit' => round($tradingProfitBalance, 2),
                     'copy_profit' => round($copyProfitBalance, 2),
                     'funded_profit' => round($fundedProfitBalance, 2),
                     'daily_change' => round($dailyChange, 2),

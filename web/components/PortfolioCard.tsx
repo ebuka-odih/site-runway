@@ -109,10 +109,7 @@ const PortfolioCard: React.FC = () => {
     return buildHistory(points, derivedCurrentHoldingValue, buyingPower);
   }, [buyingPower, dashboard?.portfolio.history, derivedCurrentHoldingValue]);
 
-  const chartStartValue = history[0]?.value ?? derivedCurrentHoldingValue;
   const chartEndValue = history[history.length - 1]?.value ?? derivedCurrentHoldingValue;
-  const rangeChange = chartEndValue - chartStartValue;
-  const rangeChangePercent = chartStartValue > 0 ? (rangeChange / chartStartValue) * 100 : 0;
   const dailyFromPositions = useMemo(() => {
     const positionItems = dashboard?.positions ?? [];
     const hasExplicitValues = positionItems.some((position) => Number.isFinite(Number(position.dayChangeValue)));
@@ -132,12 +129,8 @@ const PortfolioCard: React.FC = () => {
       dayChangePercent,
     };
   }, [dashboard?.positions, derivedCurrentHoldingValue]);
-  const dailyChange = activeRange === '24h' && dailyFromPositions
-    ? dailyFromPositions.dayChange
-    : rangeChange;
-  const dailyChangePercent = activeRange === '24h' && dailyFromPositions
-    ? dailyFromPositions.dayChangePercent
-    : rangeChangePercent;
+  const dailyChange = dailyFromPositions?.dayChange ?? 0;
+  const dailyChangePercent = dailyFromPositions?.dayChangePercent ?? 0;
   const isPositive = dailyChange >= 0;
   const isFlatHistory = useMemo(() => {
     if (history.length < 3) {
@@ -169,11 +162,9 @@ const PortfolioCard: React.FC = () => {
     return span < minVisibleSpan;
   }, [history]);
   const shouldAnimateLive = isFlatHistory || isRecentFlat;
-  const totalProfit = Number(portfolio?.totalProfit ?? 0);
-  const totalProfitPercent = Number.isFinite(Number(portfolio?.totalProfitPercent))
-    ? Number(portfolio?.totalProfitPercent)
-    : (chartEndValue > 0 ? (totalProfit / chartEndValue) * 100 : 0);
-  const isTotalProfitPositive = totalProfit >= 0;
+  const investingDisplayValue = Number.isFinite(Number(portfolio?.investingTotal))
+    ? Number(portfolio?.investingTotal)
+    : (chartEndValue + Number(portfolio?.totalProfit ?? 0) + Number(portfolio?.assetProfit ?? portfolio?.tradeProfit ?? 0));
 
   useEffect(() => {
     void refreshDashboard(activeRange).catch(() => {
@@ -249,21 +240,21 @@ const PortfolioCard: React.FC = () => {
       <div className="mb-6">
         <p className="text-xs font-bold text-green-500 tracking-widest uppercase mb-1">Investing</p>
         <h2 className="text-4xl font-extrabold tracking-tight mb-2 tabular-nums">
-          ${chartEndValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+          ${investingDisplayValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
         </h2>
         <div className="flex items-center gap-2">
-          <div className={`flex items-center font-bold text-sm ${isTotalProfitPositive ? 'text-green-500' : 'text-orange-500'}`}>
-            {isTotalProfitPositive ? <ArrowUpRight size={16} className="mr-0.5" /> : <ArrowDownRight size={16} className="mr-0.5" />}
+          <div className={`flex items-center font-bold text-sm ${isPositive ? 'text-green-500' : 'text-orange-500'}`}>
+            {isPositive ? <ArrowUpRight size={16} className="mr-0.5" /> : <ArrowDownRight size={16} className="mr-0.5" />}
             <span className="tabular-nums">
-              ${Math.abs(totalProfit).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-              ({isTotalProfitPositive ? '+' : ''}{totalProfitPercent.toFixed(2)}%)
+              ${Math.abs(dailyChange).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              ({isPositive ? '+' : ''}{dailyChangePercent.toFixed(2)}%)
             </span>
             <span className="relative ml-2 inline-flex h-2 w-2">
-              <span className={`absolute inline-flex h-full w-full rounded-full opacity-60 animate-ping ${isTotalProfitPositive ? 'bg-green-500' : 'bg-orange-500'}`} />
-              <span className={`relative inline-flex h-2 w-2 rounded-full ${isTotalProfitPositive ? 'bg-green-500' : 'bg-orange-500'}`} />
+              <span className={`absolute inline-flex h-full w-full rounded-full opacity-60 animate-ping ${isPositive ? 'bg-green-500' : 'bg-orange-500'}`} />
+              <span className={`relative inline-flex h-2 w-2 rounded-full ${isPositive ? 'bg-green-500' : 'bg-orange-500'}`} />
             </span>
           </div>
-          <span className="text-zinc-500 text-sm font-medium">Total profit</span>
+          <span className="text-zinc-500 text-sm font-medium">Today</span>
         </div>
       </div>
 
