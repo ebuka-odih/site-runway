@@ -40,6 +40,8 @@ export interface PortfolioHistoryPoint {
   value: number;
   buyingPower?: number;
   holdingsValue?: number;
+  investingTotal?: number;
+  assetProfit?: number;
   timestamp?: number;
 }
 

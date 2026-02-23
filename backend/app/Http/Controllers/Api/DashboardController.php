@@ -96,10 +96,19 @@ class DashboardController extends Controller
         $portfolioValue = $cashBalance + $holdingBalance;
         $portfolioSnapshotService->captureFromValues($user, $portfolioValue, $cashBalance);
         $portfolioHistory = $this->buildPortfolioHistory($user, $positions, $cashBalance, $portfolioValue, (string) $range);
+        $portfolioHistory = $this->enrichPortfolioHistoryWithInvestingTotals(
+            $portfolioHistory,
+            $holdingBalance,
+            $persistedProfitBalance,
+            $tradingProfitBalance
+        );
 
-        $baseValue = (float) ($portfolioHistory->first()['value'] ?? $portfolioValue);
-        $dailyChange = $portfolioValue - $baseValue;
-        $dailyChangePercent = $baseValue > 0 ? ($dailyChange / $baseValue) * 100 : 0;
+        $baseInvestingValue = (float) ($portfolioHistory->first()['investing_total'] ?? $investingTotal);
+        $fundedProfitToday = $wallet instanceof Wallet
+            ? $this->calculateFundedProfitDeltaSince($wallet, now()->startOfDay())
+            : 0.0;
+        $dailyChange = ($investingTotal - $baseInvestingValue) + $fundedProfitToday;
+        $dailyChangePercent = $baseInvestingValue > 0 ? ($dailyChange / $baseInvestingValue) * 100 : 0;
 
         $allocationByType = $positions
             ->groupBy(fn (Position $position) => $position->asset->type)
@@ -423,6 +432,30 @@ class DashboardController extends Controller
         };
     }
 
+    private function enrichPortfolioHistoryWithInvestingTotals(
+        Collection $history,
+        float $currentHoldingBalance,
+        float $persistedProfitBalance,
+        float $currentTradingProfitBalance
+    ): Collection {
+        return $history
+            ->map(function (array $point) use ($currentHoldingBalance, $persistedProfitBalance, $currentTradingProfitBalance) {
+                $pointHoldingValue = (float) ($point['holdings_value'] ?? max(
+                    0,
+                    ((float) ($point['value'] ?? 0.0)) - ((float) ($point['buying_power'] ?? 0.0))
+                ));
+                $pointAssetProfit = $currentTradingProfitBalance + ($pointHoldingValue - $currentHoldingBalance);
+                $pointInvestingTotal = $pointHoldingValue + $persistedProfitBalance + $pointAssetProfit;
+
+                return [
+                    ...$point,
+                    'asset_profit' => round($pointAssetProfit, 2),
+                    'investing_total' => round($pointInvestingTotal, 2),
+                ];
+            })
+            ->values();
+    }
+
     private function calculateFundedProfitBalance(Wallet $wallet): float
     {
         $fundedProfit = $wallet->transactions()
@@ -442,6 +475,28 @@ class DashboardController extends Controller
             }, 0.0);
 
         return round($fundedProfit, 8);
+    }
+
+    private function calculateFundedProfitDeltaSince(Wallet $wallet, Carbon $since): float
+    {
+        $delta = $wallet->transactions()
+            ->where('type', 'copy_pnl')
+            ->where('status', 'approved')
+            ->where('occurred_at', '>=', $since)
+            ->get(['direction', 'amount', 'metadata'])
+            ->reduce(function (float $carry, WalletTransaction $transaction): float {
+                if (data_get($transaction->metadata, 'funding_target') !== 'profit_balance') {
+                    return $carry;
+                }
+
+                $amount = (float) $transaction->amount;
+
+                return $transaction->direction === 'debit'
+                    ? $carry - $amount
+                    : $carry + $amount;
+            }, 0.0);
+
+        return round($delta, 8);
     }
 
     private function syncAccountBalances(User $user, float $cashBalance, float $holdingBalance, float $profitBalance): void

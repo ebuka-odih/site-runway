@@ -501,6 +501,12 @@ export async function apiDashboard(range?: DashboardRange): Promise<DashboardDat
         holdingsValue: point.holdings_value == null
           ? undefined
           : toNumber(point.holdings_value, undefined as unknown as number),
+        investingTotal: point.investing_total == null
+          ? undefined
+          : toNumber(point.investing_total, undefined as unknown as number),
+        assetProfit: point.asset_profit == null
+          ? undefined
+          : toNumber(point.asset_profit, undefined as unknown as number),
         timestamp: point.timestamp == null ? undefined : toNumber(point.timestamp, undefined as unknown as number),
       })),
     },
