@@ -24,6 +24,21 @@ interface ChartPoint {
 }
 
 const roundMoney = (value: number): number => Number(value.toFixed(2));
+const calculateChangePercent = (change: number, baseValue: number, currentValue: number): number => {
+  if (Math.abs(change) < 0.00000001) {
+    return 0;
+  }
+
+  if (Math.abs(baseValue) >= 0.00000001) {
+    return Number(((change / baseValue) * 100).toFixed(2));
+  }
+
+  if (Math.abs(currentValue) >= 0.00000001) {
+    return Number(((change / currentValue) * 100).toFixed(2));
+  }
+
+  return 0;
+};
 
 const toChartPoint = (
   point: PortfolioHistoryPoint,
@@ -81,9 +96,7 @@ const buildHistory = (
 
   return mapped.map((point) => {
     const pnlValue = roundMoney(point.rawValue - baseline);
-    const pnlPercent = baseline > 0
-      ? Number((((point.rawValue - baseline) / baseline) * 100).toFixed(2))
-      : 0;
+    const pnlPercent = calculateChangePercent(pnlValue, baseline, point.rawValue);
 
     return {
       ...point,

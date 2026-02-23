@@ -7,6 +7,7 @@ use App\Models\User;
 use App\Models\Wallet;
 use App\Models\WatchlistItem;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
 
 class BackendFlowTest extends TestCase
@@ -246,15 +247,9 @@ class BackendFlowTest extends TestCase
             'profit_loss' => 0,
         ]);
 
-        $token = $this->postJson('/api/v1/auth/login', [
-            'email' => $user->email,
-            'password' => 'password',
-            'device_name' => 'phpunit',
-        ])->json('token');
+        Sanctum::actingAs($user);
 
-        $dashboardResponse = $this
-            ->withToken($token)
-            ->getJson('/api/v1/dashboard?range=24h');
+        $dashboardResponse = $this->getJson('/api/v1/dashboard?range=24h');
 
         $dashboardResponse
             ->assertOk()
@@ -353,6 +348,73 @@ class BackendFlowTest extends TestCase
         $lastHistoryHoldingsValue = (float) data_get($lastPoint, 'holdings_value', 0);
 
         $this->assertEqualsWithDelta($summaryHoldingsValue, $lastHistoryHoldingsValue, 0.01);
+    }
+
+    public function test_dashboard_daily_change_percent_updates_when_admin_funds_profit_balance(): void
+    {
+        $admin = User::factory()->admin()->create([
+            'email' => 'fund-admin@example.com',
+        ]);
+
+        $user = User::factory()->create([
+            'email' => 'funded-profit-user@example.com',
+            'balance' => 0,
+            'profit_balance' => 0,
+            'holding_balance' => 0,
+        ]);
+
+        $user->wallet()->create([
+            'currency' => 'USD',
+            'cash_balance' => 0,
+            'investing_balance' => 0,
+            'profit_loss' => 0,
+        ]);
+
+        $this->actingAs($admin)
+            ->post(route('admin.users.fund', $user), [
+                'target' => 'profit_balance',
+                'operation' => 'fund',
+                'amount' => 5902,
+                'redirect_to' => 'index',
+            ])
+            ->assertRedirect(route('admin.users.index'));
+
+        $user->refresh();
+        $wallet = $user->wallet()->first();
+
+        $this->assertEqualsWithDelta(5902.0, (float) $user->profit_balance, 0.01);
+        $this->assertNotNull($wallet);
+        $this->assertEqualsWithDelta(5902.0, (float) $wallet?->profit_loss, 0.01);
+
+        auth()->guard('web')->logout();
+        $this->flushSession();
+        Sanctum::actingAs($user);
+
+        $dashboardResponse = $this->getJson('/api/v1/dashboard?range=24h');
+
+        $dashboardResponse->assertOk();
+        $portfolio = $dashboardResponse->json('data.portfolio');
+        $history = collect($portfolio['history'] ?? []);
+        $lastPoint = $history->last();
+        $firstPoint = $history->first();
+
+        $this->assertEqualsWithDelta(
+            5902.0,
+            (float) ($portfolio['daily_change'] ?? 0.0),
+            0.01,
+            json_encode([
+                'daily_change' => $portfolio['daily_change'] ?? null,
+                'daily_change_percent' => $portfolio['daily_change_percent'] ?? null,
+                'investing_total' => $portfolio['investing_total'] ?? null,
+                'first' => $firstPoint,
+                'last' => $lastPoint,
+            ])
+        );
+
+        $this->assertGreaterThan(
+            0.0,
+            abs((float) ($portfolio['daily_change_percent'] ?? 0.0))
+        );
     }
 
     public function test_market_assets_include_price_update_timestamp(): void

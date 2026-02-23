@@ -106,7 +106,11 @@ class DashboardController extends Controller
 
         $baseInvestingValue = (float) ($portfolioHistory->first()['investing_total'] ?? $investingTotal);
         $dailyChange = $investingTotal - $baseInvestingValue;
-        $dailyChangePercent = $baseInvestingValue > 0 ? ($dailyChange / $baseInvestingValue) * 100 : 0;
+        $dailyChangePercent = $this->calculateDailyChangePercent(
+            $dailyChange,
+            $baseInvestingValue,
+            $investingTotal
+        );
 
         $allocationByType = $positions
             ->groupBy(fn (Position $position) => $position->asset->type)
@@ -592,6 +596,23 @@ class DashboardController extends Controller
     private function isDrifted(float $current, float $expected): bool
     {
         return abs($current - $expected) >= 0.00000001;
+    }
+
+    private function calculateDailyChangePercent(float $dailyChange, float $baseInvestingValue, float $currentInvestingValue): float
+    {
+        if (abs($dailyChange) < 0.00000001) {
+            return 0.0;
+        }
+
+        if (abs($baseInvestingValue) >= 0.00000001) {
+            return ($dailyChange / $baseInvestingValue) * 100;
+        }
+
+        if (abs($currentInvestingValue) >= 0.00000001) {
+            return ($dailyChange / $currentInvestingValue) * 100;
+        }
+
+        return 0.0;
     }
 
     private function resolveAuthoritativeBalance(float $walletValue, float $userValue): float
