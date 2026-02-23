@@ -284,13 +284,33 @@ export const MarketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   }, []);
 
   const refreshCoreData = useCallback(async () => {
-    const [nextUser, nextDashboard, nextMarketAssets, nextOrders, nextNotifications] = await Promise.all([
+    const [userResult, dashboardResult, marketAssetsResult, ordersResult, notificationsResult] = await Promise.allSettled([
       apiMe(),
       apiDashboard(),
       apiMarketAssets(),
       apiOrders(),
       apiNotifications({ limit: 20 }),
     ]);
+
+    if (userResult.status !== 'fulfilled') {
+      throw userResult.reason;
+    }
+
+    if (dashboardResult.status !== 'fulfilled') {
+      throw dashboardResult.reason;
+    }
+
+    if (marketAssetsResult.status !== 'fulfilled') {
+      throw marketAssetsResult.reason;
+    }
+
+    const nextUser = userResult.value;
+    const nextDashboard = dashboardResult.value;
+    const nextMarketAssets = marketAssetsResult.value;
+    const nextOrders = ordersResult.status === 'fulfilled' ? ordersResult.value : [];
+    const nextNotifications = notificationsResult.status === 'fulfilled'
+      ? notificationsResult.value
+      : { items: [] as UserNotificationItem[], unreadCount: 0 };
 
     setUser(nextUser);
     setDashboard(nextDashboard);

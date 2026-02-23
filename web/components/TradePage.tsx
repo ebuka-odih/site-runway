@@ -37,7 +37,7 @@ function formatPriceFreshness(timestamp: string | null | undefined): string {
 }
 
 const TradePage: React.FC<TradePageProps> = ({ onOpenTradingDesk, onAssetClick }) => {
-  const [activeTab, setActiveTab] = useState('Stocks');
+  const [activeTab, setActiveTab] = useState('Crypto');
   const { marketAssets, prices, orders, user, refreshMarketAssets, refreshOrders } = useMarket();
 
   const stockTypes = new Set(['stock', 'etf', 'share']);
@@ -179,7 +179,7 @@ const TradePage: React.FC<TradePageProps> = ({ onOpenTradingDesk, onAssetClick }
       </div>
 
       <div className="flex gap-4 border-b border-white/5 pb-2 overflow-x-auto scrollbar-hide">
-        {['Stocks', 'Crypto', 'History'].map((tab) => (
+        {['Crypto', 'Stocks', 'History'].map((tab) => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}

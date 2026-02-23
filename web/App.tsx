@@ -148,6 +148,28 @@ const AppContent: React.FC = () => {
             />
           )}
         />
+        <Route
+          path="/login"
+          element={(
+            <LandingPage
+              onLogin={login}
+              authError={authError}
+              initialAuthView="login"
+              openAuthOnMount
+            />
+          )}
+        />
+        <Route
+          path="/signup"
+          element={(
+            <LandingPage
+              onLogin={login}
+              authError={authError}
+              initialAuthView="signup"
+              openAuthOnMount
+            />
+          )}
+        />
         <Route path="/about-us" element={<AboutUsPage />} />
         <Route path="/risk-disclosure" element={<RiskDisclosurePage />} />
         <Route path="/privacy-policy" element={<PrivacyPolicyPage />} />

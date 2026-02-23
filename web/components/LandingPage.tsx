@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   apiForgotPassword,
   apiRegister,
@@ -14,12 +14,19 @@ import type { AuthView, SignupFormState } from './landing/types';
 interface LandingPageProps {
   onLogin: (email: string, password: string) => Promise<boolean>;
   authError: string | null;
+  initialAuthView?: AuthView;
+  openAuthOnMount?: boolean;
 }
 
 const BASE_CURRENCIES = ['USD', 'EUR', 'GBP'] as const;
 const DEFAULT_SIGNUP_COUNTRY = 'United States';
 
-const LandingPage: React.FC<LandingPageProps> = ({ onLogin, authError }) => {
+const LandingPage: React.FC<LandingPageProps> = ({
+  onLogin,
+  authError,
+  initialAuthView = 'login',
+  openAuthOnMount = false,
+}) => {
   const [showLogin, setShowLogin] = useState(false);
   const [authView, setAuthView] = useState<AuthView>('login');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -40,6 +47,15 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLogin, authError }) => {
   const [resetPassword, setResetPassword] = useState('');
   const [authNotice, setAuthNotice] = useState<string | null>(null);
   const [localError, setLocalError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!openAuthOnMount) {
+      return;
+    }
+
+    setShowLogin(true);
+    setAuthView(initialAuthView);
+  }, [initialAuthView, openAuthOnMount]);
 
   const switchAuthView = (view: AuthView) => {
     setAuthView(view);
