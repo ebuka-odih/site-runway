@@ -64,7 +64,11 @@ class DashboardController extends Controller
             ? $this->resolveAuthoritativeBalance((float) $wallet->cash_balance, (float) $user->balance)
             : (float) $user->balance;
         $holdingBalance = round($positionsMarketValue, 8);
-        $profitBalance = round($realizedProfit + ($positionsMarketValue - $positionsCostBasis), 8);
+        $tradingProfitBalance = round($realizedProfit + ($positionsMarketValue - $positionsCostBasis), 8);
+        $persistedProfitBalance = $wallet instanceof Wallet
+            ? $this->resolveAuthoritativeBalance((float) $wallet->profit_loss, (float) $user->profit_balance)
+            : (float) $user->profit_balance;
+        $profitBalance = max($persistedProfitBalance, $tradingProfitBalance);
 
         $this->syncAccountBalances($user, $cashBalance, $holdingBalance, $profitBalance);
 

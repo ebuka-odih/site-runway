@@ -11,6 +11,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -168,14 +169,17 @@ class UserController extends Controller
     {
         $validated = $request->validate([
             'target' => ['required', 'string', Rule::in(['balance', 'profit_balance', 'holding_balance'])],
+            'operation' => ['sometimes', 'string', Rule::in(['fund', 'deduct'])],
             'amount' => ['required', 'numeric', 'gt:0'],
             'notes' => ['nullable', 'string', 'max:255'],
             'redirect_to' => ['sometimes', 'string', Rule::in(['index', 'edit'])],
         ]);
 
         $amount = round((float) $validated['amount'], 8);
+        $isDeduction = ($validated['operation'] ?? 'fund') === 'deduct';
+        $targetLabel = $this->fundingTargetLabel($validated['target']);
 
-        DB::transaction(function () use ($request, $user, $validated, $amount) {
+        DB::transaction(function () use ($request, $user, $validated, $amount, $isDeduction, $targetLabel) {
             $lockedUser = User::query()
                 ->whereKey($user->id)
                 ->lockForUpdate()
@@ -196,34 +200,56 @@ class UserController extends Controller
                 ->lockForUpdate()
                 ->firstOrFail();
 
-            [$walletColumn, $transactionType, $defaultNotes] = $this->fundingTargetConfig($validated['target']);
+            $targetConfig = $this->fundingTargetConfig($validated['target']);
+            $walletColumn = $targetConfig['wallet_column'];
+            $currentUserValue = (float) $lockedUser->{$validated['target']};
+            $currentWalletValue = (float) $wallet->{$walletColumn};
 
-            $lockedUser->{$validated['target']} = (float) $lockedUser->{$validated['target']} + $amount;
-            $wallet->{$walletColumn} = (float) $wallet->{$walletColumn} + $amount;
+            if ($isDeduction && ($currentUserValue < $amount || $currentWalletValue < $amount)) {
+                throw ValidationException::withMessages([
+                    'amount' => sprintf(
+                        'Cannot deduct more than the current %s.',
+                        $targetLabel
+                    ),
+                ]);
+            }
+
+            $delta = $isDeduction ? -$amount : $amount;
+
+            $lockedUser->{$validated['target']} = round($currentUserValue + $delta, 8);
+            $wallet->{$walletColumn} = round($currentWalletValue + $delta, 8);
 
             $lockedUser->save();
             $wallet->save();
 
             WalletTransaction::query()->create([
                 'wallet_id' => $wallet->id,
-                'type' => $transactionType,
+                'type' => $isDeduction ? $targetConfig['debit_type'] : $targetConfig['credit_type'],
                 'status' => 'approved',
-                'direction' => 'credit',
+                'direction' => $isDeduction ? 'debit' : 'credit',
                 'amount' => $amount,
-                'notes' => trim((string) ($validated['notes'] ?? '')) ?: $defaultNotes,
+                'notes' => trim((string) ($validated['notes'] ?? ''))
+                    ?: ($isDeduction ? $targetConfig['debit_note'] : $targetConfig['credit_note']),
                 'occurred_at' => now(),
                 'metadata' => [
                     'funding_target' => $validated['target'],
+                    'funding_operation' => $isDeduction ? 'deduct' : 'fund',
                     'funded_by_admin_id' => $request->user()?->id,
                 ],
             ]);
         });
 
-        $message = sprintf(
-            'Successfully funded %s with $%s.',
-            $this->fundingTargetLabel($validated['target']),
-            number_format($amount, 2, '.', ',')
-        );
+        $message = $isDeduction
+            ? sprintf(
+                'Successfully deducted $%s from %s.',
+                number_format($amount, 2, '.', ','),
+                $targetLabel
+            )
+            : sprintf(
+                'Successfully funded %s with $%s.',
+                $targetLabel,
+                number_format($amount, 2, '.', ',')
+            );
 
         if (($validated['redirect_to'] ?? 'edit') === 'index') {
             return redirect()
@@ -283,15 +309,45 @@ class UserController extends Controller
     }
 
     /**
-     * @return array{string, string, string}
+     * @return array{
+     *     wallet_column: string,
+     *     credit_type: string,
+     *     debit_type: string,
+     *     credit_note: string,
+     *     debit_note: string
+     * }
      */
     private function fundingTargetConfig(string $target): array
     {
         return match ($target) {
-            'balance' => ['cash_balance', 'deposit', 'Admin funded balance from user management'],
-            'profit_balance' => ['profit_loss', 'copy_pnl', 'Admin funded profit balance from user management'],
-            'holding_balance' => ['investing_balance', 'copy_allocation', 'Admin funded holding balance from user management'],
-            default => ['cash_balance', 'deposit', 'Admin funded balance from user management'],
+            'balance' => [
+                'wallet_column' => 'cash_balance',
+                'credit_type' => 'deposit',
+                'debit_type' => 'deposit',
+                'credit_note' => 'Admin funded balance from user management',
+                'debit_note' => 'Admin deducted balance from user management',
+            ],
+            'profit_balance' => [
+                'wallet_column' => 'profit_loss',
+                'credit_type' => 'copy_pnl',
+                'debit_type' => 'copy_pnl',
+                'credit_note' => 'Admin funded profit balance from user management',
+                'debit_note' => 'Admin deducted profit balance from user management',
+            ],
+            'holding_balance' => [
+                'wallet_column' => 'investing_balance',
+                'credit_type' => 'copy_allocation',
+                'debit_type' => 'copy_allocation',
+                'credit_note' => 'Admin funded holding balance from user management',
+                'debit_note' => 'Admin deducted holding balance from user management',
+            ],
+            default => [
+                'wallet_column' => 'cash_balance',
+                'credit_type' => 'deposit',
+                'debit_type' => 'deposit',
+                'credit_note' => 'Admin funded balance from user management',
+                'debit_note' => 'Admin deducted balance from user management',
+            ],
         };
     }
 

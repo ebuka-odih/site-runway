@@ -30,6 +30,7 @@ export default function Edit({ user, options }) {
 
     const fundingForm = useForm({
         target: 'balance',
+        operation: 'fund',
         amount: '',
         notes: '',
     });
@@ -41,10 +42,19 @@ export default function Edit({ user, options }) {
 
     const submitFunding = (event) => {
         event.preventDefault();
-        fundingForm.post(adminPath(url, `users/${user.id}/fund`), {
-            preserveScroll: true,
-            onSuccess: () => fundingForm.reset('amount', 'notes'),
-        });
+        submitFundingAction('fund');
+    };
+
+    const submitFundingAction = (operation) => {
+        fundingForm
+            .transform((data) => ({
+                ...data,
+                operation,
+            }))
+            .post(adminPath(url, `users/${user.id}/fund`), {
+                preserveScroll: true,
+                onSuccess: () => fundingForm.reset('amount', 'notes'),
+            });
     };
 
     return (
@@ -136,13 +146,23 @@ export default function Edit({ user, options }) {
                             </label>
                         </div>
 
-                        <button
-                            type="submit"
-                            disabled={fundingForm.processing}
-                            className="rounded-xl bg-gradient-to-r from-amber-400 to-orange-500 px-5 py-2.5 text-sm font-semibold text-slate-950 transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
-                        >
-                            {fundingForm.processing ? 'Funding...' : 'Fund Account'}
-                        </button>
+                        <div className="flex flex-wrap gap-2">
+                            <button
+                                type="submit"
+                                disabled={fundingForm.processing}
+                                className="rounded-xl bg-gradient-to-r from-amber-400 to-orange-500 px-5 py-2.5 text-sm font-semibold text-slate-950 transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+                            >
+                                {fundingForm.processing ? 'Processing...' : 'Fund Account'}
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => submitFundingAction('deduct')}
+                                disabled={fundingForm.processing}
+                                className="rounded-xl bg-gradient-to-r from-rose-500 to-red-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+                            >
+                                {fundingForm.processing ? 'Processing...' : 'Deduct'}
+                            </button>
+                        </div>
                     </form>
                 </section>
             </div>
