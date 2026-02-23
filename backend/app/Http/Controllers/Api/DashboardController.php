@@ -44,6 +44,7 @@ class DashboardController extends Controller
             'wallet',
             'positions.asset',
             'watchlistItems.asset',
+            'copyRelationships',
         ]);
 
         $positions = $user->positions;
@@ -63,12 +64,31 @@ class DashboardController extends Controller
         $cashBalance = $wallet instanceof Wallet
             ? $this->resolveAuthoritativeBalance((float) $wallet->cash_balance, (float) $user->balance)
             : (float) $user->balance;
-        $holdingBalance = round($positionsMarketValue, 8);
+        $persistedHoldingBalance = $wallet instanceof Wallet
+            ? $this->resolveAuthoritativeBalance((float) $wallet->investing_balance, (float) $user->holding_balance)
+            : (float) $user->holding_balance;
+        $holdingBalance = max($persistedHoldingBalance, round($positionsMarketValue, 8));
         $tradingProfitBalance = round($realizedProfit + ($positionsMarketValue - $positionsCostBasis), 8);
+        $copyProfitBalance = round(
+            (float) $user->copyRelationships->sum(fn ($relationship) => (float) $relationship->pnl),
+            8
+        );
         $persistedProfitBalance = $wallet instanceof Wallet
             ? $this->resolveAuthoritativeBalance((float) $wallet->profit_loss, (float) $user->profit_balance)
             : (float) $user->profit_balance;
-        $profitBalance = max($persistedProfitBalance, $tradingProfitBalance);
+        $fundedProfitBalance = $wallet instanceof Wallet
+            ? $this->calculateFundedProfitBalance($wallet)
+            : 0.0;
+        $legacyFundedProfitBalance = max(0.0, $persistedProfitBalance - $tradingProfitBalance - $copyProfitBalance);
+
+        if ($this->isEffectivelyZero($fundedProfitBalance) && $legacyFundedProfitBalance > 0) {
+            $fundedProfitBalance = $legacyFundedProfitBalance;
+        }
+
+        $profitBalance = round($tradingProfitBalance + $copyProfitBalance + $fundedProfitBalance, 8);
+        $profitPercent = $holdingBalance > 0
+            ? ($profitBalance / $holdingBalance) * 100
+            : 0.0;
 
         $this->syncAccountBalances($user, $cashBalance, $holdingBalance, $profitBalance);
 
@@ -154,6 +174,11 @@ class DashboardController extends Controller
                     'value' => round($portfolioValue, 2),
                     'buying_power' => round($cashBalance, 2),
                     'holdings_value' => round($holdingBalance, 2),
+                    'profit_balance' => round($profitBalance, 2),
+                    'profit_percent' => round($profitPercent, 2),
+                    'trade_profit' => round($tradingProfitBalance, 2),
+                    'copy_profit' => round($copyProfitBalance, 2),
+                    'funded_profit' => round($fundedProfitBalance, 2),
                     'daily_change' => round($dailyChange, 2),
                     'daily_change_percent' => round($dailyChangePercent, 2),
                     'history' => $portfolioHistory,
@@ -393,6 +418,27 @@ class DashboardController extends Controller
             '6m', '1y' => $timestamp->format('M Y'),
             default => $timestamp->format('H:i'),
         };
+    }
+
+    private function calculateFundedProfitBalance(Wallet $wallet): float
+    {
+        $fundedProfit = $wallet->transactions()
+            ->where('type', 'copy_pnl')
+            ->where('status', 'approved')
+            ->get(['direction', 'amount', 'metadata'])
+            ->reduce(function (float $carry, WalletTransaction $transaction): float {
+                if (data_get($transaction->metadata, 'funding_target') !== 'profit_balance') {
+                    return $carry;
+                }
+
+                $amount = (float) $transaction->amount;
+
+                return $transaction->direction === 'debit'
+                    ? $carry - $amount
+                    : $carry + $amount;
+            }, 0.0);
+
+        return round($fundedProfit, 8);
     }
 
     private function syncAccountBalances(User $user, float $cashBalance, float $holdingBalance, float $profitBalance): void

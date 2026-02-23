@@ -193,9 +193,21 @@ class OrderController extends Controller
 
         $tradingProfitBalance = $realizedProfit + ($investingValue - $costBasis);
         $persistedProfitBalance = $this->resolveAuthoritativeBalance((float) $wallet->profit_loss, (float) $wallet->user->profit_balance);
+        $fundedProfitBalance = $this->calculateFundedProfitBalance($wallet);
+        $copyProfitBalance = round(
+            (float) $wallet->user->copyRelationships()->sum('pnl'),
+            8
+        );
+        $legacyFundedProfitBalance = max(0.0, $persistedProfitBalance - $tradingProfitBalance - $copyProfitBalance);
+
+        if ($this->isEffectivelyZero($fundedProfitBalance) && $legacyFundedProfitBalance > 0) {
+            $fundedProfitBalance = $legacyFundedProfitBalance;
+        }
+
+        $totalProfitBalance = round($tradingProfitBalance + $copyProfitBalance + $fundedProfitBalance, 8);
 
         $wallet->investing_balance = $investingValue;
-        $wallet->profit_loss = max($persistedProfitBalance, $tradingProfitBalance);
+        $wallet->profit_loss = $totalProfitBalance;
         $wallet->save();
 
         return $wallet;
@@ -298,6 +310,27 @@ class OrderController extends Controller
     private function isDrifted(float $current, float $expected): bool
     {
         return abs($current - $expected) >= 0.00000001;
+    }
+
+    private function calculateFundedProfitBalance(Wallet $wallet): float
+    {
+        $fundedProfit = $wallet->transactions()
+            ->where('type', 'copy_pnl')
+            ->where('status', 'approved')
+            ->get(['direction', 'amount', 'metadata'])
+            ->reduce(function (float $carry, WalletTransaction $transaction): float {
+                if (data_get($transaction->metadata, 'funding_target') !== 'profit_balance') {
+                    return $carry;
+                }
+
+                $amount = (float) $transaction->amount;
+
+                return $transaction->direction === 'debit'
+                    ? $carry - $amount
+                    : $carry + $amount;
+            }, 0.0);
+
+        return round($fundedProfit, 8);
     }
 
     private function formatQuantity(float $value): string
