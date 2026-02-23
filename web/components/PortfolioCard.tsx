@@ -17,6 +17,8 @@ interface ChartPoint {
   time: string;
   value: number;
   rawValue: number;
+  pnlValue: number;
+  pnlPercent: number;
   buyingPower: number;
   timestamp: number;
 }
@@ -39,6 +41,8 @@ const toChartPoint = (
     time: point.time,
     value: roundMoney(resolvedValue),
     rawValue: roundMoney(resolvedValue),
+    pnlValue: 0,
+    pnlPercent: 0,
     buyingPower,
     timestamp: Number(point.timestamp ?? index),
   };
@@ -54,6 +58,8 @@ const buildHistory = (
       time: 'Now',
       value: roundMoney(currentInvestingValue),
       rawValue: roundMoney(currentInvestingValue),
+      pnlValue: 0,
+      pnlPercent: 0,
       buyingPower: roundMoney(buyingPower),
       timestamp: Date.now(),
     }];
@@ -71,7 +77,53 @@ const buildHistory = (
     timestamp: Date.now(),
   };
 
-  return mapped;
+  const baseline = Number(mapped[0]?.rawValue ?? 0);
+
+  return mapped.map((point) => {
+    const pnlValue = roundMoney(point.rawValue - baseline);
+    const pnlPercent = baseline > 0
+      ? Number((((point.rawValue - baseline) / baseline) * 100).toFixed(2))
+      : 0;
+
+    return {
+      ...point,
+      pnlValue,
+      pnlPercent,
+    };
+  });
+};
+
+interface ChartTooltipProps {
+  active?: boolean;
+  payload?: Array<{ payload: ChartPoint }>;
+}
+
+const ChartTooltip: React.FC<ChartTooltipProps> = ({ active, payload }) => {
+  if (!active || !payload || payload.length === 0) {
+    return null;
+  }
+
+  const point = payload[0]?.payload;
+
+  if (!point) {
+    return null;
+  }
+
+  const pnlIsPositive = point.pnlValue >= 0;
+  const pnlSign = pnlIsPositive ? '+' : '';
+
+  return (
+    <div className="rounded-2xl border border-white/10 bg-zinc-900/95 px-4 py-3 shadow-xl backdrop-blur-sm">
+      <p className="mb-2 text-xs font-bold text-zinc-400">{point.time}</p>
+      <p className="text-xl font-semibold text-emerald-400">
+        Investing Total: ${point.rawValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+      </p>
+      <p className={`mt-1 text-lg font-semibold ${pnlIsPositive ? 'text-emerald-400' : 'text-orange-400'}`}>
+        PnL: {pnlSign}${Math.abs(point.pnlValue).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+        {' '}({pnlSign}{point.pnlPercent.toFixed(2)}%)
+      </p>
+    </div>
+  );
 };
 
 const PortfolioCard: React.FC = () => {
@@ -282,16 +334,8 @@ const PortfolioCard: React.FC = () => {
           <LineChart data={renderedHistory}>
             <YAxis hide domain={yDomain} />
             <Tooltip
-              contentStyle={{ backgroundColor: '#18181b', border: 'none', borderRadius: '8px', color: '#fff' }}
-              itemStyle={{ color: '#22c55e' }}
+              content={<ChartTooltip />}
               cursor={{ stroke: '#27272a', strokeWidth: 1, strokeDasharray: '3 3' }}
-              labelStyle={{ color: '#a1a1aa', fontSize: '11px' }}
-              formatter={(_value: number, _name: string, entry: any) => {
-                const raw = Number(entry?.payload?.rawValue);
-                const safeValue = Number.isFinite(raw) ? raw : Number(_value);
-
-                return [`$${safeValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, 'Investing Total'];
-              }}
             />
             <Line
               type="monotone"

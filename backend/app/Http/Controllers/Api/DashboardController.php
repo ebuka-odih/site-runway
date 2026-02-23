@@ -86,7 +86,7 @@ class DashboardController extends Controller
         }
 
         $profitBalance = round($tradingProfitBalance + $copyProfitBalance + $fundedProfitBalance, 8);
-        $investingTotal = round($holdingBalance + $persistedProfitBalance + $tradingProfitBalance, 8);
+        $investingTotal = round($holdingBalance + $profitBalance + $tradingProfitBalance, 8);
         $profitPercent = $holdingBalance > 0
             ? ($profitBalance / $holdingBalance) * 100
             : 0.0;
@@ -98,16 +98,14 @@ class DashboardController extends Controller
         $portfolioHistory = $this->buildPortfolioHistory($user, $positions, $cashBalance, $portfolioValue, (string) $range);
         $portfolioHistory = $this->enrichPortfolioHistoryWithInvestingTotals(
             $portfolioHistory,
+            $wallet instanceof Wallet ? $wallet : null,
             $holdingBalance,
-            $persistedProfitBalance,
-            $tradingProfitBalance
+            $tradingProfitBalance,
+            $copyProfitBalance
         );
 
         $baseInvestingValue = (float) ($portfolioHistory->first()['investing_total'] ?? $investingTotal);
-        $fundedProfitToday = $wallet instanceof Wallet
-            ? $this->calculateFundedProfitDeltaSince($wallet, now()->startOfDay())
-            : 0.0;
-        $dailyChange = ($investingTotal - $baseInvestingValue) + $fundedProfitToday;
+        $dailyChange = $investingTotal - $baseInvestingValue;
         $dailyChangePercent = $baseInvestingValue > 0 ? ($dailyChange / $baseInvestingValue) * 100 : 0;
 
         $allocationByType = $positions
@@ -434,22 +432,79 @@ class DashboardController extends Controller
 
     private function enrichPortfolioHistoryWithInvestingTotals(
         Collection $history,
+        ?Wallet $wallet,
         float $currentHoldingBalance,
-        float $persistedProfitBalance,
-        float $currentTradingProfitBalance
+        float $currentTradingProfitBalance,
+        float $copyProfitBalance
     ): Collection {
+        if ($history->isEmpty()) {
+            return $history;
+        }
+
+        $fundedProfitTimeline = collect();
+
+        if ($wallet instanceof Wallet) {
+            $fundedProfitTimeline = $wallet->transactions()
+                ->where('type', 'copy_pnl')
+                ->where('status', 'approved')
+                ->whereNotNull('occurred_at')
+                ->orderBy('occurred_at')
+                ->get(['occurred_at', 'direction', 'amount', 'metadata']);
+        }
+
+        $timelineIndex = 0;
+        $timelineCount = $fundedProfitTimeline->count();
+        $runningFundedProfit = 0.0;
+
         return $history
-            ->map(function (array $point) use ($currentHoldingBalance, $persistedProfitBalance, $currentTradingProfitBalance) {
+            ->map(function (array $point) use (
+                $currentHoldingBalance,
+                $currentTradingProfitBalance,
+                $copyProfitBalance,
+                $fundedProfitTimeline,
+                &$timelineIndex,
+                $timelineCount,
+                &$runningFundedProfit
+            ) {
+                $pointTimestampMs = (int) ($point['timestamp'] ?? 0);
+                $pointTimestamp = Carbon::createFromTimestampMs($pointTimestampMs);
+
+                while ($timelineIndex < $timelineCount) {
+                    $transaction = $fundedProfitTimeline->get($timelineIndex);
+                    $occurredAt = $transaction?->occurred_at;
+
+                    if (! $occurredAt || $occurredAt->gt($pointTimestamp)) {
+                        break;
+                    }
+
+                    if (data_get($transaction->metadata, 'funding_target') === 'profit_balance') {
+                        $amount = (float) $transaction->amount;
+
+                        $runningFundedProfit += $transaction->direction === 'debit'
+                            ? -$amount
+                            : $amount;
+                    }
+
+                    $timelineIndex++;
+                }
+
                 $pointHoldingValue = (float) ($point['holdings_value'] ?? max(
                     0,
                     ((float) ($point['value'] ?? 0.0)) - ((float) ($point['buying_power'] ?? 0.0))
                 ));
-                $pointAssetProfit = $currentTradingProfitBalance + ($pointHoldingValue - $currentHoldingBalance);
-                $pointInvestingTotal = $pointHoldingValue + $persistedProfitBalance + $pointAssetProfit;
+                $pointAssetProfit = round(
+                    $currentTradingProfitBalance + ($pointHoldingValue - $currentHoldingBalance),
+                    8
+                );
+                $pointFundedProfit = round($runningFundedProfit, 8);
+                $pointProfitBalance = round($pointAssetProfit + $copyProfitBalance + $pointFundedProfit, 8);
+                $pointInvestingTotal = round($pointHoldingValue + $pointProfitBalance + $pointAssetProfit, 8);
 
                 return [
                     ...$point,
                     'asset_profit' => round($pointAssetProfit, 2),
+                    'funded_profit' => round($pointFundedProfit, 2),
+                    'profit_balance' => round($pointProfitBalance, 2),
                     'investing_total' => round($pointInvestingTotal, 2),
                 ];
             })
