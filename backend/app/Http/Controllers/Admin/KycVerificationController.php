@@ -7,10 +7,10 @@ use App\Models\KycSubmission;
 use App\Notifications\UserEventNotification;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Http\Response as HttpResponse;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 use Inertia\Response;
+use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
 
 class KycVerificationController extends Controller
 {
@@ -49,7 +49,7 @@ class KycVerificationController extends Controller
         ]);
     }
 
-    public function showDocument(KycSubmission $kycSubmission): HttpResponse
+    public function showDocument(KycSubmission $kycSubmission): SymfonyResponse
     {
         $path = trim((string) $kycSubmission->id_document_path);
 
@@ -153,11 +153,22 @@ class KycVerificationController extends Controller
             'user_name' => $submission->user?->name,
             'user_email' => $submission->user?->email,
             'reviewer_name' => $submission->reviewer?->name,
-            'document_url' => route('admin.kyc.document', $submission, false),
+            'document_url' => $this->withBaseUrl(route('admin.kyc.document', $submission, false)),
             'can_approve' => $submission->status === 'pending',
             'can_decline' => $submission->status === 'pending',
-            'approve_url' => route('admin.kyc.approve', $submission, false),
-            'decline_url' => route('admin.kyc.decline', $submission, false),
+            'approve_url' => $this->withBaseUrl(route('admin.kyc.approve', $submission, false)),
+            'decline_url' => $this->withBaseUrl(route('admin.kyc.decline', $submission, false)),
         ];
+    }
+
+    private function withBaseUrl(string $path): string
+    {
+        $baseUrl = request()->getBaseUrl();
+
+        if ($baseUrl === '') {
+            return $path;
+        }
+
+        return rtrim($baseUrl, '/') . '/' . ltrim($path, '/');
     }
 }

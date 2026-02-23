@@ -56,16 +56,6 @@ const TradingViewMarketsWidget: React.FC = () => {
       height: 620,
       tabs: [
         {
-          title: 'US Stocks',
-          symbols: [
-            { s: 'NASDAQ:AAPL', d: 'Apple' },
-            { s: 'NASDAQ:MSFT', d: 'Microsoft' },
-            { s: 'NASDAQ:NVDA', d: 'NVIDIA' },
-            { s: 'NASDAQ:TSLA', d: 'Tesla' },
-            { s: 'NASDAQ:AMD', d: 'AMD' },
-          ],
-        },
-        {
           title: 'Crypto',
           symbols: [
             { s: 'BINANCE:BTCUSDT', d: 'Bitcoin' },
@@ -73,6 +63,16 @@ const TradingViewMarketsWidget: React.FC = () => {
             { s: 'BINANCE:SOLUSDT', d: 'Solana' },
             { s: 'BINANCE:BNBUSDT', d: 'BNB' },
             { s: 'BINANCE:AVAXUSDT', d: 'Avalanche' },
+          ],
+        },
+        {
+          title: 'US Stocks',
+          symbols: [
+            { s: 'NASDAQ:AAPL', d: 'Apple' },
+            { s: 'NASDAQ:MSFT', d: 'Microsoft' },
+            { s: 'NASDAQ:NVDA', d: 'NVIDIA' },
+            { s: 'NASDAQ:TSLA', d: 'Tesla' },
+            { s: 'NASDAQ:AMD', d: 'AMD' },
           ],
         },
         {
@@ -146,12 +146,20 @@ const LandingMarketing: React.FC<LandingMarketingProps> = ({ onOpenAuth }) => {
         <a href="#copy-trading" className="hover:text-emerald-500 transition-colors">CopyTrade</a>
         <a href="#security-node" className="hover:text-emerald-500 transition-colors">Safety</a>
       </div>
-      <button
-        onClick={() => onOpenAuth('login')}
-        className="bg-white text-black px-6 py-2.5 rounded-full font-black text-xs uppercase tracking-widest hover:bg-emerald-500 transition-all hover:scale-105 active:scale-95"
-      >
-        Login
-      </button>
+      <div className="flex items-center gap-2">
+        <button
+          onClick={() => onOpenAuth('signup')}
+          className="hidden sm:inline-flex bg-emerald-500 text-black px-4 py-2.5 rounded-full font-black text-[10px] uppercase tracking-widest hover:bg-emerald-400 transition-all hover:scale-105 active:scale-95"
+        >
+          Sign Up
+        </button>
+        <button
+          onClick={() => onOpenAuth('login')}
+          className="bg-white text-black px-6 py-2.5 rounded-full font-black text-xs uppercase tracking-widest hover:bg-emerald-500 transition-all hover:scale-105 active:scale-95"
+        >
+          Login
+        </button>
+      </div>
     </nav>
 
     {/* Hero Section */}
@@ -194,7 +202,7 @@ const LandingMarketing: React.FC<LandingMarketingProps> = ({ onOpenAuth }) => {
           <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
           <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
         </span>
-        <span className="text-[10px] font-black uppercase tracking-widest text-emerald-400">Live Trading is active</span>
+        <span className="text-[10px] font-black uppercase tracking-widest text-emerald-400">Crypto trading is live</span>
       </div>
 
       <h1 className="text-5xl md:text-8xl font-black tracking-tighter mb-6 bg-gradient-to-b from-white to-zinc-500 bg-clip-text text-transparent animate-in fade-in zoom-in-95 duration-1000 leading-[1.1]">
@@ -202,7 +210,7 @@ const LandingMarketing: React.FC<LandingMarketingProps> = ({ onOpenAuth }) => {
       </h1>
 
       <p className="text-zinc-500 text-lg md:text-xl font-medium max-w-2xl mb-12 animate-in fade-in slide-in-from-bottom-4 duration-700 delay-300">
-        The ultimate high-fidelity dashboard for digital assets, stocks, and automated copying. Seamless performance for professional traders.
+        The ultimate high-fidelity dashboard for digital assets with real-time crypto execution, plus stocks and automated copy trading.
       </p>
 
       <div className="flex flex-col sm:flex-row gap-4 animate-in fade-in slide-in-from-bottom-8 duration-1000 delay-500">

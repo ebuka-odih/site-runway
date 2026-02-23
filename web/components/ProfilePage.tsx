@@ -123,6 +123,14 @@ const ProfilePage: React.FC = () => {
   }, [fetchProfile]);
 
   useEffect(() => {
+    if (!user) {
+      return;
+    }
+
+    setProfile((previous) => previous ? { ...previous, ...user } : previous);
+  }, [user]);
+
+  useEffect(() => {
     let isActive = true;
 
     const loadSettings = async () => {

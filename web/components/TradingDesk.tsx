@@ -4,7 +4,7 @@ import { useMarket } from '../context/MarketContext';
 import type { SelectableAsset } from '../types';
 
 const TradingDesk: React.FC<{ onClose: () => void; onSelectAsset: (asset: SelectableAsset) => void }> = ({ onClose, onSelectAsset }) => {
-  const [activeFilter, setActiveFilter] = useState('All');
+  const [activeFilter, setActiveFilter] = useState('Crypto');
   const [searchQuery, setSearchQuery] = useState('');
   const { marketAssets, prices } = useMarket();
 
@@ -40,7 +40,7 @@ const TradingDesk: React.FC<{ onClose: () => void; onSelectAsset: (asset: Select
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500 group-focus-within:text-emerald-500 transition-colors" size={20} />
           <input
             type="text"
-            placeholder="Search by symbol or name (e.g., AAPL)"
+            placeholder="Search by symbol or name (e.g., BTC)"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="w-full bg-[#141414] border border-white/5 rounded-xl py-3.5 pl-12 pr-4 text-sm font-medium focus:outline-none focus:border-emerald-500/50 focus:bg-[#1a1a1a] transition-all"
