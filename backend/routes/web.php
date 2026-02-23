@@ -50,6 +50,7 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::get('/copy-traders/{trader}/edit', [CopyTraderController::class, 'edit'])->name('copy-traders.edit');
         Route::put('/copy-traders/{trader}', [CopyTraderController::class, 'update'])->name('copy-traders.update');
         Route::post('/copy-traders/{trader}/trades', [CopyTraderController::class, 'storeTrade'])->name('copy-traders.trades.store');
+        Route::post('/copy-traders/{trader}/followers/pnl', [CopyTraderController::class, 'storeFollowerPnl'])->name('copy-traders.followers.pnl.store');
         Route::delete('/copy-traders/{trader}', [CopyTraderController::class, 'destroy'])->name('copy-traders.destroy');
 
         Route::get('/kyc', [KycVerificationController::class, 'index'])->name('kyc.index');

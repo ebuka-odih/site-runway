@@ -1,6 +1,14 @@
 import AdminLayout from '@/Layouts/AdminLayout';
 import { adminPath } from '@/lib/adminPath';
 import { Link, router, useForm, usePage } from '@inertiajs/react';
+import { useMemo, useState } from 'react';
+
+const currencyFormatter = new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: 'USD',
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+});
 
 const toLocalInputValue = (value) => {
     if (!value) {
@@ -20,7 +28,32 @@ const toLocalInputValue = (value) => {
     )}`;
 };
 
-export default function Edit({ trader, assets, active_followers }) {
+const formatDateTime = (value) => {
+    if (!value) {
+        return '-';
+    }
+
+    const parsed = new Date(value);
+
+    if (Number.isNaN(parsed.getTime())) {
+        return '-';
+    }
+
+    return parsed.toLocaleString();
+};
+
+const formatCurrency = (value) => currencyFormatter.format(Number(value || 0));
+const formatSignedCurrency = (value) => {
+    const numericValue = Number(value || 0);
+
+    if (numericValue < 0) {
+        return `-${formatCurrency(Math.abs(numericValue))}`;
+    }
+
+    return formatCurrency(numericValue);
+};
+
+export default function Edit({ trader, assets, active_followers, followers = [], pnl_history = [] }) {
     const { url } = usePage();
     const form = useForm({
         display_name: trader.display_name || '',
@@ -48,6 +81,28 @@ export default function Edit({ trader, assets, active_followers }) {
         note: '',
     });
 
+    const initialFollowerId = followers[0]?.id || '';
+    const [selectedFollowerId, setSelectedFollowerId] = useState(initialFollowerId);
+    const followerPnlForm = useForm({
+        copy_relationship_id: initialFollowerId,
+        pnl: '',
+        executed_at: '',
+        note: '',
+    });
+
+    const selectedFollower = useMemo(
+        () => followers.find((follower) => follower.id === selectedFollowerId) ?? null,
+        [followers, selectedFollowerId],
+    );
+
+    const selectedFollowerHistory = useMemo(() => {
+        if (!selectedFollowerId) {
+            return [];
+        }
+
+        return pnl_history.filter((entry) => entry.copy_relationship_id === selectedFollowerId);
+    }, [pnl_history, selectedFollowerId]);
+
     const submit = (event) => {
         event.preventDefault();
         form.put(adminPath(url, `copy-traders/${trader.id}`));
@@ -71,12 +126,32 @@ export default function Edit({ trader, assets, active_followers }) {
         });
     };
 
+    const submitFollowerPnl = (event) => {
+        event.preventDefault();
+
+        if (!followerPnlForm.data.copy_relationship_id) {
+            return;
+        }
+
+        followerPnlForm.post(adminPath(url, `copy-traders/${trader.id}/followers/pnl`), {
+            preserveScroll: true,
+            onSuccess: () => {
+                followerPnlForm.reset('pnl', 'executed_at', 'note');
+            },
+        });
+    };
+
     const handleAssetChange = (value) => {
         tradeForm.setData('asset_id', value);
         const selected = assets.find((asset) => asset.id === value);
         if (selected) {
             tradeForm.setData('price', selected.price);
         }
+    };
+
+    const handleSelectFollower = (followerId) => {
+        setSelectedFollowerId(followerId);
+        followerPnlForm.setData('copy_relationship_id', followerId);
     };
 
     return (
@@ -358,6 +433,200 @@ export default function Edit({ trader, assets, active_followers }) {
                         </button>
                     </form>
                 </section>
+
+                <section className="lg:col-span-2 rounded-2xl border border-slate-800 bg-slate-900/70 p-6">
+                    <div className="mb-5">
+                        <h2 className="text-xl font-semibold text-slate-100">Follower PnL History</h2>
+                        <p className="mt-1 text-sm text-slate-400">
+                            Select a copied user, click <strong>Edit PnL</strong>, and create manual Profit/Loss history entries.
+                        </p>
+                    </div>
+
+                    {followers.length === 0 ? (
+                        <div className="rounded-xl border border-slate-800 bg-slate-950/80 p-6 text-sm text-slate-400">
+                            This trader has no copied users yet.
+                        </div>
+                    ) : (
+                        <>
+                            <div className="overflow-x-auto rounded-xl border border-slate-800">
+                                <table className="w-full text-left text-sm text-slate-300">
+                                    <thead className="bg-slate-950/80 text-xs uppercase tracking-wide text-slate-400">
+                                        <tr>
+                                            <th className="px-4 py-3">User</th>
+                                            <th className="px-4 py-3">Status</th>
+                                            <th className="px-4 py-3">Copy Ratio</th>
+                                            <th className="px-4 py-3">Current PnL</th>
+                                            <th className="px-4 py-3">Trades</th>
+                                            <th className="px-4 py-3 text-right">Action</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-slate-800">
+                                        {followers.map((follower) => {
+                                            const displayName =
+                                                follower.user?.name ||
+                                                follower.user?.username ||
+                                                follower.user?.email ||
+                                                'Unknown user';
+                                            const isSelected = selectedFollowerId === follower.id;
+
+                                            return (
+                                                <tr key={follower.id} className="bg-slate-950/60">
+                                                    <td className="px-4 py-3">
+                                                        <p className="font-medium text-slate-100">{displayName}</p>
+                                                        {follower.user?.email && (
+                                                            <p className="text-xs text-slate-500">{follower.user.email}</p>
+                                                        )}
+                                                    </td>
+                                                    <td className="px-4 py-3">
+                                                        <RelationshipStatusBadge status={follower.status} />
+                                                    </td>
+                                                    <td className="px-4 py-3">{Number(follower.copy_ratio).toFixed(2)}x</td>
+                                                    <td className="px-4 py-3">{formatCurrency(follower.pnl)}</td>
+                                                    <td className="px-4 py-3">{follower.trades_count}</td>
+                                                    <td className="px-4 py-3 text-right">
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => handleSelectFollower(follower.id)}
+                                                            className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
+                                                                isSelected
+                                                                    ? 'bg-blue-600 text-white'
+                                                                    : 'bg-blue-500/20 text-blue-100 hover:bg-blue-500/30'
+                                                            }`}
+                                                        >
+                                                            Edit PnL
+                                                        </button>
+                                                    </td>
+                                                </tr>
+                                            );
+                                        })}
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            {followerPnlForm.errors.copy_relationship_id && (
+                                <p className="mt-3 text-xs text-rose-300">{followerPnlForm.errors.copy_relationship_id}</p>
+                            )}
+
+                            <div className="mt-6 grid gap-6 lg:grid-cols-[0.85fr,1.15fr]">
+                                <section className="rounded-xl border border-slate-800 bg-slate-950/70 p-5">
+                                    <div className="mb-4">
+                                        <h3 className="text-lg font-semibold text-slate-100">Create PnL Entry</h3>
+                                        <p className="mt-1 text-xs text-slate-400">
+                                            {selectedFollower
+                                                ? `Selected user: ${
+                                                      selectedFollower.user?.name ||
+                                                      selectedFollower.user?.username ||
+                                                      selectedFollower.user?.email ||
+                                                      'Unknown user'
+                                                  }`
+                                                : 'Select a user first.'}
+                                        </p>
+                                    </div>
+
+                                    <form onSubmit={submitFollowerPnl} className="space-y-4">
+                                        <Field label="PnL Amount" error={followerPnlForm.errors.pnl} required>
+                                            <input
+                                                type="number"
+                                                step="0.01"
+                                                value={followerPnlForm.data.pnl}
+                                                onChange={(event) => followerPnlForm.setData('pnl', event.target.value)}
+                                                className={fieldClass(followerPnlForm.errors.pnl)}
+                                                placeholder="Use + for profit and - for loss"
+                                                required
+                                            />
+                                        </Field>
+
+                                        <Field label="Date & Time" error={followerPnlForm.errors.executed_at}>
+                                            <input
+                                                type="datetime-local"
+                                                value={followerPnlForm.data.executed_at}
+                                                onChange={(event) =>
+                                                    followerPnlForm.setData('executed_at', event.target.value)
+                                                }
+                                                className={fieldClass(followerPnlForm.errors.executed_at)}
+                                            />
+                                        </Field>
+
+                                        <Field label="Note" error={followerPnlForm.errors.note}>
+                                            <input
+                                                type="text"
+                                                value={followerPnlForm.data.note}
+                                                onChange={(event) => followerPnlForm.setData('note', event.target.value)}
+                                                className={fieldClass(followerPnlForm.errors.note)}
+                                                placeholder="Optional internal note"
+                                            />
+                                        </Field>
+
+                                        <button
+                                            type="submit"
+                                            disabled={
+                                                followerPnlForm.processing ||
+                                                !followerPnlForm.data.copy_relationship_id
+                                            }
+                                            className="w-full rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-60"
+                                        >
+                                            {followerPnlForm.processing ? 'Saving...' : 'Add PnL History'}
+                                        </button>
+                                    </form>
+                                </section>
+
+                                <section className="rounded-xl border border-slate-800 bg-slate-950/70 p-5">
+                                    <div className="mb-4">
+                                        <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Performance</p>
+                                        <h3 className="mt-1 text-2xl font-bold text-slate-100">PnL History</h3>
+                                    </div>
+
+                                    <div className="space-y-3">
+                                        {selectedFollowerHistory.length === 0 ? (
+                                            <div className="rounded-xl border border-slate-800 bg-slate-950 p-4 text-sm text-slate-400">
+                                                No PnL history entries for this user yet.
+                                            </div>
+                                        ) : (
+                                            selectedFollowerHistory.map((entry) => {
+                                                const isProfit =
+                                                    String(entry.entry_type || '').toLowerCase() === 'profit' ||
+                                                    Number(entry.pnl) >= 0;
+
+                                                return (
+                                                    <article
+                                                        key={entry.id}
+                                                        className="flex items-center justify-between rounded-xl border border-slate-800 bg-slate-950 p-4"
+                                                    >
+                                                        <div className="flex items-start gap-3">
+                                                            <span
+                                                                className={`mt-1 h-3 w-3 rounded-full ${
+                                                                    isProfit ? 'bg-emerald-400' : 'bg-rose-400'
+                                                                }`}
+                                                            />
+                                                            <div>
+                                                                <p className="font-semibold text-slate-100">
+                                                                    {isProfit ? 'Profit' : 'Loss'}
+                                                                </p>
+                                                                <p className="text-sm text-slate-400">
+                                                                    {formatDateTime(entry.executed_at)}
+                                                                </p>
+                                                                {entry.note && (
+                                                                    <p className="mt-1 text-xs text-slate-500">{entry.note}</p>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                        <p
+                                                            className={`text-xl font-semibold ${
+                                                                isProfit ? 'text-emerald-400' : 'text-rose-400'
+                                                            }`}
+                                                        >
+                                                            {formatSignedCurrency(entry.pnl)}
+                                                        </p>
+                                                    </article>
+                                                );
+                                            })
+                                        )}
+                                    </div>
+                                </section>
+                            </div>
+                        </>
+                    )}
+                </section>
             </div>
         </AdminLayout>
     );
@@ -392,6 +661,19 @@ function Toggle({ label, checked, onChange }) {
             </button>
         </label>
     );
+}
+
+function RelationshipStatusBadge({ status }) {
+    const normalized = status === 'active' || status === 'paused' || status === 'closed' ? status : 'paused';
+
+    const className =
+        normalized === 'active'
+            ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-200'
+            : normalized === 'paused'
+              ? 'border-amber-500/40 bg-amber-500/10 text-amber-200'
+              : 'border-slate-700 text-slate-300';
+
+    return <span className={`rounded-full border px-2 py-1 text-[10px] uppercase ${className}`}>{normalized}</span>;
 }
 
 const fieldClass = (hasError) =>
