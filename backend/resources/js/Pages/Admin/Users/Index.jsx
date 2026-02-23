@@ -93,12 +93,12 @@ export default function Index({ users, filters, stats }) {
             return;
         }
 
-        fundForm
-            .transform((data) => ({
-                ...data,
-                operation,
-            }))
-            .post(adminPath(url, `users/${fundingUser.id}/fund`), {
+        fundForm.transform((data) => ({
+            ...data,
+            operation,
+        }));
+
+        fundForm.post(adminPath(url, `users/${fundingUser.id}/fund`), {
             preserveScroll: true,
             onSuccess: closeFundingModal,
         });

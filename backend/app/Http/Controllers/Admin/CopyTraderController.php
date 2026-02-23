@@ -75,6 +75,24 @@ class CopyTraderController extends Controller
             ->where('status', 'active')
             ->count();
 
+        $followers = CopyRelationship::query()
+            ->with('user:id,name,email')
+            ->where('trader_id', $trader->id)
+            ->whereIn('status', ['active', 'paused'])
+            ->orderByRaw("CASE WHEN status = 'active' THEN 0 ELSE 1 END")
+            ->latest('created_at')
+            ->get();
+
+        $tradeHistory = CopyTrade::query()
+            ->with([
+                'asset:id,symbol,name',
+                'copyRelationship.user:id,name,email',
+            ])
+            ->whereHas('copyRelationship', fn ($query) => $query->where('trader_id', $trader->id))
+            ->latest('executed_at')
+            ->limit(120)
+            ->get();
+
         return Inertia::render('Admin/CopyTraders/Edit', [
             'trader' => $this->traderPayload($trader),
             'assets' => $assets->map(fn (Asset $asset) => [
@@ -85,6 +103,38 @@ class CopyTraderController extends Controller
                 'price' => (float) $asset->current_price,
             ]),
             'active_followers' => $activeFollowers,
+            'followers' => $followers->map(fn (CopyRelationship $relationship) => [
+                'id' => $relationship->id,
+                'status' => $relationship->status,
+                'copy_ratio' => (float) $relationship->copy_ratio,
+                'user' => [
+                    'name' => $relationship->user?->name,
+                    'email' => $relationship->user?->email,
+                ],
+            ]),
+            'trade_history' => $tradeHistory->map(fn (CopyTrade $trade) => [
+                'id' => $trade->id,
+                'side' => $trade->side,
+                'quantity' => (float) $trade->quantity,
+                'price' => (float) $trade->price,
+                'pnl' => (float) $trade->pnl,
+                'executed_at' => optional($trade->executed_at)->toIso8601String(),
+                'asset' => [
+                    'symbol' => $trade->asset?->symbol,
+                    'name' => $trade->asset?->name,
+                ],
+                'follower' => [
+                    'name' => $trade->copyRelationship?->user?->name,
+                    'email' => $trade->copyRelationship?->user?->email,
+                ],
+                'metadata' => [
+                    'source' => data_get($trade->metadata, 'source'),
+                    'note' => data_get($trade->metadata, 'note'),
+                    'copy_ratio' => data_get($trade->metadata, 'copy_ratio'),
+                    'leader_quantity' => data_get($trade->metadata, 'leader_quantity'),
+                    'leader_pnl' => data_get($trade->metadata, 'leader_pnl'),
+                ],
+            ]),
         ]);
     }
 
@@ -158,18 +208,39 @@ class CopyTraderController extends Controller
             'side' => ['required', Rule::in(['buy', 'sell'])],
             'quantity' => ['required', 'numeric', 'gt:0'],
             'price' => ['required', 'numeric', 'gt:0'],
+            'apply_to' => ['nullable', Rule::in(['all', 'single'])],
+            'copy_relationship_id' => [
+                Rule::requiredIf((string) $request->input('apply_to', 'all') === 'single'),
+                'nullable',
+                'uuid',
+                Rule::exists('copy_relationships', 'id')->where(fn ($query) => $query
+                    ->where('trader_id', $trader->id)
+                    ->whereIn('status', ['active', 'paused'])),
+            ],
             'executed_at' => ['nullable', 'date'],
             'pnl' => ['nullable', 'numeric'],
             'note' => ['nullable', 'string', 'max:255'],
         ]);
 
+        $applyTo = $validated['apply_to'] ?? 'all';
+
         $relationships = CopyRelationship::query()
             ->where('trader_id', $trader->id)
-            ->where('status', 'active')
+            ->when(
+                $applyTo === 'single',
+                fn ($query) => $query
+                    ->whereKey($validated['copy_relationship_id'] ?? null)
+                    ->whereIn('status', ['active', 'paused']),
+                fn ($query) => $query->where('status', 'active')
+            )
             ->get();
 
         if ($relationships->isEmpty()) {
-            return back()->with('error', 'No active followers to receive this trade.');
+            $message = $applyTo === 'single'
+                ? 'Selected follower was not found or is no longer eligible for manual trade history.'
+                : 'No active followers to receive this trade.';
+
+            return back()->with('error', $message);
         }
 
         $executedAt = isset($validated['executed_at'])
@@ -225,6 +296,7 @@ class CopyTraderController extends Controller
                         'leader_quantity' => $quantity,
                         'leader_pnl' => $leaderPnl,
                         'copy_ratio' => $ratio,
+                        'apply_to' => $applyTo,
                         'note' => $validated['note'] ?? null,
                     ],
                 ]);
