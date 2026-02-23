@@ -47,6 +47,9 @@ export interface PortfolioSummary {
   value: number;
   buyingPower: number;
   holdingsValue?: number;
+  totalProfit?: number;
+  totalProfitPercent?: number;
+  tradeProfit?: number;
   dailyChange: number;
   dailyChangePercent: number;
   history: PortfolioHistoryPoint[];
