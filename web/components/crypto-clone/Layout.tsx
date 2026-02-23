@@ -34,12 +34,12 @@ export default function Layout() {
           
           <div className="flex items-center gap-2 md:gap-4">
             <div className="hidden md:flex items-center gap-4">
-              <button className="px-4 py-1.5 text-sm font-medium text-slate-300 hover:text-white transition-colors">
+              <Link to="/login" className="px-4 py-1.5 text-sm font-medium text-slate-300 hover:text-white transition-colors">
                 Log In
-              </button>
-              <button className="px-5 py-2 rounded bg-[#059669] text-white text-sm font-bold hover:bg-[#047857] transition-all">
+              </Link>
+              <Link to="/signup" className="px-5 py-2 rounded bg-[#059669] text-white text-sm font-bold hover:bg-[#047857] transition-all">
                 Sign Up
-              </button>
+              </Link>
             </div>
             
             {/* Mobile Menu Toggle */}
@@ -95,12 +95,20 @@ export default function Layout() {
                   transition={{ delay: 0.3 }}
                   className="grid grid-cols-1 gap-4 mt-8"
                 >
-                  <button className="w-full py-5 rounded-2xl bg-[#059669] text-white font-bold text-lg shadow-lg shadow-[#059669]/20 active:scale-[0.98] transition-transform">
+                  <Link
+                    to="/signup"
+                    className="w-full py-5 rounded-2xl bg-[#059669] text-white font-bold text-lg shadow-lg shadow-[#059669]/20 active:scale-[0.98] transition-transform text-center"
+                    onClick={() => setIsMenuOpen(false)}
+                  >
                     Sign Up
-                  </button>
-                  <button className="w-full py-5 rounded-2xl border border-slate-700 text-slate-300 font-bold text-lg active:scale-[0.98] transition-transform">
+                  </Link>
+                  <Link
+                    to="/login"
+                    className="w-full py-5 rounded-2xl border border-slate-700 text-slate-300 font-bold text-lg active:scale-[0.98] transition-transform text-center"
+                    onClick={() => setIsMenuOpen(false)}
+                  >
                     Log In
-                  </button>
+                  </Link>
                 </motion.div>
                 
                 <motion.div 

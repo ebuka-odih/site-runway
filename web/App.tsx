@@ -15,6 +15,7 @@ import WalletPage from './components/WalletPage';
 import ProfilePage from './components/ProfilePage';
 import WatchlistPage from './components/WatchlistPage';
 import LandingPage from './components/LandingPage';
+import AuthPage from './components/AuthPage';
 import CryptoHomeDashboard from './components/crypto/CryptoHomeDashboard';
 import CryptoCloneLayout from './components/crypto-clone/Layout';
 import CryptoCloneHome from './components/crypto-clone/pages/Home';
@@ -216,22 +217,50 @@ const AppContent: React.FC = () => {
         <Route
           path="/login"
           element={(
-            <LandingPage
+            <AuthPage
               onLogin={login}
               authError={authError}
-              initialAuthView="login"
-              openAuthOnMount
+              view="login"
             />
           )}
         />
         <Route
           path="/signup"
           element={(
-            <LandingPage
+            <AuthPage
               onLogin={login}
               authError={authError}
-              initialAuthView="signup"
-              openAuthOnMount
+              view="signup"
+            />
+          )}
+        />
+        <Route
+          path="/verify"
+          element={(
+            <AuthPage
+              onLogin={login}
+              authError={authError}
+              view="verify"
+            />
+          )}
+        />
+        <Route
+          path="/forgot"
+          element={(
+            <AuthPage
+              onLogin={login}
+              authError={authError}
+              view="forgot"
+            />
+          )}
+        />
+        <Route
+          path="/reset"
+          element={(
+            <AuthPage
+              onLogin={login}
+              authError={authError}
+              view="reset"
             />
           )}
         />

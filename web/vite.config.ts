@@ -6,7 +6,9 @@ export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, __dirname, '');
   const configuredBackendApiBaseUrl = env.BACKEND_API_BASE_URL?.trim();
   const legacyBackendOrigin = env.VITE_BACKEND_ORIGIN?.trim();
-  const runtimeApiBaseUrl = configuredBackendApiBaseUrl || '/api/v1';
+  const runtimeApiBaseUrl = mode === 'development'
+    ? '/api/v1'
+    : (configuredBackendApiBaseUrl || '/api/v1');
 
   let proxyTarget = legacyBackendOrigin || 'https://api.runwayalgo.com';
   let proxyRewrite: ((requestPath: string) => string) | undefined;

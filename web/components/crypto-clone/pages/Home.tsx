@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react';
+import { Link } from 'react-router-dom';
 import { ArrowRight, ChevronRight, Speaker, UserPlus, Wallet, BarChart3, Shield, Zap, Headphones, BookOpen, TrendingUp } from 'lucide-react';
 
 const TradingViewWidget = () => {
@@ -81,9 +82,12 @@ export default function Home() {
             </h1>
             
             <div className="space-y-6">
-              <button className="w-full sm:w-auto px-10 py-4 rounded-full bg-[#059669] text-white font-bold text-lg hover:bg-[#047857] transition-all shadow-[0_4px_20px_rgba(5,150,105,0.2)]">
+              <Link
+                to="/signup"
+                className="inline-block w-full sm:w-auto px-10 py-4 rounded-full bg-[#059669] text-white font-bold text-lg hover:bg-[#047857] transition-all shadow-[0_4px_20px_rgba(5,150,105,0.2)] text-center"
+              >
                 Sign Up Now
-              </button>
+              </Link>
               
               <div className="flex flex-wrap items-center gap-4 md:gap-6 text-sm text-slate-400">
                 <span>Or Use</span>
@@ -306,9 +310,18 @@ export default function Home() {
                 <p className="text-slate-500 text-sm leading-relaxed mb-8 flex-1">
                   {item.desc}
                 </p>
-                <button className="w-full py-3 rounded-lg bg-[#059669] text-white font-bold hover:bg-[#047857] transition-colors">
-                  {item.btn}
-                </button>
+                {item.btn === 'Sign Up Now' ? (
+                  <Link
+                    to="/signup"
+                    className="block w-full py-3 rounded-lg bg-[#059669] text-white font-bold hover:bg-[#047857] transition-colors"
+                  >
+                    {item.btn}
+                  </Link>
+                ) : (
+                  <button className="w-full py-3 rounded-lg bg-[#059669] text-white font-bold hover:bg-[#047857] transition-colors">
+                    {item.btn}
+                  </button>
+                )}
               </div>
             ))}
           </div>
@@ -319,9 +332,12 @@ export default function Home() {
       <section className="bg-[#F1F5F9] pb-24 text-[#1A1A1A]">
         <div className="max-w-7xl mx-auto px-6 text-center space-y-8">
           <h2 className="text-4xl font-bold">Embark on Your Crypto Journey Today!</h2>
-          <button className="px-10 py-4 rounded-full bg-[#059669] text-white font-bold text-lg hover:bg-[#047857] transition-all flex items-center gap-2 mx-auto">
+          <Link
+            to="/signup"
+            className="inline-flex px-10 py-4 rounded-full bg-[#059669] text-white font-bold text-lg hover:bg-[#047857] transition-all items-center gap-2 mx-auto"
+          >
             Sign Up Now <ArrowRight className="w-5 h-5" />
-          </button>
+          </Link>
         </div>
       </section>
     </div>
