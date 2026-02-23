@@ -316,6 +316,32 @@ export const MarketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     setPrices((previous) => buildPriceState(previous, sourceAssets));
   }, []);
 
+  const syncAuthUser = useCallback(async (): Promise<AuthUser> => {
+    const nextUser = await apiMe();
+
+    setUser((previous) => {
+      if (
+        previous
+        && previous.id === nextUser.id
+        && previous.username === nextUser.username
+        && previous.name === nextUser.name
+        && previous.email === nextUser.email
+        && previous.country === nextUser.country
+        && previous.membershipTier === nextUser.membershipTier
+        && previous.kycStatus === nextUser.kycStatus
+        && previous.phone === nextUser.phone
+        && previous.timezone === nextUser.timezone
+        && previous.notificationEmailAlerts === nextUser.notificationEmailAlerts
+      ) {
+        return previous;
+      }
+
+      return previous ? { ...previous, ...nextUser } : nextUser;
+    });
+
+    return nextUser;
+  }, []);
+
   const login = useCallback(async (email: string, password: string): Promise<boolean> => {
     setAuthError(null);
 
@@ -376,6 +402,57 @@ export const MarketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
     void bootstrap();
   }, [refreshCoreData]);
+
+  useEffect(() => {
+    if (!user) {
+      return;
+    }
+
+    let isActive = true;
+    let isSyncing = false;
+
+    const syncIfPossible = async () => {
+      if (!isActive || isSyncing) {
+        return;
+      }
+
+      isSyncing = true;
+
+      try {
+        await syncAuthUser();
+      } catch {
+        // Keep current user state when background sync fails.
+      } finally {
+        isSyncing = false;
+      }
+    };
+
+    const handleFocus = () => {
+      void syncIfPossible();
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        void syncIfPossible();
+      }
+    };
+
+    const intervalId = window.setInterval(() => {
+      if (document.visibilityState === 'visible') {
+        void syncIfPossible();
+      }
+    }, 60_000);
+
+    window.addEventListener('focus', handleFocus);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      isActive = false;
+      window.clearInterval(intervalId);
+      window.removeEventListener('focus', handleFocus);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [syncAuthUser, user?.id]);
 
   useEffect(() => {
     const realtimeEnabled = ['1', 'true', 'yes', 'on'].includes(
@@ -511,7 +588,13 @@ export const MarketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     await refreshDashboard(activeDashboardRangeRef.current);
   }, [refreshDashboard]);
 
-  const fetchProfile: MarketContextType['fetchProfile'] = useCallback(() => apiProfile(), []);
+  const fetchProfile: MarketContextType['fetchProfile'] = useCallback(async () => {
+    const profile = await apiProfile();
+
+    setUser((previous) => previous ? { ...previous, ...profile } : profile);
+
+    return profile;
+  }, []);
   const updateProfileContext: MarketContextType['updateProfile'] = useCallback(async (input) => {
     const profile = await apiUpdateProfile(input);
 
