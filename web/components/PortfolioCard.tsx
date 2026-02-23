@@ -344,7 +344,7 @@ const PortfolioCard: React.FC = () => {
         </div>
 
         <ResponsiveContainer width="100%" height="100%">
-          <LineChart data={renderedHistory}>
+          <LineChart data={renderedHistory} accessibilityLayer={false}>
             <YAxis hide domain={yDomain} />
             <Tooltip
               content={<ChartTooltip />}
