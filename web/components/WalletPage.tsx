@@ -489,8 +489,13 @@ const WalletPage: React.FC = () => {
             <p className="text-[10px] font-black text-zinc-500 uppercase tracking-widest mb-2">Profit</p>
             <h3 className="text-3xl font-black text-white mb-1 tabular-nums">
               ${(summary?.wallet.profitLoss ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              <span className="ml-2 text-base font-bold text-zinc-400">
+                (
+                ${(summary?.wallet.tradeProfit ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                )
+              </span>
             </h3>
-            <p className="text-xs text-emerald-500 font-black">Lifetime performance</p>
+            <p className="text-xs text-emerald-500 font-black">Lifetime performance (trade profit)</p>
           </div>
 
           <div className="space-y-3">

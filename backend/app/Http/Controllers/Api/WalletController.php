@@ -27,7 +27,9 @@ class WalletController extends Controller
 
     public function summary(Request $request): JsonResponse
     {
-        $wallet = $this->resolveUserWallet($request->user());
+        $user = $request->user()->loadMissing('positions.asset:id,current_price');
+        $wallet = $this->resolveUserWallet($user);
+        $tradeProfit = $this->calculateTradeProfit($user, $wallet);
         $depositMethods = $this->availableDepositMethods();
         $summaryDepositMethods = $depositMethods->isNotEmpty()
             ? $depositMethods
@@ -45,6 +47,7 @@ class WalletController extends Controller
                     'cash_balance' => (float) $wallet->cash_balance,
                     'investing_balance' => (float) $wallet->investing_balance,
                     'profit_loss' => (float) $wallet->profit_loss,
+                    'trade_profit' => $tradeProfit,
                     'currency' => $wallet->currency,
                 ],
                 'recent_transactions' => $wallet->transactions->map(fn ($transaction) => [
@@ -451,6 +454,22 @@ class WalletController extends Controller
         return $wallet;
     }
 
+    private function calculateTradeProfit(User $user, Wallet $wallet): float
+    {
+        $positionsMarketValue = $user->positions->sum(
+            fn ($position) => (float) $position->quantity * (float) $position->asset->current_price
+        );
+        $positionsCostBasis = $user->positions->sum(
+            fn ($position) => (float) $position->quantity * (float) $position->average_price
+        );
+        $realizedTradeProfit = $wallet->transactions()
+            ->where('type', 'trade_sell')
+            ->get(['metadata'])
+            ->sum(fn (WalletTransaction $transaction) => (float) data_get($transaction->metadata, 'realized_pnl', 0));
+
+        return round($realizedTradeProfit + ($positionsMarketValue - $positionsCostBasis), 8);
+    }
+
     private function resolveAuthoritativeBalance(float $walletValue, float $userValue): float
     {
         $walletIsZero = $this->isEffectivelyZero($walletValue);
@@ -464,7 +483,7 @@ class WalletController extends Controller
             return $walletValue;
         }
 
-        return $walletValue;
+        return max($walletValue, $userValue);
     }
 
     private function resolveCashBalance(float $walletValue, float $userValue): float

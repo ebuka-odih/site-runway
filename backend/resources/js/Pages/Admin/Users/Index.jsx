@@ -23,6 +23,7 @@ export default function Index({ users, filters, stats }) {
     const userLinks = Array.isArray(users?.links) ? users.links : [];
     const fundForm = useForm({
         target: 'balance',
+        operation: 'fund',
         amount: '',
         notes: '',
         redirect_to: 'index',
@@ -71,6 +72,7 @@ export default function Index({ users, filters, stats }) {
         setFundingUser(user);
         fundForm.clearErrors();
         fundForm.setData('target', 'balance');
+        fundForm.setData('operation', 'fund');
         fundForm.setData('amount', '');
         fundForm.setData('notes', '');
         fundForm.setData('redirect_to', 'index');
@@ -83,12 +85,20 @@ export default function Index({ users, filters, stats }) {
 
     const submitFunding = (event) => {
         event.preventDefault();
+        submitFundingAction('fund');
+    };
 
+    const submitFundingAction = (operation) => {
         if (!fundingUser) {
             return;
         }
 
-        fundForm.post(adminPath(url, `users/${fundingUser.id}/fund`), {
+        fundForm
+            .transform((data) => ({
+                ...data,
+                operation,
+            }))
+            .post(adminPath(url, `users/${fundingUser.id}/fund`), {
             preserveScroll: true,
             onSuccess: closeFundingModal,
         });
@@ -438,7 +448,15 @@ export default function Index({ users, filters, stats }) {
                                     disabled={fundForm.processing}
                                     className="rounded-lg bg-gradient-to-r from-amber-400 to-orange-500 px-4 py-2 text-sm font-semibold text-slate-950 transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
                                 >
-                                    {fundForm.processing ? 'Funding...' : 'Fund Account'}
+                                    {fundForm.processing ? 'Processing...' : 'Fund Account'}
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => submitFundingAction('deduct')}
+                                    disabled={fundForm.processing}
+                                    className="rounded-lg bg-gradient-to-r from-rose-500 to-red-600 px-4 py-2 text-sm font-semibold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+                                >
+                                    {fundForm.processing ? 'Processing...' : 'Deduct'}
                                 </button>
                                 <button
                                     type="button"

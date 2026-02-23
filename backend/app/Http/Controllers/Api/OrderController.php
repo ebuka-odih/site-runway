@@ -191,8 +191,11 @@ class OrderController extends Controller
             ->get(['metadata'])
             ->sum(fn (WalletTransaction $transaction) => (float) data_get($transaction->metadata, 'realized_pnl', 0));
 
+        $tradingProfitBalance = $realizedProfit + ($investingValue - $costBasis);
+        $persistedProfitBalance = $this->resolveAuthoritativeBalance((float) $wallet->profit_loss, (float) $wallet->user->profit_balance);
+
         $wallet->investing_balance = $investingValue;
-        $wallet->profit_loss = $realizedProfit + ($investingValue - $costBasis);
+        $wallet->profit_loss = max($persistedProfitBalance, $tradingProfitBalance);
         $wallet->save();
 
         return $wallet;
@@ -268,7 +271,7 @@ class OrderController extends Controller
             return $walletValue;
         }
 
-        return $walletValue;
+        return max($walletValue, $userValue);
     }
 
     private function resolveCashBalance(float $walletValue, float $userValue): float

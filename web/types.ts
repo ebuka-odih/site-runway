@@ -194,6 +194,7 @@ export interface WalletSummaryData {
     cashBalance: number;
     investingBalance: number;
     profitLoss: number;
+    tradeProfit: number;
     currency: string;
   };
   recentTransactions: WalletTransactionItem[];
