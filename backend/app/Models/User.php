@@ -93,6 +93,16 @@ class User extends Authenticatable
         return $this->hasMany(PortfolioSnapshot::class);
     }
 
+    public function portfolioEvents(): HasMany
+    {
+        return $this->hasMany(PortfolioEvent::class);
+    }
+
+    public function userPortfolio(): HasOne
+    {
+        return $this->hasOne(UserPortfolio::class);
+    }
+
     public function wallet(): HasOne
     {
         return $this->hasOne(Wallet::class);

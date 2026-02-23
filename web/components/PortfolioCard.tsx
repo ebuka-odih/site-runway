@@ -29,16 +29,16 @@ const toChartPoint = (
   buyingPowerFallback: number,
 ): ChartPoint => {
   const buyingPower = Number(point.buyingPower ?? buyingPowerFallback);
+  const investingTotal = Number(point.investingTotal);
   const totalValue = Number(point.value);
-  const explicitHoldingsValue = Number(point.holdingsValue);
-  const holdingsValue = Number.isFinite(explicitHoldingsValue)
-    ? Math.max(0, explicitHoldingsValue)
-    : Math.max(0, totalValue - buyingPower);
+  const resolvedValue = Number.isFinite(investingTotal)
+    ? investingTotal
+    : (Number.isFinite(totalValue) ? totalValue : 0);
 
   return {
     time: point.time,
-    value: roundMoney(holdingsValue),
-    rawValue: roundMoney(holdingsValue),
+    value: roundMoney(resolvedValue),
+    rawValue: roundMoney(resolvedValue),
     buyingPower,
     timestamp: Number(point.timestamp ?? index),
   };
@@ -46,14 +46,14 @@ const toChartPoint = (
 
 const buildHistory = (
   points: PortfolioHistoryPoint[],
-  currentHoldingValue: number,
+  currentInvestingValue: number,
   buyingPower: number,
 ): ChartPoint[] => {
   if (points.length === 0) {
     return [{
       time: 'Now',
-      value: roundMoney(currentHoldingValue),
-      rawValue: roundMoney(currentHoldingValue),
+      value: roundMoney(currentInvestingValue),
+      rawValue: roundMoney(currentInvestingValue),
       buyingPower: roundMoney(buyingPower),
       timestamp: Date.now(),
     }];
@@ -65,8 +65,8 @@ const buildHistory = (
   const last = mapped[lastIndex];
   mapped[lastIndex] = {
     ...last,
-    value: roundMoney(currentHoldingValue),
-    rawValue: roundMoney(currentHoldingValue),
+    value: roundMoney(currentInvestingValue),
+    rawValue: roundMoney(currentInvestingValue),
     buyingPower: roundMoney(buyingPower),
     timestamp: Date.now(),
   };
@@ -104,33 +104,49 @@ const PortfolioCard: React.FC = () => {
     return 0;
   }, [buyingPower, dashboard?.positions, portfolio?.holdingsValue, portfolio?.value]);
 
-  const history = useMemo<ChartPoint[]>(() => {
-    const points = dashboard?.portfolio.history ?? [];
-    return buildHistory(points, derivedCurrentHoldingValue, buyingPower);
-  }, [buyingPower, dashboard?.portfolio.history, derivedCurrentHoldingValue]);
-
-  const chartEndValue = history[history.length - 1]?.value ?? derivedCurrentHoldingValue;
-  const dailyFromPositions = useMemo(() => {
-    const positionItems = dashboard?.positions ?? [];
-    const hasExplicitValues = positionItems.some((position) => Number.isFinite(Number(position.dayChangeValue)));
-
-    if (!hasExplicitValues) {
-      return null;
+  const currentInvestingValue = useMemo(() => {
+    const directInvestingTotal = Number(portfolio?.investingTotal);
+    if (Number.isFinite(directInvestingTotal)) {
+      return directInvestingTotal;
     }
 
-    const dayChange = positionItems.reduce((total, position) => total + (position.dayChangeValue ?? 0), 0);
-    const previousCloseHoldings = derivedCurrentHoldingValue - dayChange;
-    const dayChangePercent = previousCloseHoldings > 0
-      ? (dayChange / previousCloseHoldings) * 100
-      : 0;
+    const holdingsValue = Number(portfolio?.holdingsValue);
+    const safeHoldingsValue = Number.isFinite(holdingsValue) ? holdingsValue : derivedCurrentHoldingValue;
+    const totalProfit = Number(portfolio?.totalProfit ?? 0);
+    const assetProfit = Number(portfolio?.assetProfit ?? portfolio?.tradeProfit ?? 0);
 
-    return {
-      dayChange,
-      dayChangePercent,
-    };
-  }, [dashboard?.positions, derivedCurrentHoldingValue]);
-  const dailyChange = dailyFromPositions?.dayChange ?? 0;
-  const dailyChangePercent = dailyFromPositions?.dayChangePercent ?? 0;
+    if (
+      Number.isFinite(safeHoldingsValue) &&
+      Number.isFinite(totalProfit) &&
+      Number.isFinite(assetProfit)
+    ) {
+      return safeHoldingsValue + totalProfit + assetProfit;
+    }
+
+    const portfolioValue = Number(portfolio?.value);
+    return Number.isFinite(portfolioValue) ? portfolioValue : 0;
+  }, [
+    derivedCurrentHoldingValue,
+    portfolio?.assetProfit,
+    portfolio?.holdingsValue,
+    portfolio?.investingTotal,
+    portfolio?.totalProfit,
+    portfolio?.tradeProfit,
+    portfolio?.value,
+  ]);
+
+  const history = useMemo<ChartPoint[]>(() => {
+    const points = dashboard?.portfolio.history ?? [];
+    return buildHistory(points, currentInvestingValue, buyingPower);
+  }, [buyingPower, currentInvestingValue, dashboard?.portfolio.history]);
+
+  const chartEndValue = history[history.length - 1]?.value ?? currentInvestingValue;
+  const dailyChange = Number.isFinite(Number(portfolio?.dailyChange))
+    ? Number(portfolio?.dailyChange)
+    : 0;
+  const dailyChangePercent = Number.isFinite(Number(portfolio?.dailyChangePercent))
+    ? Number(portfolio?.dailyChangePercent)
+    : 0;
   const isPositive = dailyChange >= 0;
   const isFlatHistory = useMemo(() => {
     if (history.length < 3) {
@@ -162,9 +178,7 @@ const PortfolioCard: React.FC = () => {
     return span < minVisibleSpan;
   }, [history]);
   const shouldAnimateLive = isFlatHistory || isRecentFlat;
-  const investingDisplayValue = Number.isFinite(Number(portfolio?.investingTotal))
-    ? Number(portfolio?.investingTotal)
-    : (chartEndValue + Number(portfolio?.totalProfit ?? 0) + Number(portfolio?.assetProfit ?? portfolio?.tradeProfit ?? 0));
+  const investingDisplayValue = currentInvestingValue;
 
   useEffect(() => {
     void refreshDashboard(activeRange).catch(() => {
@@ -276,7 +290,7 @@ const PortfolioCard: React.FC = () => {
                 const raw = Number(entry?.payload?.rawValue);
                 const safeValue = Number.isFinite(raw) ? raw : Number(_value);
 
-                return [`$${safeValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, 'Holdings'];
+                return [`$${safeValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, 'Investing Total'];
               }}
             />
             <Line
