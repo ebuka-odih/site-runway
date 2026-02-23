@@ -47,6 +47,8 @@ export interface PortfolioSummary {
   value: number;
   buyingPower: number;
   holdingsValue?: number;
+  investingTotal?: number;
+  assetProfit?: number;
   totalProfit?: number;
   totalProfitPercent?: number;
   tradeProfit?: number;
