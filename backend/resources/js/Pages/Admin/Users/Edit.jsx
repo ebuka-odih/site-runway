@@ -46,15 +46,15 @@ export default function Edit({ user, options }) {
     };
 
     const submitFundingAction = (operation) => {
-        fundingForm
-            .transform((data) => ({
-                ...data,
-                operation,
-            }))
-            .post(adminPath(url, `users/${user.id}/fund`), {
-                preserveScroll: true,
-                onSuccess: () => fundingForm.reset('amount', 'notes'),
-            });
+        fundingForm.transform((data) => ({
+            ...data,
+            operation,
+        }));
+
+        fundingForm.post(adminPath(url, `users/${user.id}/fund`), {
+            preserveScroll: true,
+            onSuccess: () => fundingForm.reset('amount', 'notes'),
+        });
     };
 
     return (

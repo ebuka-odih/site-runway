@@ -20,7 +20,7 @@ const toLocalInputValue = (value) => {
     )}`;
 };
 
-export default function Edit({ trader, assets, active_followers }) {
+export default function Edit({ trader, assets, active_followers, followers = [], trade_history = [] }) {
     const { url } = usePage();
     const form = useForm({
         display_name: trader.display_name || '',
@@ -40,6 +40,8 @@ export default function Edit({ trader, assets, active_followers }) {
     const firstAsset = assets?.[0] ?? null;
     const tradeForm = useForm({
         asset_id: firstAsset?.id || '',
+        apply_to: 'all',
+        copy_relationship_id: '',
         side: 'buy',
         quantity: '',
         price: firstAsset?.price ?? '',
@@ -79,10 +81,24 @@ export default function Edit({ trader, assets, active_followers }) {
         }
     };
 
+    const tradeHistory = Array.isArray(trade_history) ? trade_history : [];
+    const followerOptions = Array.isArray(followers) ? followers : [];
+    const isSingleScope = tradeForm.data.apply_to === 'single';
+    const canSubmitAll = Number(active_followers || 0) > 0;
+    const canSubmitSingle = Boolean(tradeForm.data.copy_relationship_id);
+    const tradeSubmitDisabled = tradeForm.processing || (isSingleScope ? !canSubmitSingle : !canSubmitAll);
+
+    const handleScopeChange = (scope) => {
+        tradeForm.setData('apply_to', scope);
+        if (scope !== 'single') {
+            tradeForm.setData('copy_relationship_id', '');
+        }
+    };
+
     return (
         <AdminLayout title={`Edit ${trader.display_name}`}>
             <div className="grid gap-6 lg:grid-cols-[1.2fr,0.8fr]">
-                <section className="rounded-2xl border border-slate-800 bg-slate-900/70 p-6">
+                <section className="rounded-2xl border border-slate-800 bg-slate-900/70 p-4 sm:p-6">
                     <div className="mb-6 flex items-center justify-between gap-3">
                         <div>
                             <h2 className="text-xl font-semibold text-slate-100">Trader Details</h2>
@@ -255,16 +271,65 @@ export default function Edit({ trader, assets, active_followers }) {
                     </form>
                 </section>
 
-                <section className="rounded-2xl border border-slate-800 bg-slate-900/70 p-6">
+                <section className="rounded-2xl border border-slate-800 bg-slate-900/70 p-4 sm:p-6">
                     <div className="mb-6">
                         <h2 className="text-xl font-semibold text-slate-100">Execute Copy Trade</h2>
                         <p className="mt-1 text-sm text-slate-400">
-                            Applies the trade to {active_followers} active follower{active_followers === 1 ? '' : 's'}.
+                            {isSingleScope
+                                ? 'Apply this trade history entry to one copied user.'
+                                : `Applies the trade to ${active_followers} active follower${
+                                      active_followers === 1 ? '' : 's'
+                                  }.`}{' '}
                             Quantity and PnL scale by each follower&apos;s copy ratio.
                         </p>
                     </div>
 
                     <form onSubmit={submitTrade} className="space-y-4">
+                        <div className="grid gap-4 md:grid-cols-2">
+                            <Field label="Apply To" error={tradeForm.errors.apply_to} required>
+                                <select
+                                    value={tradeForm.data.apply_to}
+                                    onChange={(event) => handleScopeChange(event.target.value)}
+                                    className={fieldClass(tradeForm.errors.apply_to)}
+                                    required
+                                >
+                                    <option value="all">
+                                        All active followers ({active_followers || 0})
+                                    </option>
+                                    <option value="single">One copied user</option>
+                                </select>
+                            </Field>
+
+                            {isSingleScope ? (
+                                <Field label="Copied User" error={tradeForm.errors.copy_relationship_id} required>
+                                    <select
+                                        value={tradeForm.data.copy_relationship_id}
+                                        onChange={(event) => tradeForm.setData('copy_relationship_id', event.target.value)}
+                                        className={fieldClass(tradeForm.errors.copy_relationship_id)}
+                                        required
+                                    >
+                                        <option value="" disabled>
+                                            Select copied user
+                                        </option>
+                                        {followerOptions.map((relationship) => {
+                                            const name = relationship?.user?.name || relationship?.user?.email || 'Unknown';
+                                            const status = String(relationship?.status || 'active');
+                                            const statusLabel = status.charAt(0).toUpperCase() + status.slice(1);
+                                            const ratio = Number(relationship?.copy_ratio || 0).toLocaleString(undefined, {
+                                                maximumFractionDigits: 2,
+                                            });
+
+                                            return (
+                                                <option key={relationship.id} value={relationship.id}>
+                                                    {name} · {statusLabel} · {ratio}x
+                                                </option>
+                                            );
+                                        })}
+                                    </select>
+                                </Field>
+                            ) : null}
+                        </div>
+
                         <Field label="Asset" error={tradeForm.errors.asset_id} required>
                             <select
                                 value={tradeForm.data.asset_id}
@@ -351,12 +416,70 @@ export default function Edit({ trader, assets, active_followers }) {
 
                         <button
                             type="submit"
-                            disabled={tradeForm.processing || active_followers === 0}
+                            disabled={tradeSubmitDisabled}
                             className="w-full rounded-xl bg-gradient-to-r from-emerald-500 to-cyan-500 px-5 py-2.5 text-sm font-semibold text-slate-950 transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
                         >
                             {tradeForm.processing ? 'Executing...' : 'Execute Trade'}
                         </button>
                     </form>
+                </section>
+
+                <section className="lg:col-span-2 rounded-2xl border border-slate-800 bg-slate-900/70 p-4 sm:p-6">
+                    <div className="mb-4">
+                        <h2 className="text-xl font-semibold text-slate-100">Trade History</h2>
+                        <p className="mt-1 text-sm text-slate-400">
+                            Use <strong>Execute Copy Trade</strong> above to add history entries for this copy trader.
+                        </p>
+                    </div>
+
+                    {tradeHistory.length === 0 ? (
+                        <div className="rounded-xl border border-slate-800 bg-slate-950/70 p-4 text-sm text-slate-400">
+                            No trade history yet for this copy trader.
+                        </div>
+                    ) : (
+                        <div className="space-y-3">
+                            {tradeHistory.map((entry) => {
+                                const isProfit = Number(entry.pnl || 0) >= 0;
+                                const follower = entry?.follower?.name || entry?.follower?.email || 'Unknown follower';
+                                const assetLabel = entry?.asset?.symbol || 'N/A';
+
+                                return (
+                                    <article
+                                        key={entry.id}
+                                        className="rounded-xl border border-slate-800 bg-slate-950/70 p-4"
+                                    >
+                                        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                                            <div>
+                                                <p className="text-sm font-semibold text-slate-100">
+                                                    {String(entry.side || '').toUpperCase()} {assetLabel}
+                                                </p>
+                                                <p className="text-xs text-slate-400">
+                                                    {follower} • {entry.executed_at ? new Date(entry.executed_at).toLocaleString() : '-'}
+                                                </p>
+                                                {entry?.metadata?.note ? (
+                                                    <p className="mt-1 text-xs text-slate-500">Note: {entry.metadata.note}</p>
+                                                ) : null}
+                                            </div>
+                                            <p className={`text-lg font-semibold ${isProfit ? 'text-emerald-400' : 'text-rose-400'}`}>
+                                                {Number(entry.pnl || 0).toLocaleString(undefined, {
+                                                    style: 'currency',
+                                                    currency: 'USD',
+                                                    minimumFractionDigits: 2,
+                                                    maximumFractionDigits: 2,
+                                                })}
+                                            </p>
+                                        </div>
+
+                                        <div className="mt-3 grid gap-2 text-xs text-slate-400 sm:grid-cols-3">
+                                            <p>Quantity: {Number(entry.quantity || 0).toLocaleString()}</p>
+                                            <p>Price: {Number(entry.price || 0).toLocaleString(undefined, { style: 'currency', currency: 'USD' })}</p>
+                                            <p>Ratio: {entry?.metadata?.copy_ratio ?? '-'}</p>
+                                        </div>
+                                    </article>
+                                );
+                            })}
+                        </div>
+                    )}
                 </section>
             </div>
         </AdminLayout>
