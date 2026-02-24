@@ -469,33 +469,35 @@ const WalletPage: React.FC = () => {
 
       {!isDepositFormOpen && !isWithdrawalFormOpen && (
         <>
-          <div className="bg-[#121212] border border-white/5 rounded-[24px] p-6">
-            <p className="text-[10px] font-black text-zinc-500 uppercase tracking-widest mb-2">Wallet Balance</p>
-            <h3 className="text-3xl font-black text-white mb-1 tabular-nums">
-              ${(summary?.wallet.cashBalance ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-            </h3>
-            <p className="text-xs text-zinc-500 font-bold">Available instantly</p>
-          </div>
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+            <div className="bg-[#121212] border border-white/5 rounded-[24px] p-6">
+              <p className="text-[10px] font-black text-zinc-500 uppercase tracking-widest mb-2">Wallet Balance</p>
+              <h3 className="text-3xl font-black text-white mb-1 tabular-nums">
+                ${(summary?.wallet.cashBalance ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              </h3>
+              <p className="text-xs text-zinc-500 font-bold">Available instantly</p>
+            </div>
 
-          <div className="bg-[#121212] border border-white/5 rounded-[24px] p-6">
-            <p className="text-[10px] font-black text-zinc-500 uppercase tracking-widest mb-2">Investing</p>
-            <h3 className="text-3xl font-black text-white mb-1 tabular-nums">
-              ${(summary?.wallet.investingBalance ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-            </h3>
-            <p className="text-xs text-zinc-500 font-bold">Total amount invested</p>
-          </div>
+            <div className="bg-[#121212] border border-white/5 rounded-[24px] p-6">
+              <p className="text-[10px] font-black text-zinc-500 uppercase tracking-widest mb-2">Investing</p>
+              <h3 className="text-3xl font-black text-white mb-1 tabular-nums">
+                ${(summary?.wallet.investingBalance ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              </h3>
+              <p className="text-xs text-zinc-500 font-bold">Total amount invested</p>
+            </div>
 
-          <div className="bg-[#121212] border border-white/5 rounded-[24px] p-6">
-            <p className="text-[10px] font-black text-zinc-500 uppercase tracking-widest mb-2">Profit</p>
-            <h3 className="text-3xl font-black text-white mb-1 tabular-nums">
-              ${(summary?.wallet.profitLoss ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-              <span className="ml-2 text-base font-bold text-zinc-400">
-                (
-                ${(summary?.wallet.tradeProfit ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                )
-              </span>
-            </h3>
-            <p className="text-xs text-emerald-500 font-black">Lifetime performance (trade profit)</p>
+            <div className="bg-[#121212] border border-white/5 rounded-[24px] p-6">
+              <p className="text-[10px] font-black text-zinc-500 uppercase tracking-widest mb-2">Profit</p>
+              <h3 className="text-3xl font-black text-white mb-1 tabular-nums">
+                ${(summary?.wallet.profitLoss ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                <span className="ml-2 text-base font-bold text-zinc-400">
+                  (
+                  ${(summary?.wallet.tradeProfit ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  )
+                </span>
+              </h3>
+              <p className="text-xs text-emerald-500 font-black">Lifetime performance (trade profit)</p>
+            </div>
           </div>
 
           <div className="space-y-3">
