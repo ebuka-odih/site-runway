@@ -44,7 +44,7 @@ const LandingLegalPage: React.FC<LandingLegalPageProps> = ({ eyebrow, title, sum
             className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-emerald-500 text-black text-xs font-black uppercase tracking-widest hover:bg-emerald-400 transition-colors"
           >
             <TrendingUp size={14} />
-            Open RunwayAlgo
+            Open PrologezPrime
           </Link>
         </div>
 

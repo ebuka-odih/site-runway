@@ -99,6 +99,7 @@ class SettingController extends Controller
     public function update(Request $request): RedirectResponse
     {
         $validated = $request->validate([
+            'brand_name' => ['required', 'string', 'max:120'],
             'site_mode' => ['required', 'string', 'in:live,maintenance'],
             'deposits_enabled' => ['required', 'boolean'],
             'withdrawals_enabled' => ['required', 'boolean'],

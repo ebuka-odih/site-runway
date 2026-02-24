@@ -1,5 +1,6 @@
 import React from 'react';
 import { X, Lock, Mail, Loader2, TrendingUp } from 'lucide-react';
+import { resolveBrandName } from '../../lib/branding';
 import type { AuthView, SignupFormState } from './types';
 
 interface LandingAuthModalProps {
@@ -46,7 +47,7 @@ const LandingAuthModal: React.FC<LandingAuthModalProps> = ({
   isSubmitting,
   submitLabel,
   theme = 'default',
-  brandName = 'RunwayAlgo',
+  brandName,
   closeAuth,
   email,
   password,
@@ -81,6 +82,7 @@ const LandingAuthModal: React.FC<LandingAuthModalProps> = ({
     return null;
   }
 
+  const resolvedBrandName = resolveBrandName(brandName);
   const isCryptoTheme = theme === 'crypto';
   const inputClass = `w-full bg-[#0a0a0a] border border-white/5 rounded-2xl py-4 px-4 text-sm font-bold text-white focus:outline-none transition-all placeholder:text-zinc-700 ${isCryptoTheme ? 'focus:border-cyan-400/40' : 'focus:border-emerald-500/40'}`;
   const inputWithIconClass = `w-full bg-[#0a0a0a] border border-white/5 rounded-2xl py-4 pl-12 pr-4 text-sm font-bold text-white focus:outline-none transition-all placeholder:text-zinc-700 ${isCryptoTheme ? 'focus:border-cyan-400/40' : 'focus:border-emerald-500/40'}`;
@@ -105,7 +107,7 @@ const LandingAuthModal: React.FC<LandingAuthModalProps> = ({
           <div className={`w-16 h-16 rounded-2xl bg-gradient-to-br flex items-center justify-center shadow-lg mb-6 ${isCryptoTheme ? 'from-cyan-300 to-blue-500 shadow-cyan-500/20' : 'from-emerald-400 to-emerald-600 shadow-emerald-500/20'}`}>
             <TrendingUp className="text-black" size={32} strokeWidth={3} />
           </div>
-          <h2 className="text-3xl font-black text-white tracking-tight text-center uppercase italic">{brandName}</h2>
+          <h2 className="text-3xl font-black text-white tracking-tight text-center">{resolvedBrandName}</h2>
           {authView === 'login' && <p className="text-zinc-500 font-bold text-sm mt-2">Welcome back to the terminal.</p>}
           {authView === 'signup' && <p className="text-zinc-500 font-bold text-sm mt-2">Create your account with email only.</p>}
           {authView === 'verify' && <p className="text-zinc-500 font-bold text-sm mt-2">Verify your email with a 6-digit OTP.</p>}

@@ -9,12 +9,14 @@ import {
   apiVerifyEmailOtp,
   setAuthToken,
 } from '../lib/api';
+import { resolveBrandName } from '../lib/branding';
 import type { AuthView, SignupFormState } from './landing/types';
 
 interface AuthPageProps {
   onLogin: (email: string, password: string) => Promise<boolean>;
   authError: string | null;
   view: AuthView;
+  brandName?: string;
 }
 
 interface AuthNavigationState {
@@ -34,9 +36,10 @@ const AUTH_ROUTE_BY_VIEW: Record<AuthView, string> = {
   reset: '/reset',
 };
 
-const AuthPage: React.FC<AuthPageProps> = ({ onLogin, authError, view }) => {
+const AuthPage: React.FC<AuthPageProps> = ({ onLogin, authError, view, brandName }) => {
   const navigate = useNavigate();
   const location = useLocation();
+  const resolvedBrandName = resolveBrandName(brandName);
   const navState = (location.state ?? {}) as AuthNavigationState;
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [email, setEmail] = useState('');
@@ -260,7 +263,7 @@ const AuthPage: React.FC<AuthPageProps> = ({ onLogin, authError, view }) => {
               <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-[#059669] text-white shadow-lg shadow-[0_0_10px_rgba(5,150,105,0.3)]">
                 <TrendingUp size={16} strokeWidth={2.5} />
               </div>
-              <span className="text-xs font-black uppercase tracking-[0.2em] text-white">ENV</span>
+              <span className="text-xs font-black tracking-[0.08em] text-white">{resolvedBrandName}</span>
             </div>
           </div>
 

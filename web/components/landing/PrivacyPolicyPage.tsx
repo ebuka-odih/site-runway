@@ -6,7 +6,7 @@ const PrivacyPolicyPage: React.FC = () => {
     <LandingLegalPage
       eyebrow="Privacy"
       title="Privacy Policy"
-      summary="This policy explains how RunwayAlgo collects, uses, stores, and protects personal and account data when you use the platform."
+      summary="This policy explains how PrologezPrime collects, uses, stores, and protects personal and account data when you use the platform."
       lastUpdated="February 17, 2026"
       sections={[
         {

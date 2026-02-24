@@ -9,11 +9,13 @@ import {
 } from '../lib/api';
 import LandingMarketing from './landing/LandingMarketing';
 import LandingAuthModal from './landing/LandingAuthModal';
+import { resolveBrandName } from '../lib/branding';
 import type { AuthView, SignupFormState } from './landing/types';
 
 interface LandingPageProps {
   onLogin: (email: string, password: string) => Promise<boolean>;
   authError: string | null;
+  brandName?: string;
   initialAuthView?: AuthView;
   openAuthOnMount?: boolean;
 }
@@ -24,9 +26,11 @@ const DEFAULT_SIGNUP_COUNTRY = 'United States';
 const LandingPage: React.FC<LandingPageProps> = ({
   onLogin,
   authError,
+  brandName,
   initialAuthView = 'login',
   openAuthOnMount = false,
 }) => {
+  const resolvedBrandName = resolveBrandName(brandName);
   const [showLogin, setShowLogin] = useState(false);
   const [authView, setAuthView] = useState<AuthView>('login');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -237,7 +241,7 @@ const LandingPage: React.FC<LandingPageProps> = ({
         </div>
       </div>
 
-      <LandingMarketing onOpenAuth={openAuth} />
+      <LandingMarketing onOpenAuth={openAuth} brandName={resolvedBrandName} />
 
       <LandingAuthModal
         show={showLogin}
@@ -255,6 +259,7 @@ const LandingPage: React.FC<LandingPageProps> = ({
         resetOtp={resetOtp}
         resetPassword={resetPassword}
         currencies={BASE_CURRENCIES}
+        brandName={resolvedBrandName}
         authNotice={authNotice}
         currentError={currentError}
         setEmail={setEmail}

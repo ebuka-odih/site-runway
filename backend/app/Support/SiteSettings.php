@@ -14,6 +14,7 @@ class SiteSettings
     public static function defaults(): array
     {
         return [
+            'brand_name' => 'PrologezPrime',
             'site_mode' => 'live',
             'deposits_enabled' => true,
             'withdrawals_enabled' => true,

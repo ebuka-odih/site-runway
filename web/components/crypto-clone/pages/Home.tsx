@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowRight, ChevronRight, Speaker, UserPlus, Wallet, BarChart3, Shield, Zap, Headphones, BookOpen, TrendingUp } from 'lucide-react';
+import { resolveBrandName } from '../../../lib/branding';
 
 const TradingViewWidget = () => {
   const container = useRef<HTMLDivElement>(null);
@@ -59,7 +60,13 @@ const TradingViewWidget = () => {
   );
 };
 
-export default function Home() {
+interface HomeProps {
+  brandName?: string;
+}
+
+export default function Home({ brandName }: HomeProps) {
+  const resolvedBrandName = resolveBrandName(brandName);
+
   return (
     <div className="bg-[#050B14]">
       {/* Hero Section */}
@@ -138,10 +145,10 @@ export default function Home() {
             <span>Direct GBP Deposits!</span>
           </div>
           <div className="text-center">
-            ENV Crypto Officially Launches Globally!
+            {resolvedBrandName} Officially Launches Globally!
           </div>
           <div className="flex items-center gap-2 group cursor-pointer">
-            <span className="truncate max-w-[200px] md:max-w-none">ENV Crypto: FAQs, Access, and What's Available at Launch</span>
+            <span className="truncate max-w-[200px] md:max-w-none">{resolvedBrandName}: FAQs, Access, and What's Available at Launch</span>
             <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
           </div>
         </div>
@@ -219,7 +226,7 @@ export default function Home() {
       <section className="bg-white text-[#1A1A1A] py-24 border-t border-slate-100">
         <div className="max-w-7xl mx-auto px-6">
           <div className="text-center max-w-3xl mx-auto mb-16 space-y-4">
-            <h2 className="text-4xl font-bold">Why Choose ENV Crypto?</h2>
+            <h2 className="text-4xl font-bold">Why Choose {resolvedBrandName}?</h2>
             <p className="text-slate-500">
               We provide the most reliable and secure platform for your digital asset trading needs, 
               backed by industry-leading technology and support.
@@ -287,7 +294,7 @@ export default function Home() {
               {
                 step: '2',
                 title: 'Make Deposit',
-                desc: 'Fund your account on the ENV platform.',
+                desc: `Fund your account on the ${resolvedBrandName} platform.`,
                 btn: 'Deposit Now',
                 icon: <Wallet className="w-10 h-10 text-[#059669]" />
               },

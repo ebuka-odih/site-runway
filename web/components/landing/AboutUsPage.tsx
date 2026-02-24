@@ -5,14 +5,14 @@ const AboutUsPage: React.FC = () => {
   return (
     <LandingLegalPage
       eyebrow="Company"
-      title="About RunwayAlgo"
-      summary="RunwayAlgo is a trading platform focused on clear market access, practical automation, and execution tools designed for both developing and experienced traders."
+      title="About PrologezPrime"
+      summary="PrologezPrime is a trading platform focused on clear market access, practical automation, and execution tools designed for both developing and experienced traders."
       lastUpdated="February 17, 2026"
       sections={[
         {
           heading: 'Who We Are',
           paragraphs: [
-            'RunwayAlgo is built to simplify complex market workflows without removing the depth needed by active traders.',
+            'PrologezPrime is built to simplify complex market workflows without removing the depth needed by active traders.',
             'Our product combines multi-asset market visibility, portfolio controls, and copy-trading workflows inside one dashboard.',
           ],
         },
@@ -26,7 +26,7 @@ const AboutUsPage: React.FC = () => {
         {
           heading: 'How We Operate',
           paragraphs: [
-            'RunwayAlgo maintains operational controls for account verification, transaction review, and security monitoring.',
+            'PrologezPrime maintains operational controls for account verification, transaction review, and security monitoring.',
             'Platform policies and legal disclosures are maintained as separate documents so users can review obligations and risks before trading.',
           ],
         },

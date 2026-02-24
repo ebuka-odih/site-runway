@@ -14,6 +14,7 @@ class PublicSettingsController extends Controller
 
         return response()->json([
             'data' => [
+                'brand_name' => $settings['brand_name'] ?? null,
                 'site_mode' => $settings['site_mode'],
                 'deposits_enabled' => (bool) $settings['deposits_enabled'],
                 'withdrawals_enabled' => (bool) $settings['withdrawals_enabled'],

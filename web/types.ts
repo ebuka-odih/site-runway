@@ -115,6 +115,7 @@ export interface AuthUser {
 }
 
 export interface PublicSettings {
+  brandName: string;
   siteMode: string;
   depositsEnabled: boolean;
   withdrawalsEnabled: boolean;

@@ -21,9 +21,13 @@ import CryptoCloneLayout from './components/crypto-clone/Layout';
 import CryptoCloneHome from './components/crypto-clone/pages/Home';
 import CryptoCloneAbout from './components/crypto-clone/pages/About';
 import CryptoClonePrivacy from './components/crypto-clone/pages/Privacy';
+import CryptoCloneProducts from './components/crypto-clone/pages/Products';
+import CryptoCloneRisk from './components/crypto-clone/pages/Risk';
 import CryptoCloneTerms from './components/crypto-clone/pages/Terms';
+import { apiPublicSettings } from './lib/api';
+import { resolveBrandName } from './lib/branding';
 import { MarketProvider, useMarket } from './context/MarketContext';
-import type { SelectableAsset } from './types';
+import type { PublicSettings, SelectableAsset } from './types';
 
 const DASHBOARD_MAX_WIDTH_CLASS = 'max-w-[768px]';
 
@@ -35,6 +39,7 @@ const DASHBOARD_LAST_ROUTE_KEYS = {
 const TAB_TO_ROUTE = {
   default: {
     Home: '/dashboard/home',
+    Market: '/dashboard/market',
     Trade: '/dashboard/trade',
     Copy: '/dashboard/copy',
     Wallet: '/dashboard/wallet',
@@ -42,6 +47,7 @@ const TAB_TO_ROUTE = {
   },
   crypto: {
     Home: '/crypto/dashboard/home',
+    Market: '/crypto/dashboard/market',
     Trade: '/crypto/dashboard/trade',
     Copy: '/crypto/dashboard/copy',
     Wallet: '/crypto/dashboard/wallet',
@@ -64,6 +70,7 @@ const HomeDashboard: React.FC<{ onAssetClick: (asset: SelectableAsset) => void; 
 );
 
 const resolveActiveTab = (pathname: string): string => {
+  if (pathname.startsWith('/dashboard/market') || pathname.startsWith('/crypto/dashboard/market')) return 'Market';
   if (pathname.startsWith('/dashboard/trade') || pathname.startsWith('/crypto/dashboard/trade')) return 'Trade';
   if (pathname.startsWith('/dashboard/copy') || pathname.startsWith('/crypto/dashboard/copy')) return 'Copy';
   if (pathname.startsWith('/dashboard/wallet') || pathname.startsWith('/crypto/dashboard/wallet')) return 'Wallet';
@@ -95,10 +102,36 @@ const AppContent: React.FC = () => {
   const activeRouteMap = TAB_TO_ROUTE[activeDashboardMode];
   const [isTradingDeskOpen, setIsTradingDeskOpen] = useState(false);
   const [selectedAsset, setSelectedAsset] = useState<SelectableAsset | null>(null);
+  const [publicSettings, setPublicSettings] = useState<PublicSettings | null>(null);
 
   const handleAssetSelect = (asset: SelectableAsset) => {
     setSelectedAsset(asset);
   };
+
+  useEffect(() => {
+    let isActive = true;
+
+    const loadPublicSettings = async () => {
+      try {
+        const settings = await apiPublicSettings();
+        if (isActive) {
+          setPublicSettings(settings);
+        }
+      } catch {
+        if (isActive) {
+          setPublicSettings(null);
+        }
+      }
+    };
+
+    void loadPublicSettings();
+
+    return () => {
+      isActive = false;
+    };
+  }, []);
+
+  const siteBrandName = useMemo(() => resolveBrandName(publicSettings?.brandName), [publicSettings?.brandName]);
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -164,7 +197,7 @@ const AppContent: React.FC = () => {
   }, [isBootstrapping, isAuthenticated, location.pathname, navigate]);
 
   useEffect(() => {
-    if (activeTab !== 'Trade' && isTradingDeskOpen) {
+    if (activeTab !== 'Trade' && activeTab !== 'Market' && isTradingDeskOpen) {
       setIsTradingDeskOpen(false);
     }
   }, [activeTab, isTradingDeskOpen]);
@@ -197,12 +230,13 @@ const AppContent: React.FC = () => {
   if (!isAuthenticated) {
     return (
       <Routes>
-        <Route path="/" element={<CryptoCloneLayout />}>
-          <Route index element={<CryptoCloneHome />} />
-          <Route path="about" element={<CryptoCloneAbout />} />
-          <Route path="privacy" element={<CryptoClonePrivacy />} />
-          <Route path="terms" element={<CryptoCloneTerms />} />
-          <Route path="risk" element={<CryptoCloneTerms />} />
+        <Route path="/" element={<CryptoCloneLayout brandName={siteBrandName} />}>
+          <Route index element={<CryptoCloneHome brandName={siteBrandName} />} />
+          <Route path="products" element={<CryptoCloneProducts />} />
+          <Route path="about" element={<CryptoCloneAbout brandName={siteBrandName} />} />
+          <Route path="privacy" element={<CryptoClonePrivacy brandName={siteBrandName} />} />
+          <Route path="terms" element={<CryptoCloneTerms brandName={siteBrandName} />} />
+          <Route path="risk" element={<CryptoCloneRisk brandName={siteBrandName} />} />
         </Route>
         <Route path="/crypto" element={<Navigate to="/" replace />} />
         <Route
@@ -211,6 +245,7 @@ const AppContent: React.FC = () => {
             <LandingPage
               onLogin={login}
               authError={authError}
+              brandName={siteBrandName}
             />
           )}
         />
@@ -221,6 +256,7 @@ const AppContent: React.FC = () => {
               onLogin={login}
               authError={authError}
               view="login"
+              brandName={siteBrandName}
             />
           )}
         />
@@ -231,6 +267,7 @@ const AppContent: React.FC = () => {
               onLogin={login}
               authError={authError}
               view="signup"
+              brandName={siteBrandName}
             />
           )}
         />
@@ -241,6 +278,7 @@ const AppContent: React.FC = () => {
               onLogin={login}
               authError={authError}
               view="verify"
+              brandName={siteBrandName}
             />
           )}
         />
@@ -251,6 +289,7 @@ const AppContent: React.FC = () => {
               onLogin={login}
               authError={authError}
               view="forgot"
+              brandName={siteBrandName}
             />
           )}
         />
@@ -261,6 +300,7 @@ const AppContent: React.FC = () => {
               onLogin={login}
               authError={authError}
               view="reset"
+              brandName={siteBrandName}
             />
           )}
         />
@@ -322,7 +362,7 @@ const AppContent: React.FC = () => {
       <div className={`fixed bottom-0 right-0 w-64 h-64 blur-[120px] pointer-events-none -z-10 ${isCryptoMode ? 'bg-blue-500/10' : 'bg-emerald-500/5'}`} />
       <div className={`fixed top-1/2 left-0 w-64 h-64 blur-[120px] pointer-events-none -z-10 ${isCryptoMode ? 'bg-cyan-500/10' : 'bg-emerald-500/5'}`} />
 
-      {activeTab !== 'Profile' && <Header profileRoute={activeRouteMap.Profile} brandName={isCryptoMode ? 'env' : 'RunwayAlgo'} />}
+      {activeTab !== 'Profile' && <Header profileRoute={activeRouteMap.Profile} brandName={siteBrandName} />}
 
       {requiresAdminVerification && (
         <div className="mx-4 mt-4 rounded-2xl border border-amber-500/30 bg-amber-500/10 p-4">
@@ -357,6 +397,15 @@ const AppContent: React.FC = () => {
           <Route path="/dashboard/home" element={<HomeDashboard onAssetClick={handleAssetSelect} onOpenWatchlist={() => navigate('/dashboard/watchlist')} />} />
           <Route path="/dashboard/watchlist" element={<WatchlistPage onBack={() => navigate('/dashboard/home')} onAssetClick={handleAssetSelect} />} />
           <Route
+            path="/dashboard/market"
+            element={(
+              <TradePage
+                onOpenTradingDesk={() => setIsTradingDeskOpen(true)}
+                onAssetClick={handleAssetSelect}
+              />
+            )}
+          />
+          <Route
             path="/dashboard/trade"
             element={(
               <TradePage
@@ -371,6 +420,15 @@ const AppContent: React.FC = () => {
 
           <Route path="/crypto/dashboard/home" element={<CryptoHomeDashboard onAssetClick={handleAssetSelect} onOpenWatchlist={() => navigate('/crypto/dashboard/watchlist')} />} />
           <Route path="/crypto/dashboard/watchlist" element={<WatchlistPage onBack={() => navigate('/crypto/dashboard/home')} onAssetClick={handleAssetSelect} />} />
+          <Route
+            path="/crypto/dashboard/market"
+            element={(
+              <TradePage
+                onOpenTradingDesk={() => setIsTradingDeskOpen(true)}
+                onAssetClick={handleAssetSelect}
+              />
+            )}
+          />
           <Route
             path="/crypto/dashboard/trade"
             element={(

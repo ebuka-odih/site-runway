@@ -22,11 +22,13 @@ import {
 } from 'lucide-react';
 import LiveChatEmbed from '../LiveChatEmbed';
 import { apiPublicSettings } from '../../lib/api';
+import { resolveBrandName } from '../../lib/branding';
 import type { PublicSettings } from '../../types';
 import type { AuthView } from './types';
 
 interface LandingMarketingProps {
   onOpenAuth: (view?: AuthView) => void;
+  brandName?: string;
 }
 
 const TradingViewMarketsWidget: React.FC = () => {
@@ -103,8 +105,9 @@ const TradingViewMarketsWidget: React.FC = () => {
   );
 };
 
-const LandingMarketing: React.FC<LandingMarketingProps> = ({ onOpenAuth }) => {
+const LandingMarketing: React.FC<LandingMarketingProps> = ({ onOpenAuth, brandName }) => {
   const [publicSettings, setPublicSettings] = useState<PublicSettings | null>(null);
+  const resolvedBrandName = resolveBrandName(brandName);
 
   useEffect(() => {
     let isActive = true;
@@ -139,7 +142,7 @@ const LandingMarketing: React.FC<LandingMarketingProps> = ({ onOpenAuth }) => {
         <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center shadow-lg shadow-emerald-500/20">
           <TrendingUp className="text-black" size={24} strokeWidth={3} />
         </div>
-        <span className="text-xl font-black tracking-tighter uppercase italic">RunwayAlgo</span>
+        <span className="text-xl font-black tracking-tighter">{resolvedBrandName}</span>
       </div>
       <div className="hidden md:flex items-center gap-8 text-sm font-bold text-zinc-400 uppercase tracking-widest">
         <a href="#markets" className="hover:text-emerald-500 transition-colors">Markets</a>
@@ -326,7 +329,7 @@ const LandingMarketing: React.FC<LandingMarketingProps> = ({ onOpenAuth }) => {
           {
             id: 'copy-trading',
             icon: Users,
-            title: 'RunwayAlgo CopyTrading',
+            title: `${resolvedBrandName} CopyTrading`,
             desc: "Follow the world's most profitable traders and mirror their moves automatically in real-time.",
             color: 'bg-blue-500',
           },
@@ -414,7 +417,7 @@ const LandingMarketing: React.FC<LandingMarketingProps> = ({ onOpenAuth }) => {
             {
               name: 'Alex Rivera',
               role: 'Hedge Fund Manager',
-              quote: 'RunwayAlgo is the first platform that actually matches the speed of institutional terminals. The execution is flawless.',
+              quote: `${resolvedBrandName} is the first platform that actually matches the speed of institutional terminals. The execution is flawless.`,
               gain: '+142%',
             },
             {
@@ -457,7 +460,7 @@ const LandingMarketing: React.FC<LandingMarketingProps> = ({ onOpenAuth }) => {
         <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-white/10 blur-[100px] rounded-full -translate-y-1/2 translate-x-1/2" />
         <div className="relative z-10 flex flex-col md:flex-row items-center justify-between gap-12">
           <div className="max-w-xl text-center md:text-left">
-            <h2 className="text-4xl md:text-6xl font-black text-black tracking-tighter mb-6 uppercase italic">Join RunwayAlgo.</h2>
+            <h2 className="text-4xl md:text-6xl font-black text-black tracking-tighter mb-6 uppercase italic">Join {resolvedBrandName}.</h2>
             <p className="text-black/70 text-lg font-bold">Start your journey today with $0 fees and instant global access.</p>
           </div>
           <button
@@ -478,7 +481,7 @@ const LandingMarketing: React.FC<LandingMarketingProps> = ({ onOpenAuth }) => {
             <div className="w-8 h-8 rounded-lg bg-emerald-500 flex items-center justify-center">
               <TrendingUp className="text-black" size={18} strokeWidth={3} />
             </div>
-            <span className="text-lg font-black tracking-tighter uppercase italic">RunwayAlgo</span>
+            <span className="text-lg font-black tracking-tighter">{resolvedBrandName}</span>
           </div>
           <p className="text-zinc-500 font-medium max-w-sm mb-8">
             Empowering professional and amateur traders with the most intuitive, high-performance financial tools available.
@@ -571,7 +574,7 @@ const LandingMarketing: React.FC<LandingMarketingProps> = ({ onOpenAuth }) => {
         </section>
       </div>
       <div className="flex flex-col md:flex-row items-center justify-between pt-10 border-t border-white/5 gap-6">
-        <p className="text-[10px] font-black text-zinc-600 uppercase tracking-widest">© 2026 RUNWAYALGO. ALL RIGHTS RESERVED.</p>
+        <p className="text-[10px] font-black text-zinc-600 uppercase tracking-widest">© 2026 {resolvedBrandName.toUpperCase()}. ALL RIGHTS RESERVED.</p>
         <div className="flex gap-8 text-[10px] font-black text-zinc-600 uppercase tracking-widest">
           <Link to="/privacy-policy" className="hover:text-white transition-colors">Privacy Policy</Link>
           <Link to="/terms-of-service" className="hover:text-white transition-colors">Terms of Service</Link>

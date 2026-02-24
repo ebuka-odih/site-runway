@@ -21,6 +21,7 @@ import type {
   WalletTransactionItem,
   WatchlistItem,
 } from '../types';
+import { DEFAULT_BRAND_NAME } from './branding';
 
 export const API_BASE_URL = String(__API_BASE_URL__ || '/api/v1');
 const TOKEN_STORAGE_KEY = 'runwayalgo.api.token';
@@ -289,6 +290,7 @@ function mapCopyTrade(raw: any): CopyTradeHistoryItem {
 
 function mapPublicSettings(raw: any): PublicSettings {
   return {
+    brandName: String(raw.brand_name ?? DEFAULT_BRAND_NAME),
     siteMode: String(raw.site_mode ?? 'live'),
     depositsEnabled: Boolean(raw.deposits_enabled),
     withdrawalsEnabled: Boolean(raw.withdrawals_enabled),

@@ -8,12 +8,14 @@ import {
   apiVerifyEmailOtp,
   setAuthToken,
 } from '../../lib/api';
+import { resolveBrandInitial, resolveBrandName } from '../../lib/branding';
 import LandingAuthModal from '../landing/LandingAuthModal';
 import type { AuthView, SignupFormState } from '../landing/types';
 
 interface CryptoLandingPageProps {
   onLogin: (email: string, password: string) => Promise<boolean>;
   authError: string | null;
+  brandName?: string;
 }
 
 const BASE_CURRENCIES = ['USD', 'EUR', 'GBP'] as const;
@@ -35,7 +37,9 @@ const FEATURE_ITEMS = [
   },
 ];
 
-const CryptoLandingPage: React.FC<CryptoLandingPageProps> = ({ onLogin, authError }) => {
+const CryptoLandingPage: React.FC<CryptoLandingPageProps> = ({ onLogin, authError, brandName }) => {
+  const resolvedBrandName = resolveBrandName(brandName);
+  const brandInitial = resolveBrandInitial(brandName);
   const [showLogin, setShowLogin] = useState(false);
   const [authView, setAuthView] = useState<AuthView>('login');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -238,11 +242,11 @@ const CryptoLandingPage: React.FC<CryptoLandingPageProps> = ({ onLogin, authErro
         <header className="flex flex-wrap items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-cyan-300 to-blue-500 text-black shadow-lg shadow-cyan-500/30">
-              <span className="text-lg font-black">C</span>
+              <span className="text-lg font-black">{brandInitial}</span>
             </div>
             <div>
-              <p className="text-sm font-black tracking-[0.25em] text-cyan-200 uppercase">env</p>
-              <p className="text-xs text-zinc-300">Crypto Edition</p>
+              <p className="text-sm font-black tracking-[0.12em] text-cyan-200">{resolvedBrandName}</p>
+              <p className="text-xs text-zinc-300">Crypto Trading Edition</p>
             </div>
           </div>
 
@@ -367,7 +371,7 @@ const CryptoLandingPage: React.FC<CryptoLandingPageProps> = ({ onLogin, authErro
             <p className="text-[10px] font-black uppercase tracking-[0.24em] text-cyan-200">Get Started</p>
             <h3 className="mt-3 text-2xl font-black text-white">Open Your Crypto Terminal</h3>
             <p className="mt-3 text-sm text-zinc-200">
-              Create an account, verify your email, and enter the `env` dashboard to begin trading.
+              Create an account, verify your email, and enter the {resolvedBrandName} dashboard to begin trading.
             </p>
             <div className="mt-6 flex flex-wrap gap-3">
               <button
@@ -395,7 +399,7 @@ const CryptoLandingPage: React.FC<CryptoLandingPageProps> = ({ onLogin, authErro
         isSubmitting={isSubmitting}
         submitLabel={submitLabel}
         theme="crypto"
-        brandName="env"
+        brandName={resolvedBrandName}
         closeAuth={closeAuth}
         email={email}
         password={password}

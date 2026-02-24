@@ -2,9 +2,16 @@ import { useState } from 'react';
 import { Outlet, Link } from 'react-router-dom';
 import { Menu, X, ChevronRight } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import { resolveBrandInitial, resolveBrandName } from '../../lib/branding';
 
-export default function Layout() {
+interface LayoutProps {
+  brandName?: string;
+}
+
+export default function Layout({ brandName }: LayoutProps) {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const resolvedBrandName = resolveBrandName(brandName);
+  const brandInitial = resolveBrandInitial(brandName);
 
   return (
     <div className="min-h-screen bg-[#050B14] text-white font-sans selection:bg-[#064E3B]/30">
@@ -18,16 +25,16 @@ export default function Layout() {
           <div className="flex items-center gap-10">
             <Link to="/" className="flex items-center gap-3 group" onClick={() => setIsMenuOpen(false)}>
               <div className="w-8 h-8 bg-[#059669] rounded flex items-center justify-center text-white font-bold text-lg shadow-[0_0_10px_rgba(5,150,105,0.3)]">
-                E
+                {brandInitial}
               </div>
-              <div className="font-bold tracking-tight text-xl">ENV</div>
+              <div className="font-bold tracking-tight text-xl">{resolvedBrandName}</div>
             </Link>
             
             <nav className="hidden lg:flex items-center gap-8 text-sm font-medium text-slate-300">
-              <Link to="/" className="hover:text-[#059669] transition-colors">Buy Crypto</Link>
-              <Link to="/" className="hover:text-[#059669] transition-colors">Markets</Link>
-              <Link to="/" className="hover:text-[#059669] transition-colors">Trade</Link>
-              <Link to="/" className="hover:text-[#059669] transition-colors">Derivatives</Link>
+              <Link to="/products#buy-crypto" className="hover:text-[#059669] transition-colors">Buy Crypto</Link>
+              <Link to="/products#markets" className="hover:text-[#059669] transition-colors">Markets</Link>
+              <Link to="/products#trade" className="hover:text-[#059669] transition-colors">Trade</Link>
+              <Link to="/products#derivatives" className="hover:text-[#059669] transition-colors">Derivatives</Link>
               <Link to="/about" className="hover:text-[#059669] transition-colors">About</Link>
             </nav>
           </div>
@@ -64,10 +71,10 @@ export default function Layout() {
             >
               <nav className="flex flex-col p-6 gap-3">
                 {[
-                  { name: 'Buy Crypto', path: '/' },
-                  { name: 'Markets', path: '/' },
-                  { name: 'Trade', path: '/' },
-                  { name: 'Derivatives', path: '/' },
+                  { name: 'Buy Crypto', path: '/products#buy-crypto' },
+                  { name: 'Markets', path: '/products#markets' },
+                  { name: 'Trade', path: '/products#trade' },
+                  { name: 'Derivatives', path: '/products#derivatives' },
                   { name: 'About Us', path: '/about' },
                 ].map((item, i) => (
                   <motion.div
@@ -144,7 +151,7 @@ export default function Layout() {
       <footer className="bg-[#0A0F1A] border-t border-white/5">
         <div className="max-w-7xl mx-auto px-6 py-12 flex flex-col md:flex-row items-center justify-between gap-6 text-sm text-slate-500">
           <div>
-            © 2026 ENV Crypto. All rights reserved.
+            © 2026 {resolvedBrandName}. All rights reserved.
           </div>
           <div className="flex items-center gap-8">
             <Link to="/risk" className="hover:text-[#059669] transition-colors">Risk Disclosure</Link>

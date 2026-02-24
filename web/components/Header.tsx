@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Bell, CheckCheck, Settings } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useMarket } from '../context/MarketContext';
+import { resolveBrandName } from '../lib/branding';
 import type { UserNotificationItem } from '../types';
 
 interface HeaderProps {
@@ -9,8 +10,9 @@ interface HeaderProps {
   brandName?: string;
 }
 
-const Header: React.FC<HeaderProps> = ({ profileRoute = '/dashboard/profile', brandName = 'RunwayAlgo' }) => {
+const Header: React.FC<HeaderProps> = ({ profileRoute = '/dashboard/profile', brandName }) => {
   const navigate = useNavigate();
+  const resolvedBrandName = resolveBrandName(brandName);
   const {
     notifications,
     unreadNotificationCount,
@@ -86,7 +88,7 @@ const Header: React.FC<HeaderProps> = ({ profileRoute = '/dashboard/profile', br
           </svg>
         </div>
         <div>
-          <h1 className="text-lg font-bold tracking-tight text-white leading-none">{brandName}</h1>
+          <h1 className="text-lg font-bold tracking-tight text-white leading-none">{resolvedBrandName}</h1>
         </div>
       </div>
 

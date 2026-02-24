@@ -7,6 +7,7 @@ export default function Index({ settings }) {
     const { url } = usePage();
     const [activeTab, setActiveTab] = useState('site');
     const form = useForm({
+        brand_name: settings.brand_name || 'PrologezPrime',
         site_mode: settings.site_mode,
         deposits_enabled: Boolean(settings.deposits_enabled),
         withdrawals_enabled: Boolean(settings.withdrawals_enabled),
@@ -71,7 +72,21 @@ export default function Index({ settings }) {
 
                 {activeTab === 'site' && (
                     <form onSubmit={submit} className="mt-6 space-y-5">
-                        <div className="grid gap-4 md:grid-cols-2">
+                        <div className="grid gap-4 md:grid-cols-3">
+                            <label className="block">
+                                <span className="mb-2 block text-sm text-slate-300">Brand Name</span>
+                                <input
+                                    type="text"
+                                    value={form.data.brand_name}
+                                    onChange={(event) => form.setData('brand_name', event.target.value)}
+                                    className="w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2.5 text-sm text-slate-100 outline-none transition focus:border-cyan-400"
+                                    required
+                                />
+                                {form.errors.brand_name && (
+                                    <span className="mt-1 block text-xs text-rose-300">{form.errors.brand_name}</span>
+                                )}
+                            </label>
+
                             <label className="block">
                                 <span className="mb-2 block text-sm text-slate-300">Site Mode</span>
                                 <select
