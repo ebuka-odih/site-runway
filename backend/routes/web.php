@@ -8,11 +8,14 @@ use App\Http\Controllers\Admin\PaymentMethodController;
 use App\Http\Controllers\Admin\SettingController;
 use App\Http\Controllers\Admin\TransactionController;
 use App\Http\Controllers\Admin\UserController;
+use App\Support\SiteSettings;
 use Illuminate\Support\Facades\Route;
 
 Route::any('/', function () {
+    $brandName = (string) (SiteSettings::get()['brand_name'] ?? SiteSettings::defaults()['brand_name']);
+
     return response()->json([
-        'name' => 'RunwayAlgo API',
+        'name' => "{$brandName} API",
         'status' => 'ok',
         'version' => 'v1',
     ]);
@@ -50,6 +53,7 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::get('/copy-traders/{trader}/edit', [CopyTraderController::class, 'edit'])->name('copy-traders.edit');
         Route::put('/copy-traders/{trader}', [CopyTraderController::class, 'update'])->name('copy-traders.update');
         Route::post('/copy-traders/{trader}/trades', [CopyTraderController::class, 'storeTrade'])->name('copy-traders.trades.store');
+        Route::put('/copy-traders/{trader}/trades/{copyTrade}', [CopyTraderController::class, 'updateTrade'])->name('copy-traders.trades.update');
         Route::delete('/copy-traders/{trader}', [CopyTraderController::class, 'destroy'])->name('copy-traders.destroy');
 
         Route::get('/kyc', [KycVerificationController::class, 'index'])->name('kyc.index');

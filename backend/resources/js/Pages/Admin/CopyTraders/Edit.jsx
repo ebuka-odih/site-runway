@@ -49,6 +49,10 @@ export default function Edit({ trader, assets, active_followers, followers = [],
         pnl: '',
         note: '',
     });
+    const tradeUpdateForm = useForm({
+        trade_id: '',
+        pnl: '',
+    });
 
     const submit = (event) => {
         event.preventDefault();
@@ -79,6 +83,37 @@ export default function Edit({ trader, assets, active_followers, followers = [],
         if (selected) {
             tradeForm.setData('price', selected.price);
         }
+    };
+
+    const startTradeEdit = (entry) => {
+        tradeUpdateForm.clearErrors();
+        tradeUpdateForm.setData({
+            trade_id: entry.id,
+            pnl: Number(entry?.pnl ?? 0).toFixed(2),
+        });
+    };
+
+    const cancelTradeEdit = () => {
+        tradeUpdateForm.reset('trade_id', 'pnl');
+        tradeUpdateForm.clearErrors();
+    };
+
+    const submitTradePnlUpdate = (event) => {
+        event.preventDefault();
+
+        if (!tradeUpdateForm.data.trade_id) {
+            return;
+        }
+
+        tradeUpdateForm.put(
+            adminPath(url, `copy-traders/${trader.id}/trades/${tradeUpdateForm.data.trade_id}`),
+            {
+                preserveScroll: true,
+                onSuccess: () => {
+                    cancelTradeEdit();
+                },
+            },
+        );
     };
 
     const tradeHistory = Array.isArray(trade_history) ? trade_history : [];
@@ -442,6 +477,7 @@ export default function Edit({ trader, assets, active_followers, followers = [],
                                 const isProfit = Number(entry.pnl || 0) >= 0;
                                 const follower = entry?.follower?.name || entry?.follower?.email || 'Unknown follower';
                                 const assetLabel = entry?.asset?.symbol || 'N/A';
+                                const isEditing = tradeUpdateForm.data.trade_id === entry.id;
 
                                 return (
                                     <article
@@ -474,6 +510,47 @@ export default function Edit({ trader, assets, active_followers, followers = [],
                                             <p>Quantity: {Number(entry.quantity || 0).toLocaleString()}</p>
                                             <p>Price: {Number(entry.price || 0).toLocaleString(undefined, { style: 'currency', currency: 'USD' })}</p>
                                             <p>Ratio: {entry?.metadata?.copy_ratio ?? '-'}</p>
+                                        </div>
+
+                                        <div className="mt-3 border-t border-slate-800/80 pt-3">
+                                            {isEditing ? (
+                                                <form onSubmit={submitTradePnlUpdate} className="flex flex-col gap-2 sm:flex-row sm:items-end">
+                                                    <Field label="Edit PnL (Follower)" error={tradeUpdateForm.errors.pnl}>
+                                                        <input
+                                                            type="number"
+                                                            step="0.01"
+                                                            value={tradeUpdateForm.data.pnl}
+                                                            onChange={(event) => tradeUpdateForm.setData('pnl', event.target.value)}
+                                                            className={fieldClass(tradeUpdateForm.errors.pnl)}
+                                                            required
+                                                        />
+                                                    </Field>
+                                                    <div className="flex gap-2 pb-0.5">
+                                                        <button
+                                                            type="submit"
+                                                            disabled={tradeUpdateForm.processing}
+                                                            className="rounded-lg bg-emerald-500 px-3 py-2 text-xs font-semibold text-slate-900 transition hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-60"
+                                                        >
+                                                            {tradeUpdateForm.processing ? 'Saving...' : 'Save PnL'}
+                                                        </button>
+                                                        <button
+                                                            type="button"
+                                                            onClick={cancelTradeEdit}
+                                                            className="rounded-lg border border-slate-700 px-3 py-2 text-xs font-semibold text-slate-300 transition hover:border-slate-500 hover:bg-slate-800"
+                                                        >
+                                                            Cancel
+                                                        </button>
+                                                    </div>
+                                                </form>
+                                            ) : (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => startTradeEdit(entry)}
+                                                    className="rounded-lg border border-slate-700 px-3 py-2 text-xs font-semibold text-slate-200 transition hover:border-slate-500 hover:bg-slate-800"
+                                                >
+                                                    Edit PnL
+                                                </button>
+                                            )}
                                         </div>
                                     </article>
                                 );

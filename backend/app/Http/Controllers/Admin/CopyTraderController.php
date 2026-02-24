@@ -7,6 +7,9 @@ use App\Models\Asset;
 use App\Models\CopyRelationship;
 use App\Models\CopyTrade;
 use App\Models\Trader;
+use App\Models\User;
+use App\Models\Wallet;
+use App\Models\WalletTransaction;
 use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -257,6 +260,7 @@ class CopyTraderController extends Controller
         $skipped = 0;
 
         DB::transaction(function () use (
+            $request,
             $relationships,
             $validated,
             $applyTo,
@@ -284,7 +288,7 @@ class CopyTraderController extends Controller
 
                 $scaledPnl = $leaderPnl !== null ? round($leaderPnl * $ratio, 8) : 0.0;
 
-                CopyTrade::query()->create([
+                $copyTrade = CopyTrade::query()->create([
                     'copy_relationship_id' => $relationship->id,
                     'asset_id' => $validated['asset_id'],
                     'side' => $validated['side'],
@@ -306,6 +310,13 @@ class CopyTraderController extends Controller
                 $relationship->pnl = (float) $relationship->pnl + $scaledPnl;
                 $relationship->save();
 
+                $this->applyPnlDeltaToFollowerWallet(
+                    $relationship,
+                    $scaledPnl,
+                    $copyTrade,
+                    $request->user()?->id
+                );
+
                 $created++;
             }
         });
@@ -317,6 +328,121 @@ class CopyTraderController extends Controller
         }
 
         return back()->with('success', $message);
+    }
+
+    public function updateTrade(Request $request, Trader $trader, CopyTrade $copyTrade): RedirectResponse
+    {
+        $validated = $request->validate([
+            'pnl' => ['required', 'numeric'],
+        ]);
+
+        DB::transaction(function () use ($request, $trader, $copyTrade, $validated): void {
+            $lockedTrade = CopyTrade::query()
+                ->whereKey($copyTrade->id)
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            $relationship = CopyRelationship::query()
+                ->whereKey($lockedTrade->copy_relationship_id)
+                ->with('user')
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            if ((string) $relationship->trader_id !== (string) $trader->id) {
+                abort(404);
+            }
+
+            $previousPnl = round((float) $lockedTrade->pnl, 8);
+            $nextPnl = round((float) $validated['pnl'], 8);
+            $delta = round($nextPnl - $previousPnl, 8);
+
+            $metadata = is_array($lockedTrade->metadata) ? $lockedTrade->metadata : [];
+            $copyRatio = (float) data_get($metadata, 'copy_ratio', (float) $relationship->copy_ratio);
+
+            if ($copyRatio > 0) {
+                $metadata['leader_pnl'] = round($nextPnl / $copyRatio, 8);
+            }
+
+            $metadata['pnl_edited_by_admin_id'] = $request->user()?->id;
+            $metadata['pnl_edited_at'] = now()->toIso8601String();
+            $metadata['previous_pnl'] = $previousPnl;
+
+            $lockedTrade->pnl = $nextPnl;
+            $lockedTrade->metadata = $metadata;
+            $lockedTrade->save();
+
+            $summary = CopyTrade::query()
+                ->where('copy_relationship_id', $relationship->id)
+                ->selectRaw('COALESCE(SUM(pnl), 0) as total_pnl, COUNT(*) as total_trades')
+                ->first();
+
+            $relationship->pnl = round((float) data_get($summary, 'total_pnl', 0), 8);
+            $relationship->trades_count = (int) data_get($summary, 'total_trades', 0);
+            $relationship->save();
+
+            $this->applyPnlDeltaToFollowerWallet(
+                $relationship,
+                $delta,
+                $lockedTrade,
+                $request->user()?->id
+            );
+        });
+
+        return back()->with('success', 'Trade PnL updated successfully.');
+    }
+
+    private function applyPnlDeltaToFollowerWallet(
+        CopyRelationship $relationship,
+        float $pnlDelta,
+        CopyTrade $copyTrade,
+        ?string $adminId
+    ): void {
+        if (abs($pnlDelta) < 0.00000001) {
+            return;
+        }
+
+        $lockedUser = User::query()
+            ->whereKey($relationship->user_id)
+            ->lockForUpdate()
+            ->firstOrFail();
+
+        $wallet = Wallet::query()->firstOrCreate(
+            ['user_id' => $lockedUser->id],
+            [
+                'cash_balance' => (float) $lockedUser->balance,
+                'investing_balance' => (float) $lockedUser->holding_balance,
+                'profit_loss' => (float) $lockedUser->profit_balance,
+                'currency' => 'USD',
+            ],
+        );
+
+        $wallet = Wallet::query()
+            ->whereKey($wallet->id)
+            ->lockForUpdate()
+            ->firstOrFail();
+
+        $wallet->profit_loss = round((float) $wallet->profit_loss + $pnlDelta, 8);
+        $wallet->save();
+
+        WalletTransaction::query()->create([
+            'wallet_id' => $wallet->id,
+            'asset_id' => $copyTrade->asset_id,
+            'type' => 'copy_pnl',
+            'status' => 'approved',
+            'direction' => $pnlDelta >= 0 ? 'credit' : 'debit',
+            'amount' => round(abs($pnlDelta), 8),
+            'notes' => $pnlDelta >= 0
+                ? 'Copy trade PnL credit from admin-managed bot trade.'
+                : 'Copy trade PnL debit from admin-managed bot trade.',
+            'occurred_at' => now(),
+            'metadata' => [
+                'copy_relationship_id' => $relationship->id,
+                'copy_trade_id' => $copyTrade->id,
+                'trader_id' => $relationship->trader_id,
+                'pnl_delta' => $pnlDelta,
+                'applied_by_admin_id' => $adminId,
+            ],
+        ]);
     }
 
     private function traderPayload(Trader $trader): array
