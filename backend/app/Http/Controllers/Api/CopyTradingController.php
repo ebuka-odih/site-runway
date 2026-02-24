@@ -49,7 +49,11 @@ class CopyTradingController extends Controller
             default => $traders->sortByDesc('total_return')->values(),
         };
 
-        $relationships = $user->copyRelationships()->get()->keyBy('trader_id');
+        $relationships = $user->copyRelationships()
+            ->withCount('copyTrades')
+            ->withSum('copyTrades', 'pnl')
+            ->get()
+            ->keyBy('trader_id');
 
         return response()->json([
             'data' => [
@@ -71,8 +75,8 @@ class CopyTradingController extends Controller
                         'is_verified' => (bool) $trader->is_verified,
                         'is_following' => (bool) $relationship && $relationship->status === 'active',
                         'allocation' => $relationship ? (float) $relationship->allocation_amount : null,
-                        'pnl' => $relationship ? (float) $relationship->pnl : null,
-                        'trades' => $relationship ? (int) $relationship->trades_count : null,
+                        'pnl' => $relationship ? $this->resolveRelationshipPnl($relationship) : null,
+                        'trades' => $relationship ? $this->resolveRelationshipTrades($relationship) : null,
                     ];
                 }),
             ],
@@ -84,11 +88,13 @@ class CopyTradingController extends Controller
         $relationships = $request->user()
             ->copyRelationships()
             ->with('trader')
+            ->withCount('copyTrades')
+            ->withSum('copyTrades', 'pnl')
             ->whereIn('status', ['active', 'paused'])
             ->get();
 
         $totalAllocated = $relationships->sum(fn (CopyRelationship $relationship) => (float) $relationship->allocation_amount);
-        $totalPnl = $relationships->sum(fn (CopyRelationship $relationship) => (float) $relationship->pnl);
+        $totalPnl = $relationships->sum(fn (CopyRelationship $relationship) => $this->resolveRelationshipPnl($relationship));
 
         return response()->json([
             'data' => [
@@ -106,8 +112,8 @@ class CopyTradingController extends Controller
                     'status' => $relationship->status,
                     'allocation' => (float) $relationship->allocation_amount,
                     'copy_ratio' => (float) $relationship->copy_ratio,
-                    'pnl' => (float) $relationship->pnl,
-                    'trades' => (int) $relationship->trades_count,
+                    'pnl' => $this->resolveRelationshipPnl($relationship),
+                    'trades' => $this->resolveRelationshipTrades($relationship),
                 ]),
             ],
         ]);
@@ -310,5 +316,27 @@ class CopyTradingController extends Controller
                 || str_contains($message, 'incorrect enum value')
                 || str_contains($message, 'check constraint failed: type')
             );
+    }
+
+    private function resolveRelationshipPnl(CopyRelationship $relationship): float
+    {
+        $aggregatedPnl = $relationship->getAttribute('copy_trades_sum_pnl');
+
+        if ($aggregatedPnl !== null) {
+            return round((float) $aggregatedPnl, 8);
+        }
+
+        return round((float) $relationship->pnl, 8);
+    }
+
+    private function resolveRelationshipTrades(CopyRelationship $relationship): int
+    {
+        $aggregatedTrades = $relationship->getAttribute('copy_trades_count');
+
+        if ($aggregatedTrades !== null) {
+            return (int) $aggregatedTrades;
+        }
+
+        return (int) $relationship->trades_count;
     }
 }

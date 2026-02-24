@@ -259,6 +259,7 @@ class CopyTraderController extends Controller
         DB::transaction(function () use (
             $relationships,
             $validated,
+            $applyTo,
             $quantity,
             $price,
             $executedAt,
