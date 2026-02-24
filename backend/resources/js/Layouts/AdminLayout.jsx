@@ -1,9 +1,14 @@
 import { Head, Link, usePage } from '@inertiajs/react';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { adminBasePath, adminPath } from '@/lib/adminPath';
 
 export default function AdminLayout({ title, children }) {
     const { url, props } = usePage();
+    const siteBrandName = String(
+        props.site?.brand_name || document.documentElement?.dataset?.brand || 'PrologezPrime',
+    )
+        .trim()
+        || 'PrologezPrime';
     const [menuOpen, setMenuOpen] = useState(false);
     const baseUrl = adminBasePath(url);
     const navigation = [
@@ -31,6 +36,10 @@ export default function AdminLayout({ title, children }) {
     const user = props.auth?.user;
     const currentPath = String(url || '').split('#')[0].split('?')[0];
 
+    useEffect(() => {
+        document.documentElement.dataset.brand = siteBrandName;
+    }, [siteBrandName]);
+
     const isActive = (href) => {
         if (href === baseUrl) {
             return currentPath === baseUrl;
@@ -55,7 +64,7 @@ export default function AdminLayout({ title, children }) {
                     }`}
                 >
                     <div className="mb-8">
-                        <p className="text-xs uppercase tracking-[0.2em] text-cyan-300/80">RunwayAlgo</p>
+                        <p className="text-xs uppercase tracking-[0.2em] text-cyan-300/80">{siteBrandName}</p>
                         <h1 className="mt-2 text-2xl font-semibold text-slate-100">Admin Console</h1>
                     </div>
 

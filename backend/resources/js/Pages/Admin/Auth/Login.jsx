@@ -1,11 +1,22 @@
-import { Head, useForm } from '@inertiajs/react';
+import { Head, useForm, usePage } from '@inertiajs/react';
+import { useEffect } from 'react';
 
 export default function Login() {
+    const { props } = usePage();
+    const siteBrandName = String(
+        props.site?.brand_name || document.documentElement?.dataset?.brand || 'PrologezPrime',
+    )
+        .trim()
+        || 'PrologezPrime';
     const form = useForm({
         email: '',
         password: '',
         remember: false,
     });
+
+    useEffect(() => {
+        document.documentElement.dataset.brand = siteBrandName;
+    }, [siteBrandName]);
 
     const submit = (event) => {
         event.preventDefault();
@@ -27,7 +38,7 @@ export default function Login() {
 
                 <div className="relative w-full max-w-md rounded-2xl border border-slate-800/80 bg-slate-900/80 p-8 shadow-2xl shadow-black/50 backdrop-blur">
                     <div className="mb-7 text-center">
-                        <p className="text-xs uppercase tracking-[0.25em] text-cyan-300/80">RunwayAlgo</p>
+                        <p className="text-xs uppercase tracking-[0.25em] text-cyan-300/80">{siteBrandName}</p>
                         <h1 className="mt-3 text-3xl font-semibold">Admin Console</h1>
                         <p className="mt-2 text-sm text-slate-400">Use your admin account credentials to continue.</p>
                     </div>

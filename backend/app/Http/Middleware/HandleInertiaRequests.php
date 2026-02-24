@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Support\SiteSettings;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
 
@@ -36,6 +37,8 @@ class HandleInertiaRequests extends Middleware
     public function share(Request $request): array
     {
         $user = $request->user();
+        $settings = SiteSettings::get();
+        $brandName = (string) ($settings['brand_name'] ?? SiteSettings::defaults()['brand_name']);
 
         return [
             ...parent::share($request),
@@ -50,6 +53,9 @@ class HandleInertiaRequests extends Middleware
             'flash' => [
                 'success' => fn () => $request->session()->get('success'),
                 'error' => fn () => $request->session()->get('error'),
+            ],
+            'site' => [
+                'brand_name' => $brandName,
             ],
         ];
     }
