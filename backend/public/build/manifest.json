@@ -1,6 +1,6 @@
 {
-  "_AdminLayout-C4GzMHXw.js": {
-    "file": "assets/AdminLayout-C4GzMHXw.js",
+  "_AdminLayout-CAMTXasa.js": {
+    "file": "assets/AdminLayout-CAMTXasa.js",
     "name": "AdminLayout",
     "imports": [
       "resources/js/app.jsx",
@@ -12,7 +12,7 @@
     "name": "adminPath"
   },
   "resources/css/app.css": {
-    "file": "assets/app-mCXN0m-W.css",
+    "file": "assets/app-BpbW7-AP.css",
     "src": "resources/css/app.css",
     "isEntry": true,
     "name": "app",
@@ -21,7 +21,7 @@
     ]
   },
   "resources/js/Pages/Admin/Auth/Login.jsx": {
-    "file": "assets/Login-CenHfqik.js",
+    "file": "assets/Login-r4rN50vn.js",
     "name": "Login",
     "src": "resources/js/Pages/Admin/Auth/Login.jsx",
     "isDynamicEntry": true,
@@ -29,125 +29,125 @@
       "resources/js/app.jsx"
     ],
     "css": [
-      "assets/app-mCXN0m-W.css"
+      "assets/app-BpbW7-AP.css"
     ]
   },
   "resources/js/Pages/Admin/CopyTraders/Create.jsx": {
-    "file": "assets/Create-of33WwWX.js",
+    "file": "assets/Create-D5NQ4b5l.js",
     "name": "Create",
     "src": "resources/js/Pages/Admin/CopyTraders/Create.jsx",
     "isDynamicEntry": true,
     "imports": [
       "resources/js/app.jsx",
-      "_AdminLayout-C4GzMHXw.js",
+      "_AdminLayout-CAMTXasa.js",
       "_adminPath-BxB_o4uP.js"
     ],
     "css": [
-      "assets/app-mCXN0m-W.css"
+      "assets/app-BpbW7-AP.css"
     ]
   },
   "resources/js/Pages/Admin/CopyTraders/Edit.jsx": {
-    "file": "assets/Edit-DyMZshEm.js",
+    "file": "assets/Edit-D3QXdF2X.js",
     "name": "Edit",
     "src": "resources/js/Pages/Admin/CopyTraders/Edit.jsx",
     "isDynamicEntry": true,
     "imports": [
       "resources/js/app.jsx",
-      "_AdminLayout-C4GzMHXw.js",
+      "_AdminLayout-CAMTXasa.js",
       "_adminPath-BxB_o4uP.js"
     ],
     "css": [
-      "assets/app-mCXN0m-W.css"
+      "assets/app-BpbW7-AP.css"
     ]
   },
   "resources/js/Pages/Admin/CopyTraders/Index.jsx": {
-    "file": "assets/Index-DG6xRghY.js",
+    "file": "assets/Index-CIn8P3ff.js",
     "name": "Index",
     "src": "resources/js/Pages/Admin/CopyTraders/Index.jsx",
     "isDynamicEntry": true,
     "imports": [
       "resources/js/app.jsx",
-      "_AdminLayout-C4GzMHXw.js",
+      "_AdminLayout-CAMTXasa.js",
       "_adminPath-BxB_o4uP.js"
     ],
     "css": [
-      "assets/app-mCXN0m-W.css"
+      "assets/app-BpbW7-AP.css"
     ]
   },
   "resources/js/Pages/Admin/Dashboard.jsx": {
-    "file": "assets/Dashboard-Be9eREgy.js",
+    "file": "assets/Dashboard-DjgSgrVp.js",
     "name": "Dashboard",
     "src": "resources/js/Pages/Admin/Dashboard.jsx",
     "isDynamicEntry": true,
     "imports": [
       "resources/js/app.jsx",
-      "_AdminLayout-C4GzMHXw.js",
+      "_AdminLayout-CAMTXasa.js",
       "_adminPath-BxB_o4uP.js"
     ],
     "css": [
-      "assets/app-mCXN0m-W.css"
+      "assets/app-BpbW7-AP.css"
     ]
   },
   "resources/js/Pages/Admin/Kyc/Index.jsx": {
-    "file": "assets/Index-7YP5pB3e.js",
+    "file": "assets/Index-CYhkv7CF.js",
     "name": "Index",
     "src": "resources/js/Pages/Admin/Kyc/Index.jsx",
     "isDynamicEntry": true,
     "imports": [
       "resources/js/app.jsx",
-      "_AdminLayout-C4GzMHXw.js",
+      "_AdminLayout-CAMTXasa.js",
       "_adminPath-BxB_o4uP.js"
     ],
     "css": [
-      "assets/app-mCXN0m-W.css"
+      "assets/app-BpbW7-AP.css"
     ]
   },
   "resources/js/Pages/Admin/PaymentMethods/Create.jsx": {
-    "file": "assets/Create-CPxkfLCF.js",
+    "file": "assets/Create-DgYYB2Pp.js",
     "name": "Create",
     "src": "resources/js/Pages/Admin/PaymentMethods/Create.jsx",
     "isDynamicEntry": true,
     "imports": [
       "resources/js/app.jsx",
-      "_AdminLayout-C4GzMHXw.js",
+      "_AdminLayout-CAMTXasa.js",
       "resources/js/Pages/Admin/PaymentMethods/PaymentMethodForm.jsx",
       "_adminPath-BxB_o4uP.js"
     ],
     "css": [
-      "assets/app-mCXN0m-W.css"
+      "assets/app-BpbW7-AP.css"
     ]
   },
   "resources/js/Pages/Admin/PaymentMethods/Edit.jsx": {
-    "file": "assets/Edit-DNEizKW6.js",
+    "file": "assets/Edit-DDxUZbU7.js",
     "name": "Edit",
     "src": "resources/js/Pages/Admin/PaymentMethods/Edit.jsx",
     "isDynamicEntry": true,
     "imports": [
       "resources/js/app.jsx",
-      "_AdminLayout-C4GzMHXw.js",
+      "_AdminLayout-CAMTXasa.js",
       "resources/js/Pages/Admin/PaymentMethods/PaymentMethodForm.jsx",
       "_adminPath-BxB_o4uP.js"
     ],
     "css": [
-      "assets/app-mCXN0m-W.css"
+      "assets/app-BpbW7-AP.css"
     ]
   },
   "resources/js/Pages/Admin/PaymentMethods/Index.jsx": {
-    "file": "assets/Index-BlbQqXAP.js",
+    "file": "assets/Index-CxB3zFtH.js",
     "name": "Index",
     "src": "resources/js/Pages/Admin/PaymentMethods/Index.jsx",
     "isDynamicEntry": true,
     "imports": [
       "resources/js/app.jsx",
-      "_AdminLayout-C4GzMHXw.js",
+      "_AdminLayout-CAMTXasa.js",
       "_adminPath-BxB_o4uP.js"
     ],
     "css": [
-      "assets/app-mCXN0m-W.css"
+      "assets/app-BpbW7-AP.css"
     ]
   },
   "resources/js/Pages/Admin/PaymentMethods/PaymentMethodForm.jsx": {
-    "file": "assets/PaymentMethodForm-rw9d7OBX.js",
+    "file": "assets/PaymentMethodForm-QNv_mCnz.js",
     "name": "PaymentMethodForm",
     "src": "resources/js/Pages/Admin/PaymentMethods/PaymentMethodForm.jsx",
     "isDynamicEntry": true,
@@ -156,83 +156,83 @@
       "_adminPath-BxB_o4uP.js"
     ],
     "css": [
-      "assets/app-mCXN0m-W.css"
+      "assets/app-BpbW7-AP.css"
     ]
   },
   "resources/js/Pages/Admin/Settings/Index.jsx": {
-    "file": "assets/Index-BsYErfRw.js",
+    "file": "assets/Index-BY8ycyan.js",
     "name": "Index",
     "src": "resources/js/Pages/Admin/Settings/Index.jsx",
     "isDynamicEntry": true,
     "imports": [
       "resources/js/app.jsx",
-      "_AdminLayout-C4GzMHXw.js",
+      "_AdminLayout-CAMTXasa.js",
       "_adminPath-BxB_o4uP.js"
     ],
     "css": [
-      "assets/app-mCXN0m-W.css"
+      "assets/app-BpbW7-AP.css"
     ]
   },
   "resources/js/Pages/Admin/Transactions/Index.jsx": {
-    "file": "assets/Index-CEyMxqqA.js",
+    "file": "assets/Index-CAWDfhvy.js",
     "name": "Index",
     "src": "resources/js/Pages/Admin/Transactions/Index.jsx",
     "isDynamicEntry": true,
     "imports": [
       "resources/js/app.jsx",
-      "_AdminLayout-C4GzMHXw.js",
+      "_AdminLayout-CAMTXasa.js",
       "_adminPath-BxB_o4uP.js"
     ],
     "css": [
-      "assets/app-mCXN0m-W.css"
+      "assets/app-BpbW7-AP.css"
     ]
   },
   "resources/js/Pages/Admin/Users/Create.jsx": {
-    "file": "assets/Create-DDz3IXRS.js",
+    "file": "assets/Create-BsR4umxw.js",
     "name": "Create",
     "src": "resources/js/Pages/Admin/Users/Create.jsx",
     "isDynamicEntry": true,
     "imports": [
       "resources/js/app.jsx",
-      "_AdminLayout-C4GzMHXw.js",
+      "_AdminLayout-CAMTXasa.js",
       "resources/js/Pages/Admin/Users/UserForm.jsx",
       "_adminPath-BxB_o4uP.js"
     ],
     "css": [
-      "assets/app-mCXN0m-W.css"
+      "assets/app-BpbW7-AP.css"
     ]
   },
   "resources/js/Pages/Admin/Users/Edit.jsx": {
-    "file": "assets/Edit-Dwh4Wrl4.js",
+    "file": "assets/Edit-BEB_t3wr.js",
     "name": "Edit",
     "src": "resources/js/Pages/Admin/Users/Edit.jsx",
     "isDynamicEntry": true,
     "imports": [
       "resources/js/app.jsx",
-      "_AdminLayout-C4GzMHXw.js",
+      "_AdminLayout-CAMTXasa.js",
       "resources/js/Pages/Admin/Users/UserForm.jsx",
       "_adminPath-BxB_o4uP.js"
     ],
     "css": [
-      "assets/app-mCXN0m-W.css"
+      "assets/app-BpbW7-AP.css"
     ]
   },
   "resources/js/Pages/Admin/Users/Index.jsx": {
-    "file": "assets/Index-gGzM2P0I.js",
+    "file": "assets/Index-DCMNGQd0.js",
     "name": "Index",
     "src": "resources/js/Pages/Admin/Users/Index.jsx",
     "isDynamicEntry": true,
     "imports": [
       "resources/js/app.jsx",
-      "_AdminLayout-C4GzMHXw.js",
+      "_AdminLayout-CAMTXasa.js",
       "_adminPath-BxB_o4uP.js"
     ],
     "css": [
-      "assets/app-mCXN0m-W.css"
+      "assets/app-BpbW7-AP.css"
     ]
   },
   "resources/js/Pages/Admin/Users/UserForm.jsx": {
-    "file": "assets/UserForm-CTd7K8nf.js",
+    "file": "assets/UserForm-B04agj-7.js",
     "name": "UserForm",
     "src": "resources/js/Pages/Admin/Users/UserForm.jsx",
     "isDynamicEntry": true,
@@ -241,11 +241,11 @@
       "_adminPath-BxB_o4uP.js"
     ],
     "css": [
-      "assets/app-mCXN0m-W.css"
+      "assets/app-BpbW7-AP.css"
     ]
   },
   "resources/js/app.jsx": {
-    "file": "assets/app-C74RT6A_.js",
+    "file": "assets/app-DIo57JqX.js",
     "name": "app",
     "src": "resources/js/app.jsx",
     "isEntry": true,
@@ -268,7 +268,7 @@
       "resources/js/Pages/Admin/Users/UserForm.jsx"
     ],
     "css": [
-      "assets/app-mCXN0m-W.css"
+      "assets/app-BpbW7-AP.css"
     ]
   }
 }
