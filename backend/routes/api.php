@@ -10,14 +10,17 @@ use App\Http\Controllers\Api\PublicSettingsController;
 use App\Http\Controllers\Api\ProfileController;
 use App\Http\Controllers\Api\WatchlistController;
 use App\Http\Controllers\Api\WalletController;
+use App\Support\SiteSettings;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Broadcast;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('v1')->group(function () {
     Route::get('/', function () {
+        $brandName = (string) (SiteSettings::get()['brand_name'] ?? SiteSettings::defaults()['brand_name']);
+
         return response()->json([
-            'name' => 'RunwayAlgo API',
+            'name' => "{$brandName} API",
             'status' => 'ok',
             'version' => 'v1',
         ]);

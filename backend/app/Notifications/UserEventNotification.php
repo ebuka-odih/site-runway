@@ -2,6 +2,7 @@
 
 namespace App\Notifications;
 
+use App\Support\SiteSettings;
 use Illuminate\Bus\Queueable;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
@@ -52,6 +53,8 @@ class UserEventNotification extends Notification
 
     public function toMail(object $notifiable): MailMessage
     {
+        $brandName = (string) (SiteSettings::get()['brand_name'] ?? SiteSettings::defaults()['brand_name']);
+
         $mail = (new MailMessage)
             ->subject($this->title)
             ->greeting('Hi '.trim((string) data_get($notifiable, 'name', 'there')).',')
@@ -61,7 +64,7 @@ class UserEventNotification extends Notification
             $mail->action('Open dashboard', $this->resolveActionUrl($this->actionUrl));
         }
 
-        return $mail->line('This is an automated account update from RunwayAlgo.');
+        return $mail->line("This is an automated account update from {$brandName}.");
     }
 
     private function resolveActionUrl(string $actionUrl): string

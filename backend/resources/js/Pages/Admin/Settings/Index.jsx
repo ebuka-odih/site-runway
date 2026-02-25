@@ -4,7 +4,8 @@ import { useForm, usePage } from '@inertiajs/react';
 import { useState } from 'react';
 
 export default function Index({ settings }) {
-    const { url } = usePage();
+    const { url, props } = usePage();
+    const authUser = props?.auth?.user;
     const [activeTab, setActiveTab] = useState('site');
     const form = useForm({
         brand_name: settings.brand_name || 'PrologezPrime',
@@ -24,6 +25,10 @@ export default function Index({ settings }) {
         new_password: '',
         new_password_confirmation: '',
     });
+    const profileForm = useForm({
+        name: authUser?.name || '',
+        email: authUser?.email || '',
+    });
 
     const submit = (event) => {
         event.preventDefault();
@@ -40,6 +45,13 @@ export default function Index({ settings }) {
         });
     };
 
+    const submitProfile = (event) => {
+        event.preventDefault();
+        profileForm.post(adminPath(url, 'settings/profile'), {
+            preserveScroll: true,
+        });
+    };
+
     return (
         <AdminLayout title="Settings">
             <section className="max-w-5xl rounded-2xl border border-slate-800 bg-slate-900/70 p-6">
@@ -52,6 +64,7 @@ export default function Index({ settings }) {
                     {[
                         { key: 'site', label: 'Site Controls' },
                         { key: 'livechat', label: 'Live Chat' },
+                        { key: 'profile', label: 'Admin Profile' },
                         { key: 'security', label: 'Security' },
                         { key: 'exports', label: 'Exports' },
                     ].map((tab) => (
@@ -289,6 +302,46 @@ export default function Index({ settings }) {
                             className="rounded-xl bg-gradient-to-r from-cyan-500 to-emerald-500 px-5 py-2.5 text-sm font-semibold text-slate-950 transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
                         >
                             {securityForm.processing ? 'Updating...' : 'Update Password'}
+                        </button>
+                    </form>
+                )}
+
+                {activeTab === 'profile' && (
+                    <form onSubmit={submitProfile} className="mt-6 space-y-5 max-w-xl">
+                        <label className="block">
+                            <span className="mb-2 block text-sm text-slate-300">Admin Name</span>
+                            <input
+                                type="text"
+                                value={profileForm.data.name}
+                                onChange={(event) => profileForm.setData('name', event.target.value)}
+                                className="w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2.5 text-sm text-slate-100 outline-none transition focus:border-cyan-400"
+                                required
+                            />
+                            {profileForm.errors.name && (
+                                <span className="mt-1 block text-xs text-rose-300">{profileForm.errors.name}</span>
+                            )}
+                        </label>
+
+                        <label className="block">
+                            <span className="mb-2 block text-sm text-slate-300">Admin Email</span>
+                            <input
+                                type="email"
+                                value={profileForm.data.email}
+                                onChange={(event) => profileForm.setData('email', event.target.value)}
+                                className="w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2.5 text-sm text-slate-100 outline-none transition focus:border-cyan-400"
+                                required
+                            />
+                            {profileForm.errors.email && (
+                                <span className="mt-1 block text-xs text-rose-300">{profileForm.errors.email}</span>
+                            )}
+                        </label>
+
+                        <button
+                            type="submit"
+                            disabled={profileForm.processing}
+                            className="rounded-xl bg-gradient-to-r from-cyan-500 to-emerald-500 px-5 py-2.5 text-sm font-semibold text-slate-950 transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+                        >
+                            {profileForm.processing ? 'Updating...' : 'Save Admin Profile'}
                         </button>
                     </form>
                 )}

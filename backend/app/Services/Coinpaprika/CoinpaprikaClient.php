@@ -144,7 +144,8 @@ class CoinpaprikaClient
                     continue;
                 }
 
-                if (($coin['type'] ?? 'coin') !== 'coin') {
+                $type = (string) ($coin['type'] ?? '');
+                if (! in_array($type, ['coin', 'token'], true)) {
                     continue;
                 }
 
@@ -153,6 +154,10 @@ class CoinpaprikaClient
                 $rank = (int) ($coin['rank'] ?? PHP_INT_MAX);
 
                 if ($symbol === '' || $id === '') {
+                    continue;
+                }
+
+                if ($rank <= 0) {
                     continue;
                 }
 

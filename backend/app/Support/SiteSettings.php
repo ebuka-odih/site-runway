@@ -21,7 +21,7 @@ class SiteSettings
             'require_kyc_for_deposits' => false,
             'require_kyc_for_withdrawals' => true,
             'session_timeout_minutes' => 60,
-            'support_email' => 'support@runwayalgo.test',
+            'support_email' => 'support@prologezprime.com',
             'livechat_enabled' => false,
             'livechat_provider' => null,
             'livechat_embed_code' => null,

@@ -85,8 +85,9 @@ class DashboardController extends Controller
             $fundedProfitBalance = $legacyFundedProfitBalance;
         }
 
-        $profitBalance = round($tradingProfitBalance + $copyProfitBalance + $fundedProfitBalance, 8);
-        $investingTotal = round($holdingBalance + $persistedProfitBalance + $tradingProfitBalance, 8);
+        $nonTradingProfitBalance = round($copyProfitBalance + $fundedProfitBalance, 8);
+        $profitBalance = round($tradingProfitBalance + $nonTradingProfitBalance, 8);
+        $investingTotal = round($holdingBalance + $profitBalance, 8);
         $profitPercent = $holdingBalance > 0
             ? ($profitBalance / $holdingBalance) * 100
             : 0.0;
@@ -95,19 +96,20 @@ class DashboardController extends Controller
 
         $portfolioValue = $cashBalance + $holdingBalance;
         $portfolioSnapshotService->captureFromValues($user, $portfolioValue, $cashBalance);
+        $copyPnlTimeline = $wallet instanceof Wallet
+            ? $this->buildCopyPnlTimeline($wallet)
+            : collect();
         $portfolioHistory = $this->buildPortfolioHistory($user, $positions, $cashBalance, $portfolioValue, (string) $range);
         $portfolioHistory = $this->enrichPortfolioHistoryWithInvestingTotals(
             $portfolioHistory,
             $holdingBalance,
-            $persistedProfitBalance,
-            $tradingProfitBalance
+            $tradingProfitBalance,
+            $nonTradingProfitBalance,
+            $copyPnlTimeline
         );
 
         $baseInvestingValue = (float) ($portfolioHistory->first()['investing_total'] ?? $investingTotal);
-        $fundedProfitToday = $wallet instanceof Wallet
-            ? $this->calculateFundedProfitDeltaSince($wallet, now()->startOfDay())
-            : 0.0;
-        $dailyChange = ($investingTotal - $baseInvestingValue) + $fundedProfitToday;
+        $dailyChange = $investingTotal - $baseInvestingValue;
         $dailyChangePercent = $baseInvestingValue > 0 ? ($dailyChange / $baseInvestingValue) * 100 : 0;
 
         $allocationByType = $positions
@@ -435,17 +437,28 @@ class DashboardController extends Controller
     private function enrichPortfolioHistoryWithInvestingTotals(
         Collection $history,
         float $currentHoldingBalance,
-        float $persistedProfitBalance,
-        float $currentTradingProfitBalance
+        float $currentTradingProfitBalance,
+        float $currentNonTradingProfitBalance,
+        Collection $copyPnlTimeline
     ): Collection {
         return $history
-            ->map(function (array $point) use ($currentHoldingBalance, $persistedProfitBalance, $currentTradingProfitBalance) {
+            ->map(function (array $point) use (
+                $currentHoldingBalance,
+                $currentTradingProfitBalance,
+                $currentNonTradingProfitBalance,
+                $copyPnlTimeline
+            ) {
                 $pointHoldingValue = (float) ($point['holdings_value'] ?? max(
                     0,
                     ((float) ($point['value'] ?? 0.0)) - ((float) ($point['buying_power'] ?? 0.0))
                 ));
                 $pointAssetProfit = $currentTradingProfitBalance + ($pointHoldingValue - $currentHoldingBalance);
-                $pointInvestingTotal = $pointHoldingValue + $persistedProfitBalance + $pointAssetProfit;
+                $pointNonTradingProfit = $this->resolveNonTradingProfitAtPoint(
+                    $currentNonTradingProfitBalance,
+                    $copyPnlTimeline,
+                    (int) ($point['timestamp'] ?? 0)
+                );
+                $pointInvestingTotal = $pointHoldingValue + $pointAssetProfit + $pointNonTradingProfit;
 
                 return [
                     ...$point,
@@ -477,26 +490,48 @@ class DashboardController extends Controller
         return round($fundedProfit, 8);
     }
 
-    private function calculateFundedProfitDeltaSince(Wallet $wallet, Carbon $since): float
+    private function buildCopyPnlTimeline(Wallet $wallet): Collection
     {
-        $delta = $wallet->transactions()
+        return $wallet->transactions()
             ->where('type', 'copy_pnl')
             ->where('status', 'approved')
-            ->where('occurred_at', '>=', $since)
-            ->get(['direction', 'amount', 'metadata'])
-            ->reduce(function (float $carry, WalletTransaction $transaction): float {
-                if (data_get($transaction->metadata, 'funding_target') !== 'profit_balance') {
-                    return $carry;
-                }
-
+            ->whereNotNull('occurred_at')
+            ->orderBy('occurred_at')
+            ->get(['direction', 'amount', 'occurred_at'])
+            ->map(function (WalletTransaction $transaction): array {
                 $amount = (float) $transaction->amount;
+                $delta = $transaction->direction === 'debit'
+                    ? -$amount
+                    : $amount;
 
-                return $transaction->direction === 'debit'
-                    ? $carry - $amount
-                    : $carry + $amount;
-            }, 0.0);
+                return [
+                    'timestamp' => $transaction->occurred_at?->getTimestampMs() ?? 0,
+                    'delta' => $delta,
+                ];
+            })
+            ->values();
+    }
 
-        return round($delta, 8);
+    private function resolveNonTradingProfitAtPoint(
+        float $currentNonTradingProfitBalance,
+        Collection $copyPnlTimeline,
+        int $pointTimestamp
+    ): float {
+        if ($copyPnlTimeline->isEmpty()) {
+            return round($currentNonTradingProfitBalance, 8);
+        }
+
+        $deltaSincePoint = $copyPnlTimeline->reduce(function (float $carry, array $entry) use ($pointTimestamp): float {
+            $entryTimestamp = (int) ($entry['timestamp'] ?? 0);
+
+            if ($entryTimestamp <= $pointTimestamp) {
+                return $carry;
+            }
+
+            return $carry + (float) ($entry['delta'] ?? 0.0);
+        }, 0.0);
+
+        return round($currentNonTradingProfitBalance - $deltaSincePoint, 8);
     }
 
     private function syncAccountBalances(User $user, float $cashBalance, float $holdingBalance, float $profitBalance): void

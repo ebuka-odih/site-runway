@@ -12,10 +12,10 @@ interface CryptoHomeDashboardProps {
 
 const CryptoHomeDashboard: React.FC<CryptoHomeDashboardProps> = ({ onAssetClick, onOpenWatchlist }) => (
   <div className="animate-in fade-in slide-in-from-bottom-4 duration-1000">
-    <section className="mx-4 mt-4 rounded-3xl border border-cyan-400/30 bg-gradient-to-br from-cyan-400/15 via-sky-500/10 to-blue-600/10 p-5">
-      <p className="text-[10px] font-black uppercase tracking-[0.22em] text-cyan-200">Crypto Dashboard</p>
-      <h2 className="mt-2 text-2xl font-black text-white tracking-tight">Spot, Swing, and Follow Smart Money</h2>
-      <p className="mt-2 text-sm text-zinc-200">
+    <section className="mx-4 mt-3 rounded-2xl border border-white/5 bg-gradient-to-br from-emerald-500/15 via-green-500/10 to-lime-500/5 p-3.5 sm:p-4 shadow-lg shadow-emerald-500/10">
+      <p className="text-[9px] font-black uppercase tracking-[0.2em] text-emerald-400">Crypto Dashboard</p>
+      <h2 className="mt-1.5 text-xl font-black text-white tracking-tight">Spot, Swing, and Follow Smart Money</h2>
+      <p className="mt-1.5 text-[13px] leading-snug text-zinc-300">
         Monitor fast-moving crypto pairs, react to volatility, and manage wallet activity in one focused workspace.
       </p>
     </section>

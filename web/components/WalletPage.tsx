@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Shield, Plus, ArrowUpRight, History, X, Copy, Check, Loader2, Sparkles, ChevronDown } from 'lucide-react';
+import { Shield, Plus, ArrowUpRight, History, X, Copy, Check, Loader2, Sparkles, ChevronDown, ChevronRight } from 'lucide-react';
 import { useMarket } from '../context/MarketContext';
 import type { DepositMethodItem, DepositRequestItem, WalletSummaryData, WalletTransactionItem } from '../types';
 import WithdrawalStatusStepper from './WithdrawalStatusStepper';
@@ -469,8 +469,8 @@ const WalletPage: React.FC = () => {
 
       {!isDepositFormOpen && !isWithdrawalFormOpen && (
         <>
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-            <div className="bg-[#121212] border border-white/5 rounded-[24px] p-6">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            <div className="bg-[#121212] border border-white/5 rounded-[24px] p-6 md:col-span-2">
               <p className="text-[10px] font-black text-zinc-500 uppercase tracking-widest mb-2">Wallet Balance</p>
               <h3 className="text-3xl font-black text-white mb-1 tabular-nums">
                 ${(summary?.wallet.cashBalance ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
@@ -503,28 +503,36 @@ const WalletPage: React.FC = () => {
           <div className="space-y-3">
             <button
               onClick={openDepositForm}
-              className="w-full bg-[#0c1a12] border border-emerald-500/20 rounded-[24px] p-6 flex items-center justify-between group active:scale-[0.98] transition-all"
+              className="w-full cursor-pointer bg-[#0c1a12] border border-emerald-500/20 rounded-[24px] p-6 flex items-center justify-between group active:scale-[0.98] hover:-translate-y-0.5 hover:border-emerald-400/40 hover:bg-[#102118] hover:shadow-lg hover:shadow-emerald-500/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/40 transition-all"
             >
               <div className="text-left">
                 <p className="text-[10px] font-black text-emerald-500 uppercase tracking-widest mb-1">Deposit</p>
                 <h4 className="text-lg font-black text-white">Add funds quickly</h4>
                 <p className="text-xs text-zinc-500 font-bold">Crypto and fiat methods</p>
+                <p className="mt-2 inline-flex items-center gap-1 text-[11px] font-black text-emerald-300">
+                  Tap to deposit
+                  <ChevronRight size={14} className="transition-transform group-hover:translate-x-0.5" />
+                </p>
               </div>
-              <div className="w-10 h-10 bg-emerald-500 rounded-full flex items-center justify-center text-black group-hover:scale-110 transition-transform">
+              <div className="w-10 h-10 bg-emerald-500 rounded-full flex items-center justify-center text-black group-hover:scale-110 group-hover:rotate-6 transition-all">
                 <Plus size={24} strokeWidth={3} />
               </div>
             </button>
 
             <button
               onClick={openWithdrawalForm}
-              className="w-full bg-[#1a120c] border border-orange-500/20 rounded-[24px] p-6 flex items-center justify-between group active:scale-[0.98] transition-all"
+              className="w-full cursor-pointer bg-[#1a120c] border border-orange-500/20 rounded-[24px] p-6 flex items-center justify-between group active:scale-[0.98] hover:-translate-y-0.5 hover:border-orange-400/40 hover:bg-[#24170f] hover:shadow-lg hover:shadow-orange-500/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-400/40 transition-all"
             >
               <div className="text-left">
                 <p className="text-[10px] font-black text-orange-500 uppercase tracking-widest mb-1">Withdraw</p>
                 <h4 className="text-lg font-black text-white">Cash out securely</h4>
                 <p className="text-xs text-zinc-500 font-bold">Submit withdrawal for admin approval</p>
+                <p className="mt-2 inline-flex items-center gap-1 text-[11px] font-black text-orange-300">
+                  Tap to withdraw
+                  <ChevronRight size={14} className="transition-transform group-hover:translate-x-0.5" />
+                </p>
               </div>
-              <div className="w-10 h-10 bg-orange-600 rounded-full flex items-center justify-center text-white">
+              <div className="w-10 h-10 bg-orange-600 rounded-full flex items-center justify-center text-white group-hover:scale-110 group-hover:rotate-6 transition-all">
                 <ArrowUpRight size={24} strokeWidth={3} />
               </div>
             </button>

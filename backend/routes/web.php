@@ -63,6 +63,7 @@ Route::prefix('admin')->name('admin.')->group(function () {
 
         Route::get('/settings', [SettingController::class, 'index'])->name('settings.index');
         Route::post('/settings', [SettingController::class, 'update'])->name('settings.update');
+        Route::post('/settings/profile', [SettingController::class, 'updateProfile'])->name('settings.profile');
         Route::post('/settings/security', [SettingController::class, 'updateSecurity'])->name('settings.security');
         Route::get('/settings/export/database', [SettingController::class, 'exportSiteDatabaseDetails'])->name('settings.export.database');
         Route::get('/settings/export/users', [SettingController::class, 'exportUserDatabaseDetails'])->name('settings.export.users');

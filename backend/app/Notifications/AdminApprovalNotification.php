@@ -2,6 +2,7 @@
 
 namespace App\Notifications;
 
+use App\Support\SiteSettings;
 use Illuminate\Bus\Queueable;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
@@ -26,6 +27,8 @@ class AdminApprovalNotification extends Notification
 
     public function toMail(object $notifiable): MailMessage
     {
+        $brandName = (string) (SiteSettings::get()['brand_name'] ?? SiteSettings::defaults()['brand_name']);
+
         $mail = (new MailMessage)
             ->subject($this->title)
             ->line($this->message);
@@ -34,7 +37,7 @@ class AdminApprovalNotification extends Notification
             $mail->action('Review request', $this->resolveActionUrl($this->actionUrl));
         }
 
-        return $mail->line('This is an automated admin alert from RunwayAlgo.');
+        return $mail->line("This is an automated admin alert from {$brandName}.");
     }
 
     private function resolveActionUrl(string $actionUrl): string

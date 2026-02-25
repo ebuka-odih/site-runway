@@ -95,21 +95,6 @@ export default function Home({ brandName }: HomeProps) {
               >
                 Sign Up Now
               </Link>
-              
-              <div className="flex flex-wrap items-center gap-4 md:gap-6 text-sm text-slate-400">
-                <span>Or Use</span>
-                <div className="flex items-center gap-4">
-                  <button className="flex items-center gap-2 hover:text-white transition-colors">
-                    <img src="https://www.google.com/favicon.ico" className="w-4 h-4 grayscale" alt="" /> Google
-                  </button>
-                  <button className="flex items-center gap-2 hover:text-white transition-colors">
-                    <img src="https://www.apple.com/favicon.ico" className="w-4 h-4 grayscale" alt="" /> Apple
-                  </button>
-                  <button className="flex items-center gap-2 hover:text-white transition-colors">
-                    <img src="https://telegram.org/favicon.ico" className="w-4 h-4 grayscale" alt="" /> Telegram
-                  </button>
-                </div>
-              </div>
             </div>
           </div>
         </div>

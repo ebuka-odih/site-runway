@@ -11,6 +11,7 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response;
 use Symfony\Component\HttpFoundation\StreamedResponse;
@@ -136,6 +137,28 @@ class SettingController extends Controller
         $user->save();
 
         return back()->with('success', 'Admin password updated successfully.');
+    }
+
+    public function updateProfile(Request $request): RedirectResponse
+    {
+        $user = $request->user();
+
+        if (! $user) {
+            return back()->with('error', 'Unable to update profile right now.');
+        }
+
+        $validated = $request->validate([
+            'name' => ['required', 'string', 'max:120'],
+            'email' => ['required', 'email', 'max:255', Rule::unique('users', 'email')->ignore($user->id)],
+        ]);
+
+        $user->name = $validated['name'];
+        $user->email = $validated['email'];
+        $user->save();
+
+        return redirect()
+            ->route('admin.settings.index')
+            ->with('success', 'Admin profile updated successfully.');
     }
 
     /**

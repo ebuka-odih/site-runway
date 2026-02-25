@@ -159,6 +159,35 @@ class MarketController extends Controller
             return;
         }
 
+        $targetCount = max(1, (int) config('crypto.sync.market_min_assets', 40));
+        $currentCount = (int) Asset::query()
+            ->where('type', 'crypto')
+            ->count();
+
+        // Bootstrap quickly when the local crypto catalog is still too small.
+        if ($currentCount < $targetCount) {
+            if (! Cache::add('crypto:coinpaprika:bootstrap-sync-lock', now()->timestamp, now()->addMinutes(10))) {
+                return;
+            }
+
+            $calls = max(
+                $targetCount,
+                (int) config('crypto.sync.bootstrap_calls', 40)
+            );
+
+            try {
+                $cryptoSyncService->sync($calls);
+            } catch (Throwable $exception) {
+                Log::warning('Coinpaprika bootstrap sync failed during market assets request.', [
+                    'exception' => $exception->getMessage(),
+                    'current_count' => $currentCount,
+                    'target_count' => $targetCount,
+                ]);
+            }
+
+            return;
+        }
+
         // Fallback sync when scheduler/cron is delayed. Throttle to once per minute.
         if (! Cache::add('crypto:coinpaprika:lazy-sync-lock', now()->timestamp, now()->addSeconds(55))) {
             return;

@@ -13,11 +13,32 @@ class SettingsManagementTest extends TestCase
 {
     use RefreshDatabase;
 
+    public function test_admin_can_update_profile_name_and_email(): void
+    {
+        $admin = User::factory()->admin()->create([
+            'name' => 'Original Admin',
+            'email' => 'original-admin@runwayalgo.test',
+        ]);
+
+        $this->actingAs($admin)
+            ->post('/admin/settings/profile', [
+                'name' => 'Updated Admin Name',
+                'email' => 'updated-admin@runwayalgo.test',
+            ])
+            ->assertRedirect(route('admin.settings.index'));
+
+        $admin->refresh();
+
+        $this->assertSame('Updated Admin Name', $admin->name);
+        $this->assertSame('updated-admin@runwayalgo.test', $admin->email);
+    }
+
     public function test_admin_can_store_livechat_settings(): void
     {
         $admin = User::factory()->admin()->create();
 
         $payload = [
+            'brand_name' => 'RunwayAlgo',
             'site_mode' => 'live',
             'deposits_enabled' => true,
             'withdrawals_enabled' => true,

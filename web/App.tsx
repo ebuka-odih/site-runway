@@ -10,7 +10,7 @@ import BottomNav from './components/BottomNav';
 import TradePage from './components/TradePage';
 import TradingDesk from './components/TradingDesk';
 import AssetDetail from './components/AssetDetail';
-import CopyTrading from './components/CopyTrading';
+import InvestAndEarnPage from './components/InvestAndEarnPage';
 import WalletPage from './components/WalletPage';
 import ProfilePage from './components/ProfilePage';
 import WatchlistPage from './components/WatchlistPage';
@@ -414,7 +414,8 @@ const AppContent: React.FC = () => {
               />
             )}
           />
-          <Route path="/dashboard/copy" element={<CopyTrading />} />
+          <Route path="/dashboard/copy" element={<InvestAndEarnPage mode="default" onAssetClick={handleAssetSelect} />} />
+          <Route path="/dashboard/copy/:marketType" element={<InvestAndEarnPage mode="default" onAssetClick={handleAssetSelect} />} />
           <Route path="/dashboard/wallet" element={<WalletPage />} />
           <Route path="/dashboard/profile" element={<ProfilePage />} />
 
@@ -438,7 +439,8 @@ const AppContent: React.FC = () => {
               />
             )}
           />
-          <Route path="/crypto/dashboard/copy" element={<CopyTrading />} />
+          <Route path="/crypto/dashboard/copy" element={<InvestAndEarnPage mode="crypto" onAssetClick={handleAssetSelect} />} />
+          <Route path="/crypto/dashboard/copy/:marketType" element={<InvestAndEarnPage mode="crypto" onAssetClick={handleAssetSelect} />} />
           <Route path="/crypto/dashboard/wallet" element={<WalletPage />} />
           <Route path="/crypto/dashboard/profile" element={<ProfilePage />} />
 
