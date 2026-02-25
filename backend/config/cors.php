@@ -1,5 +1,22 @@
 <?php
 
+$defaultAllowedOrigins = [
+    'http://localhost:3000',
+    'http://127.0.0.1:3000',
+    'http://localhost:3001',
+    'http://127.0.0.1:3001',
+    'http://localhost:3003',
+    'http://127.0.0.1:3003',
+    'http://localhost:5173',
+    'http://127.0.0.1:5173',
+    'https://runwayalgo.com',
+    'https://www.runwayalgo.com',
+    'https://prologezprime.com',
+    'https://www.prologezprime.com',
+];
+
+$configuredAllowedOrigins = explode(',', (string) env('CORS_ALLOWED_ORIGINS', ''));
+
 return [
 
     /*
@@ -16,13 +33,10 @@ return [
 
     'allowed_methods' => ['*'],
 
-    'allowed_origins' => array_values(array_filter(array_map(
+    'allowed_origins' => array_values(array_unique(array_filter(array_map(
         static fn (string $origin): string => trim($origin),
-        explode(',', env(
-            'CORS_ALLOWED_ORIGINS',
-            'http://localhost:3000,http://127.0.0.1:3000,http://localhost:3001,http://127.0.0.1:3001,http://localhost:3003,http://127.0.0.1:3003,http://localhost:5173,http://127.0.0.1:5173,https://runwayalgo.com,https://www.runwayalgo.com'
-        ))
-    ))),
+        array_merge($defaultAllowedOrigins, $configuredAllowedOrigins)
+    )))),
 
     'allowed_origins_patterns' => [],
 

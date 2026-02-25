@@ -2,6 +2,26 @@
 
 use Laravel\Sanctum\Sanctum;
 
+$defaultStatefulDomains = [
+    'localhost',
+    'localhost:3000',
+    'localhost:3001',
+    'localhost:3003',
+    'localhost:5173',
+    '127.0.0.1',
+    '127.0.0.1:8000',
+    '127.0.0.1:3001',
+    '127.0.0.1:3003',
+    '127.0.0.1:5173',
+    '::1',
+    'runwayalgo.com',
+    'www.runwayalgo.com',
+    'prologezprime.com',
+    'www.prologezprime.com',
+];
+
+$configuredStatefulDomains = explode(',', (string) env('SANCTUM_STATEFUL_DOMAINS', ''));
+
 return [
 
     /*
@@ -15,12 +35,14 @@ return [
     |
     */
 
-    'stateful' => explode(',', env('SANCTUM_STATEFUL_DOMAINS', sprintf(
-        '%s%s',
-        'localhost,localhost:3000,localhost:3003,localhost:5173,127.0.0.1,127.0.0.1:8000,127.0.0.1:3003,127.0.0.1:5173,::1,runwayalgo.com,www.runwayalgo.com',
-        Sanctum::currentApplicationUrlWithPort(),
-        // Sanctum::currentRequestHost(),
-    ))),
+    'stateful' => array_values(array_unique(array_filter(array_map(
+        static fn (string $domain): string => trim($domain),
+        array_merge(
+            $defaultStatefulDomains,
+            [Sanctum::currentApplicationUrlWithPort()],
+            $configuredStatefulDomains
+        )
+    )))),
 
     /*
     |--------------------------------------------------------------------------
