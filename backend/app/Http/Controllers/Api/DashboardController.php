@@ -87,6 +87,7 @@ class DashboardController extends Controller
 
         $nonTradingProfitBalance = round($copyProfitBalance + $fundedProfitBalance, 8);
         $profitBalance = round($tradingProfitBalance + $nonTradingProfitBalance, 8);
+        $displayBuyingPower = round($cashBalance + $profitBalance, 8);
         $investingTotal = round($holdingBalance + $profitBalance, 8);
         $profitPercent = $holdingBalance > 0
             ? ($profitBalance / $holdingBalance) * 100
@@ -107,6 +108,15 @@ class DashboardController extends Controller
             $nonTradingProfitBalance,
             $copyPnlTimeline
         );
+
+        if ($portfolioHistory->isNotEmpty()) {
+            $lastIndex = $portfolioHistory->count() - 1;
+            $lastPoint = (array) $portfolioHistory->get($lastIndex);
+            $portfolioHistory->put($lastIndex, [
+                ...$lastPoint,
+                'buying_power' => round($displayBuyingPower, 2),
+            ]);
+        }
 
         $baseInvestingValue = (float) ($portfolioHistory->first()['investing_total'] ?? $investingTotal);
         $dailyChange = $investingTotal - $baseInvestingValue;
@@ -184,7 +194,7 @@ class DashboardController extends Controller
             'data' => [
                 'portfolio' => [
                     'value' => round($portfolioValue, 2),
-                    'buying_power' => round($cashBalance, 2),
+                    'buying_power' => round($displayBuyingPower, 2),
                     'holdings_value' => round($holdingBalance, 2),
                     'investing_total' => round($investingTotal, 2),
                     'profit_balance' => round($profitBalance, 2),

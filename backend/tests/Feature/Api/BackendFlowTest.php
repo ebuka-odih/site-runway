@@ -164,6 +164,7 @@ class BackendFlowTest extends TestCase
             fn ($position) => ((float) $position->asset->current_price - (float) $position->average_price) * (float) $position->quantity
         ), 8);
         $expectedPortfolioValue = round((float) $wallet->cash_balance + $expectedHolding, 2);
+        $expectedBuyingPower = round((float) $wallet->cash_balance + $expectedProfit, 2);
 
         $user->update([
             'holding_balance' => 0,
@@ -185,7 +186,7 @@ class BackendFlowTest extends TestCase
         $dashboardResponse
             ->assertOk()
             ->assertJsonPath('data.portfolio.value', $expectedPortfolioValue)
-            ->assertJsonPath('data.portfolio.buying_power', round((float) $wallet->cash_balance, 2));
+            ->assertJsonPath('data.portfolio.buying_power', $expectedBuyingPower);
 
         $history = $dashboardResponse->json('data.portfolio.history');
 
@@ -312,6 +313,34 @@ class BackendFlowTest extends TestCase
         $this->assertTrue($history->every(
             fn (array $point): bool => abs((float) data_get($point, 'holdings_value', 0)) < 0.00000001
         ));
+    }
+
+    public function test_dashboard_buying_power_includes_profit_balance(): void
+    {
+        $user = User::factory()->create([
+            'email' => 'buying-power-profit@example.com',
+            'balance' => 500,
+            'profit_balance' => 75,
+            'holding_balance' => 0,
+        ]);
+
+        $user->wallet()->create([
+            'currency' => 'USD',
+            'cash_balance' => 500,
+            'investing_balance' => 0,
+            'profit_loss' => 75,
+        ]);
+
+        $token = $this->postJson('/api/v1/auth/login', [
+            'email' => $user->email,
+            'password' => 'password',
+            'device_name' => 'phpunit',
+        ])->json('token');
+
+        $this->withToken($token)
+            ->getJson('/api/v1/dashboard?range=24h')
+            ->assertOk()
+            ->assertJsonPath('data.portfolio.buying_power', 575);
     }
 
     public function test_dashboard_history_includes_holdings_value_series(): void

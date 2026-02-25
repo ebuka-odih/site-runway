@@ -178,11 +178,11 @@ class UserManagementTest extends TestCase
         $customer->refresh();
         $wallet->refresh();
 
-        $this->assertSame(125.0, (float) $customer->balance);
+        $this->assertSame(130.5, (float) $customer->balance);
         $this->assertSame(25.5, (float) $customer->profit_balance);
         $this->assertSame(62.0, (float) $customer->holding_balance);
 
-        $this->assertSame(125.0, (float) $wallet->cash_balance);
+        $this->assertSame(130.5, (float) $wallet->cash_balance);
         $this->assertSame(25.5, (float) $wallet->profit_loss);
         $this->assertSame(62.0, (float) $wallet->investing_balance);
 
@@ -191,6 +191,39 @@ class UserManagementTest extends TestCase
             ['deposit', 'copy_pnl', 'copy_allocation'],
             WalletTransaction::query()->where('wallet_id', $wallet->id)->orderBy('created_at')->pluck('type')->all()
         );
+    }
+
+    public function test_admin_deducting_profit_balance_also_deducts_cash_balance(): void
+    {
+        $admin = User::factory()->admin()->create();
+        $customer = User::factory()->create([
+            'balance' => 500,
+            'profit_balance' => 80,
+            'holding_balance' => 0,
+        ]);
+
+        $wallet = Wallet::query()->create([
+            'user_id' => $customer->id,
+            'cash_balance' => 500,
+            'profit_loss' => 80,
+            'investing_balance' => 0,
+        ]);
+
+        $this->actingAs($admin)
+            ->post(route('admin.users.fund', $customer), [
+                'target' => 'profit_balance',
+                'operation' => 'deduct',
+                'amount' => 30,
+            ])
+            ->assertRedirect(route('admin.users.edit', $customer));
+
+        $customer->refresh();
+        $wallet->refresh();
+
+        $this->assertSame(470.0, (float) $customer->balance);
+        $this->assertSame(50.0, (float) $customer->profit_balance);
+        $this->assertSame(470.0, (float) $wallet->cash_balance);
+        $this->assertSame(50.0, (float) $wallet->profit_loss);
     }
 
     public function test_admin_funding_requires_a_valid_target_and_positive_amount(): void
