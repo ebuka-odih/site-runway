@@ -205,8 +205,6 @@ class UserController extends Controller
             $walletColumn = $targetConfig['wallet_column'];
             $currentUserValue = (float) $lockedUser->{$target};
             $currentWalletValue = (float) $wallet->{$walletColumn};
-            $isProfitFundingTarget = $target === 'profit_balance';
-
             if ($isDeduction && ($currentUserValue < $amount || $currentWalletValue < $amount)) {
                 throw ValidationException::withMessages([
                     'amount' => sprintf(
@@ -216,26 +214,10 @@ class UserController extends Controller
                 ]);
             }
 
-            if ($isDeduction && $isProfitFundingTarget) {
-                $currentUserCashBalance = (float) $lockedUser->balance;
-                $currentWalletCashBalance = (float) $wallet->cash_balance;
-
-                if ($currentUserCashBalance < $amount || $currentWalletCashBalance < $amount) {
-                    throw ValidationException::withMessages([
-                        'amount' => 'Cannot deduct more than the current balance when adjusting profit balance.',
-                    ]);
-                }
-            }
-
             $delta = $isDeduction ? -$amount : $amount;
 
             $lockedUser->{$target} = round($currentUserValue + $delta, 8);
             $wallet->{$walletColumn} = round($currentWalletValue + $delta, 8);
-
-            if ($isProfitFundingTarget) {
-                $lockedUser->balance = round((float) $lockedUser->balance + $delta, 8);
-                $wallet->cash_balance = round((float) $wallet->cash_balance + $delta, 8);
-            }
 
             $lockedUser->save();
             $wallet->save();

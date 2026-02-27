@@ -7,6 +7,7 @@ use App\Models\Wallet;
 use App\Models\WalletTransaction;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Inertia\Testing\AssertableInertia as Assert;
+use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
 
 class UserManagementTest extends TestCase
@@ -178,11 +179,11 @@ class UserManagementTest extends TestCase
         $customer->refresh();
         $wallet->refresh();
 
-        $this->assertSame(130.5, (float) $customer->balance);
+        $this->assertSame(125.0, (float) $customer->balance);
         $this->assertSame(25.5, (float) $customer->profit_balance);
         $this->assertSame(62.0, (float) $customer->holding_balance);
 
-        $this->assertSame(130.5, (float) $wallet->cash_balance);
+        $this->assertSame(125.0, (float) $wallet->cash_balance);
         $this->assertSame(25.5, (float) $wallet->profit_loss);
         $this->assertSame(62.0, (float) $wallet->investing_balance);
 
@@ -193,7 +194,7 @@ class UserManagementTest extends TestCase
         );
     }
 
-    public function test_admin_deducting_profit_balance_also_deducts_cash_balance(): void
+    public function test_admin_deducting_profit_balance_does_not_change_cash_balance(): void
     {
         $admin = User::factory()->admin()->create();
         $customer = User::factory()->create([
@@ -220,10 +221,49 @@ class UserManagementTest extends TestCase
         $customer->refresh();
         $wallet->refresh();
 
-        $this->assertSame(470.0, (float) $customer->balance);
+        $this->assertSame(500.0, (float) $customer->balance);
         $this->assertSame(50.0, (float) $customer->profit_balance);
-        $this->assertSame(470.0, (float) $wallet->cash_balance);
+        $this->assertSame(500.0, (float) $wallet->cash_balance);
         $this->assertSame(50.0, (float) $wallet->profit_loss);
+    }
+
+    public function test_admin_profit_funding_increases_dashboard_buying_power_once(): void
+    {
+        $admin = User::factory()->admin()->create();
+        $customer = User::factory()->create([
+            'balance' => 100,
+            'profit_balance' => 0,
+            'holding_balance' => 0,
+        ]);
+
+        $wallet = Wallet::query()->create([
+            'user_id' => $customer->id,
+            'cash_balance' => 100,
+            'profit_loss' => 0,
+            'investing_balance' => 0,
+        ]);
+
+        $this->actingAs($admin)
+            ->post(route('admin.users.fund', $customer), [
+                'target' => 'profit_balance',
+                'amount' => 30,
+            ])
+            ->assertRedirect(route('admin.users.edit', $customer));
+
+        $customer->refresh();
+        $wallet->refresh();
+
+        $this->assertSame(100.0, (float) $customer->balance);
+        $this->assertSame(30.0, (float) $customer->profit_balance);
+        $this->assertSame(100.0, (float) $wallet->cash_balance);
+        $this->assertSame(30.0, (float) $wallet->profit_loss);
+
+        Sanctum::actingAs($customer);
+
+        $this->getJson('/api/v1/dashboard?range=24h')
+            ->assertOk()
+            ->assertJsonPath('data.portfolio.profit_balance', 30)
+            ->assertJsonPath('data.portfolio.buying_power', 130);
     }
 
     public function test_admin_funding_requires_a_valid_target_and_positive_amount(): void
