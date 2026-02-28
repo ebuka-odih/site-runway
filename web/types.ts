@@ -202,6 +202,7 @@ export interface WalletSummaryData {
     cashBalance: number;
     investingBalance: number;
     profitLoss: number;
+    totalBalance: number;
     tradeProfit: number;
     currency: string;
   };

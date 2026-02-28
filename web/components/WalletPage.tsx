@@ -473,9 +473,9 @@ const WalletPage: React.FC = () => {
             <div className="bg-[#121212] border border-white/5 rounded-[24px] p-6 md:col-span-2">
               <p className="text-[10px] font-black text-zinc-500 uppercase tracking-widest mb-2">Wallet Balance</p>
               <h3 className="text-3xl font-black text-white mb-1 tabular-nums">
-                ${(summary?.wallet.cashBalance ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                ${(summary?.wallet.totalBalance ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </h3>
-              <p className="text-xs text-zinc-500 font-bold">Available instantly</p>
+              <p className="text-xs text-zinc-500 font-bold">Consolidated cash + investing + profit</p>
             </div>
 
             <div className="bg-[#121212] border border-white/5 rounded-[24px] p-6">

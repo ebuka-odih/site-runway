@@ -686,6 +686,9 @@ export async function apiWalletSummary(): Promise<WalletSummaryData> {
       cashBalance: toNumber(data.wallet.cash_balance),
       investingBalance: toNumber(data.wallet.investing_balance),
       profitLoss: toNumber(data.wallet.profit_loss),
+      totalBalance: data.wallet.total_balance == null
+        ? toNumber(data.wallet.cash_balance) + toNumber(data.wallet.investing_balance) + toNumber(data.wallet.profit_loss)
+        : toNumber(data.wallet.total_balance),
       tradeProfit: toNumber(data.wallet.trade_profit),
       currency: String(data.wallet.currency),
     },

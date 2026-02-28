@@ -47,6 +47,12 @@ class WalletController extends Controller
                     'cash_balance' => (float) $wallet->cash_balance,
                     'investing_balance' => (float) $wallet->investing_balance,
                     'profit_loss' => (float) $wallet->profit_loss,
+                    'total_balance' => round(
+                        (float) $wallet->cash_balance
+                        + (float) $wallet->investing_balance
+                        + (float) $wallet->profit_loss,
+                        8
+                    ),
                     'trade_profit' => $tradeProfit,
                     'currency' => $wallet->currency,
                 ],

@@ -264,6 +264,12 @@ class UserManagementTest extends TestCase
             ->assertOk()
             ->assertJsonPath('data.portfolio.profit_balance', 30)
             ->assertJsonPath('data.portfolio.buying_power', 130);
+
+        $this->getJson('/api/v1/wallet')
+            ->assertOk()
+            ->assertJsonPath('data.wallet.cash_balance', 100)
+            ->assertJsonPath('data.wallet.profit_loss', 30)
+            ->assertJsonPath('data.wallet.total_balance', 130);
     }
 
     public function test_admin_funding_requires_a_valid_target_and_positive_amount(): void
