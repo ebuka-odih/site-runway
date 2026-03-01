@@ -22,6 +22,25 @@ const toLocalInputValue = (value) => {
 
 export default function Edit({ trader, assets, active_followers, followers = [], trade_history = [] }) {
     const { url } = usePage();
+    const assetOptions = Array.isArray(assets) ? assets : [];
+    const firstAsset = assetOptions[0] ?? null;
+    const orderedAssetTypes = ['etf', 'stock', 'share', 'crypto'];
+    const assetTypeLabels = {
+        etf: 'ETF',
+        stock: 'Stock',
+        share: 'Share',
+        crypto: 'Crypto',
+    };
+    const groupedAssets = assetOptions.reduce((groups, asset) => {
+        const type = String(asset?.type || 'other').toLowerCase();
+        if (!groups[type]) {
+            groups[type] = [];
+        }
+        groups[type].push(asset);
+
+        return groups;
+    }, {});
+    const otherAssetTypes = Object.keys(groupedAssets).filter((type) => !orderedAssetTypes.includes(type));
     const form = useForm({
         display_name: trader.display_name || '',
         username: trader.username || '',
@@ -37,7 +56,6 @@ export default function Edit({ trader, assets, active_followers, followers = [],
         is_active: Boolean(trader.is_active),
     });
 
-    const firstAsset = assets?.[0] ?? null;
     const tradeForm = useForm({
         asset_id: firstAsset?.id || '',
         apply_to: 'all',
@@ -79,7 +97,7 @@ export default function Edit({ trader, assets, active_followers, followers = [],
 
     const handleAssetChange = (value) => {
         tradeForm.setData('asset_id', value);
-        const selected = assets.find((asset) => asset.id === value);
+        const selected = assetOptions.find((asset) => asset.id === value);
         if (selected) {
             tradeForm.setData('price', selected.price);
         }
@@ -375,10 +393,25 @@ export default function Edit({ trader, assets, active_followers, followers = [],
                                 <option value="" disabled>
                                     Select an asset
                                 </option>
-                                {assets.map((asset) => (
-                                    <option key={asset.id} value={asset.id}>
-                                        {asset.symbol} · {asset.name}
-                                    </option>
+                                {orderedAssetTypes
+                                    .filter((type) => Array.isArray(groupedAssets[type]) && groupedAssets[type].length > 0)
+                                    .map((type) => (
+                                        <optgroup key={type} label={assetTypeLabels[type]}>
+                                            {groupedAssets[type].map((asset) => (
+                                                <option key={asset.id} value={asset.id}>
+                                                    {asset.symbol} · {asset.name}
+                                                </option>
+                                            ))}
+                                        </optgroup>
+                                    ))}
+                                {otherAssetTypes.map((type) => (
+                                    <optgroup key={type} label={type.toUpperCase()}>
+                                        {groupedAssets[type].map((asset) => (
+                                            <option key={asset.id} value={asset.id}>
+                                                {asset.symbol} · {asset.name}
+                                            </option>
+                                        ))}
+                                    </optgroup>
                                 ))}
                             </select>
                         </Field>
