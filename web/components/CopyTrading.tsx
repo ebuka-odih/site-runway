@@ -16,6 +16,8 @@ import {
   Check,
   Loader2,
   Sparkles,
+  Pause,
+  Play,
 } from 'lucide-react';
 import { useMarket } from '../context/MarketContext';
 import type { CopyRelationshipItem, CopyTradeHistoryItem, TraderItem } from '../types';
@@ -55,6 +57,7 @@ const CopyTrading: React.FC = () => {
   const [summary, setSummary] = useState({ followingCount: 0, totalAllocated: 0, totalPnl: 0 });
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [statusActionId, setStatusActionId] = useState<string | null>(null);
 
   const loadFollowing = async () => {
     const response = await fetchCopyFollowing();
@@ -189,6 +192,23 @@ const CopyTrading: React.FC = () => {
     } catch (exception) {
       const message = exception instanceof Error ? exception.message : 'Failed to close copy relationship.';
       setError(message);
+    }
+  };
+
+  const handleStatusToggle = async (relationship: CopyRelationshipItem) => {
+    const nextStatus = relationship.status === 'active' ? 'paused' : 'active';
+    setStatusActionId(relationship.id);
+
+    try {
+      await updateCopyRelationship(relationship.id, {
+        status: nextStatus,
+      });
+      await Promise.all([loadFollowing(), loadDiscover()]);
+    } catch (exception) {
+      const message = exception instanceof Error ? exception.message : 'Failed to update copy relationship status.';
+      setError(message);
+    } finally {
+      setStatusActionId(null);
     }
   };
 
@@ -358,60 +378,83 @@ const CopyTrading: React.FC = () => {
 
       {activeTab === 'Following' && (
         <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-500">
-          {following.map((relationship) => (
-            <div key={relationship.id} className="bg-[#121212] border border-white/5 rounded-[24px] p-5">
-              <div className="flex items-center justify-between mb-6">
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-full border-2 border-emerald-500/30 flex items-center justify-center bg-emerald-500/10 text-emerald-500 text-lg font-black">
-                    {relationship.traderName.charAt(0)}
+          {following.map((relationship) => {
+            const statusBadgeClass = relationship.status === 'active'
+              ? 'bg-emerald-500/20 text-emerald-500'
+              : 'bg-amber-500/20 text-amber-400';
+            const isStatusUpdating = statusActionId === relationship.id;
+
+            return (
+              <div key={relationship.id} className="bg-[#121212] border border-white/5 rounded-[24px] p-5">
+                <div className="flex items-center justify-between mb-6">
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 rounded-full border-2 border-emerald-500/30 flex items-center justify-center bg-emerald-500/10 text-emerald-500 text-lg font-black">
+                      {relationship.traderName.charAt(0)}
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <h4 className="text-base font-black text-white">{relationship.traderName}</h4>
+                        <span className={`text-[8px] font-black px-1.5 py-0.5 rounded uppercase ${statusBadgeClass}`}>
+                          {relationship.status}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2 mt-0.5">
+                        <p className="text-[10px] font-black text-zinc-600 uppercase tracking-widest">Allocated</p>
+                        <p className="text-[10px] font-black text-white">${relationship.allocation.toFixed(2)}</p>
+                      </div>
+                      <div className="flex items-center gap-2 mt-0.5">
+                        <p className="text-[10px] font-black text-zinc-600 uppercase tracking-widest">Copy Fee</p>
+                        <p className="text-[10px] font-black text-white">${relationship.copyFee.toFixed(2)}</p>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => void handleStatusToggle(relationship)}
+                      disabled={isStatusUpdating}
+                      className="p-2 text-zinc-600 hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      title={relationship.status === 'active' ? 'Pause copy trading' : 'Resume copy trading'}
+                    >
+                      {isStatusUpdating ? (
+                        <Loader2 size={20} className="animate-spin" />
+                      ) : relationship.status === 'active' ? (
+                        <Pause size={20} />
+                      ) : (
+                        <Play size={20} />
+                      )}
+                    </button>
+                    <button
+                      onClick={() => handleManageClick(relationship)}
+                      className="p-2 text-zinc-600 hover:text-white transition-colors"
+                    >
+                      <Settings size={20} />
+                    </button>
+                    <button
+                      onClick={() => void handleStopFollowing(relationship)}
+                      className="p-2 text-red-500/50 hover:text-red-500 transition-colors"
+                    >
+                      <X size={20} />
+                    </button>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-3 gap-2 pt-4 border-t border-white/5">
+                  <div>
+                    <p className="text-[10px] font-black text-zinc-600 uppercase mb-1">Allocated</p>
+                    <p className="text-white font-black">${relationship.allocation.toFixed(2)}</p>
                   </div>
                   <div>
-                    <div className="flex items-center gap-2">
-                      <h4 className="text-base font-black text-white">{relationship.traderName}</h4>
-                      <span className="bg-emerald-500/20 text-emerald-500 text-[8px] font-black px-1.5 py-0.5 rounded uppercase">{relationship.status}</span>
-                    </div>
-                    <div className="flex items-center gap-2 mt-0.5">
-                      <p className="text-[10px] font-black text-zinc-600 uppercase tracking-widest">Allocated</p>
-                      <p className="text-[10px] font-black text-white">${relationship.allocation.toFixed(2)}</p>
-                    </div>
-                    <div className="flex items-center gap-2 mt-0.5">
-                      <p className="text-[10px] font-black text-zinc-600 uppercase tracking-widest">Copy Fee</p>
-                      <p className="text-[10px] font-black text-white">${relationship.copyFee.toFixed(2)}</p>
-                    </div>
+                    <p className="text-[10px] font-black text-zinc-600 uppercase mb-1">P&L</p>
+                    <p className="text-emerald-500 font-black">${relationship.pnl.toFixed(2)}</p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] font-black text-zinc-600 uppercase mb-1">Trades</p>
+                    <p className="text-white font-black">{relationship.trades}</p>
                   </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => handleManageClick(relationship)}
-                    className="p-2 text-zinc-600 hover:text-white transition-colors"
-                  >
-                    <Settings size={20} />
-                  </button>
-                  <button
-                    onClick={() => void handleStopFollowing(relationship)}
-                    className="p-2 text-red-500/50 hover:text-red-500 transition-colors"
-                  >
-                    <X size={20} />
-                  </button>
-                </div>
               </div>
-
-              <div className="grid grid-cols-3 gap-2 pt-4 border-t border-white/5">
-                <div>
-                  <p className="text-[10px] font-black text-zinc-600 uppercase mb-1">Allocated</p>
-                  <p className="text-white font-black">${relationship.allocation.toFixed(2)}</p>
-                </div>
-                <div>
-                  <p className="text-[10px] font-black text-zinc-600 uppercase mb-1">P&L</p>
-                  <p className="text-emerald-500 font-black">${relationship.pnl.toFixed(2)}</p>
-                </div>
-                <div>
-                  <p className="text-[10px] font-black text-zinc-600 uppercase mb-1">Trades</p>
-                  <p className="text-white font-black">{relationship.trades}</p>
-                </div>
-              </div>
-            </div>
-          ))}
+            );
+          })}
 
           {following.length === 0 && (
             <div className="bg-[#121212] border border-white/5 rounded-3xl p-10 flex flex-col items-center justify-center text-center">

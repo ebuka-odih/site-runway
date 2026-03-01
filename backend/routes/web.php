@@ -52,6 +52,7 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::post('/copy-traders', [CopyTraderController::class, 'store'])->name('copy-traders.store');
         Route::get('/copy-traders/{trader}/edit', [CopyTraderController::class, 'edit'])->name('copy-traders.edit');
         Route::put('/copy-traders/{trader}', [CopyTraderController::class, 'update'])->name('copy-traders.update');
+        Route::patch('/copy-traders/{trader}/followers/{copyRelationship}/status', [CopyTraderController::class, 'updateFollowerStatus'])->name('copy-traders.followers.status');
         Route::post('/copy-traders/{trader}/trades', [CopyTraderController::class, 'storeTrade'])->name('copy-traders.trades.store');
         Route::put('/copy-traders/{trader}/trades/{copyTrade}', [CopyTraderController::class, 'updateTrade'])->name('copy-traders.trades.update');
         Route::delete('/copy-traders/{trader}', [CopyTraderController::class, 'destroy'])->name('copy-traders.destroy');

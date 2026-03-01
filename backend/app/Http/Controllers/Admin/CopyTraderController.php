@@ -206,6 +206,37 @@ class CopyTraderController extends Controller
             ->with('success', 'Copy trader updated successfully.');
     }
 
+    public function updateFollowerStatus(Request $request, Trader $trader, CopyRelationship $copyRelationship): RedirectResponse
+    {
+        if ((string) $copyRelationship->trader_id !== (string) $trader->id) {
+            abort(404);
+        }
+
+        $validated = $request->validate([
+            'status' => ['required', Rule::in(['active', 'paused'])],
+        ]);
+
+        $previousStatus = (string) $copyRelationship->status;
+        $nextStatus = (string) $validated['status'];
+
+        if (! in_array($previousStatus, ['active', 'paused'], true)) {
+            return back()->with('error', 'Only active or paused followers can be updated.');
+        }
+
+        if ($previousStatus === $nextStatus) {
+            return back()->with('success', 'Follower status is already up to date.');
+        }
+
+        $copyRelationship->update([
+            'status' => $nextStatus,
+            'ended_at' => null,
+        ]);
+
+        $this->syncTraderCopiersCountForStatusTransition($trader->id, $previousStatus, $nextStatus);
+
+        return back()->with('success', "Follower status updated to {$nextStatus}.");
+    }
+
     public function destroy(Trader $trader): RedirectResponse
     {
         $trader->delete();
@@ -473,5 +504,25 @@ class CopyTraderController extends Controller
             'is_verified' => (bool) $trader->is_verified,
             'is_active' => (bool) $trader->is_active,
         ];
+    }
+
+    private function syncTraderCopiersCountForStatusTransition(string $traderId, string $previousStatus, string $nextStatus): void
+    {
+        if ($previousStatus === $nextStatus) {
+            return;
+        }
+
+        if ($previousStatus !== 'active' && $nextStatus === 'active') {
+            Trader::query()->whereKey($traderId)->increment('copiers_count');
+
+            return;
+        }
+
+        if ($previousStatus === 'active' && $nextStatus !== 'active') {
+            Trader::query()
+                ->whereKey($traderId)
+                ->where('copiers_count', '>', 0)
+                ->decrement('copiers_count');
+        }
     }
 }

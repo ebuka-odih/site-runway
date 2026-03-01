@@ -1,6 +1,7 @@
 import AdminLayout from '@/Layouts/AdminLayout';
 import { adminPath } from '@/lib/adminPath';
 import { Link, router, useForm, usePage } from '@inertiajs/react';
+import { useState } from 'react';
 
 const toLocalInputValue = (value) => {
     if (!value) {
@@ -22,6 +23,7 @@ const toLocalInputValue = (value) => {
 
 export default function Edit({ trader, assets, active_followers, followers = [], trade_history = [] }) {
     const { url } = usePage();
+    const [statusUpdatingId, setStatusUpdatingId] = useState(null);
     const assetOptions = Array.isArray(assets) ? assets : [];
     const firstAsset = assetOptions[0] ?? null;
     const orderedAssetTypes = ['etf', 'stock', 'share', 'crypto'];
@@ -146,6 +148,22 @@ export default function Edit({ trader, assets, active_followers, followers = [],
         if (scope !== 'single') {
             tradeForm.setData('copy_relationship_id', '');
         }
+    };
+
+    const handleFollowerStatusToggle = (relationship) => {
+        const currentStatus = String(relationship?.status || 'active');
+        const nextStatus = currentStatus === 'active' ? 'paused' : 'active';
+
+        setStatusUpdatingId(relationship.id);
+
+        router.patch(
+            adminPath(url, `copy-traders/${trader.id}/followers/${relationship.id}/status`),
+            { status: nextStatus },
+            {
+                preserveScroll: true,
+                onFinish: () => setStatusUpdatingId(null),
+            },
+        );
     };
 
     return (
@@ -490,6 +508,70 @@ export default function Edit({ trader, assets, active_followers, followers = [],
                             {tradeForm.processing ? 'Executing...' : 'Execute Trade'}
                         </button>
                     </form>
+                </section>
+
+                <section className="lg:col-span-2 rounded-2xl border border-slate-800 bg-slate-900/70 p-4 sm:p-6">
+                    <div className="mb-4">
+                        <h2 className="text-xl font-semibold text-slate-100">Follower Relationships</h2>
+                        <p className="mt-1 text-sm text-slate-400">
+                            Pause or resume copied users and monitor each follower&apos;s current status.
+                        </p>
+                    </div>
+
+                    {followerOptions.length === 0 ? (
+                        <div className="rounded-xl border border-slate-800 bg-slate-950/70 p-4 text-sm text-slate-400">
+                            No followers are currently copying this trader.
+                        </div>
+                    ) : (
+                        <div className="space-y-3">
+                            {followerOptions.map((relationship) => {
+                                const followerName = relationship?.user?.name || relationship?.user?.email || 'Unknown follower';
+                                const followerEmail = relationship?.user?.email || '';
+                                const status = String(relationship?.status || 'active');
+                                const isActive = status === 'active';
+                                const statusLabel = status.charAt(0).toUpperCase() + status.slice(1);
+                                const ratio = Number(relationship?.copy_ratio || 0).toLocaleString(undefined, {
+                                    maximumFractionDigits: 2,
+                                });
+                                const badgeClass = isActive
+                                    ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-200'
+                                    : 'border-amber-500/40 bg-amber-500/10 text-amber-200';
+                                const isUpdating = statusUpdatingId === relationship.id;
+
+                                return (
+                                    <article
+                                        key={relationship.id}
+                                        className="rounded-xl border border-slate-800 bg-slate-950/70 p-4"
+                                    >
+                                        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                                            <div>
+                                                <p className="text-sm font-semibold text-slate-100">{followerName}</p>
+                                                <p className="mt-0.5 text-xs text-slate-500">
+                                                    {followerEmail || 'No email'}
+                                                </p>
+                                                <p className="mt-1 text-xs text-slate-400">Copy Ratio: {ratio}x</p>
+                                            </div>
+                                            <div className="flex items-center gap-2">
+                                                <span
+                                                    className={`rounded-full border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide ${badgeClass}`}
+                                                >
+                                                    {statusLabel}
+                                                </span>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => handleFollowerStatusToggle(relationship)}
+                                                    disabled={isUpdating}
+                                                    className="rounded-lg border border-slate-700 px-3 py-2 text-xs font-semibold text-slate-200 transition hover:border-slate-500 hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
+                                                >
+                                                    {isUpdating ? 'Updating...' : isActive ? 'Pause' : 'Resume'}
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </article>
+                                );
+                            })}
+                        </div>
+                    )}
                 </section>
 
                 <section className="lg:col-span-2 rounded-2xl border border-slate-800 bg-slate-900/70 p-4 sm:p-6">
