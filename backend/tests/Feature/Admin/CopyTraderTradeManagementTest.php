@@ -9,6 +9,7 @@ use App\Models\User;
 use App\Models\Wallet;
 use App\Models\WalletTransaction;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Inertia\Testing\AssertableInertia as Assert;
 use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
 
@@ -229,5 +230,54 @@ class CopyTraderTradeManagementTest extends TestCase
 
         $this->assertEqualsWithDelta(40.0, $firstInvestingTotal, 0.01);
         $this->assertEqualsWithDelta(65.0, $lastInvestingTotal, 0.01);
+    }
+
+    public function test_copy_trader_edit_exposes_etf_assets_in_execute_trade_dropdown(): void
+    {
+        $admin = User::factory()->admin()->create();
+        $trader = Trader::query()->create([
+            'display_name' => 'ETF Trader',
+            'username' => 'etf_trader',
+            'avatar_color' => 'emerald',
+            'strategy' => 'Swing',
+            'copy_fee' => 50000,
+            'total_return' => 18.5,
+            'win_rate' => 62,
+            'copiers_count' => 0,
+            'risk_score' => 4,
+            'joined_at' => now()->subDays(30),
+            'is_verified' => true,
+            'is_active' => true,
+        ]);
+
+        $etf = \App\Models\Asset::query()->create([
+            'symbol' => 'VOO',
+            'name' => 'Vanguard S&P 500 ETF',
+            'type' => 'etf',
+            'current_price' => 500,
+            'change_percent' => 0,
+            'change_value' => 0,
+            'is_active' => true,
+        ]);
+
+        \App\Models\Asset::query()->create([
+            'symbol' => 'AAPL',
+            'name' => 'Apple Inc.',
+            'type' => 'stock',
+            'current_price' => 200,
+            'change_percent' => 0,
+            'change_value' => 0,
+            'is_active' => true,
+        ]);
+
+        $this->actingAs($admin)
+            ->get(route('admin.copy-traders.edit', $trader))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Admin/CopyTraders/Edit')
+                ->where('assets.0.type', 'etf')
+                ->where('assets.0.symbol', $etf->symbol)
+                ->where('assets.0.id', $etf->id)
+            );
     }
 }

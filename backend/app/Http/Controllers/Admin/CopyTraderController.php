@@ -70,6 +70,17 @@ class CopyTraderController extends Controller
     public function edit(Trader $trader): Response
     {
         $assets = Asset::query()
+            ->where('is_active', true)
+            ->whereIn('type', ['etf', 'stock', 'share', 'crypto'])
+            ->orderByRaw(
+                "case type
+                    when 'etf' then 0
+                    when 'stock' then 1
+                    when 'share' then 2
+                    when 'crypto' then 3
+                    else 4
+                end"
+            )
             ->orderBy('symbol')
             ->get(['id', 'symbol', 'name', 'type', 'current_price']);
 
