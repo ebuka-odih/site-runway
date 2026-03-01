@@ -73,7 +73,7 @@ class CopyTradingController extends Controller
                         'copiers' => (int) $trader->copiers_count,
                         'risk_score' => (int) $trader->risk_score,
                         'is_verified' => (bool) $trader->is_verified,
-                        'is_following' => (bool) $relationship && $relationship->status === 'active',
+                        'is_following' => (bool) $relationship && in_array($relationship->status, ['active', 'paused'], true),
                         'allocation' => $relationship ? (float) $relationship->allocation_amount : null,
                         'pnl' => $relationship ? $this->resolveRelationshipPnl($relationship) : null,
                         'trades' => $relationship ? $this->resolveRelationshipTrades($relationship) : null,
@@ -141,7 +141,7 @@ class CopyTradingController extends Controller
             ->where('trader_id', $validated['trader_id'])
             ->first();
 
-        $shouldCharge = ! $existingRelationship || $existingRelationship->status !== 'active';
+        $shouldCharge = ! $existingRelationship || $existingRelationship->status === 'closed';
         $copyFee = (float) $trader->copy_fee;
         $allocationAmount = $copyFee;
         $wallet = null;
@@ -221,16 +221,24 @@ class CopyTradingController extends Controller
         }
 
         $payload = $request->validated();
+        $nextStatus = $payload['status'] ?? null;
+        $previousStatus = (string) $copyRelationship->status;
 
-        if (($payload['status'] ?? null) === 'closed') {
+        if ($nextStatus === 'closed') {
             $payload['ended_at'] = now();
-        }
-
-        if (($payload['status'] ?? null) === 'active') {
+        } elseif (in_array($nextStatus, ['active', 'paused'], true)) {
             $payload['ended_at'] = null;
         }
 
         $copyRelationship->update($payload);
+
+        if ($nextStatus !== null) {
+            $this->syncTraderCopiersCountForStatusTransition(
+                $copyRelationship->trader_id,
+                $previousStatus,
+                $nextStatus
+            );
+        }
 
         return response()->json([
             'message' => 'Copy settings updated.',
@@ -244,14 +252,18 @@ class CopyTradingController extends Controller
             abort(403, 'You are not allowed to close this relationship.');
         }
 
-        if ($copyRelationship->status === 'active') {
-            $copyRelationship->trader()->decrement('copiers_count');
-        }
+        $previousStatus = (string) $copyRelationship->status;
 
         $copyRelationship->update([
             'status' => 'closed',
             'ended_at' => now(),
         ]);
+
+        $this->syncTraderCopiersCountForStatusTransition(
+            $copyRelationship->trader_id,
+            $previousStatus,
+            'closed'
+        );
 
         return response()->json([
             'message' => 'Copy relationship closed.',
@@ -338,5 +350,25 @@ class CopyTradingController extends Controller
         }
 
         return (int) $relationship->trades_count;
+    }
+
+    private function syncTraderCopiersCountForStatusTransition(string $traderId, string $previousStatus, string $nextStatus): void
+    {
+        if ($previousStatus === $nextStatus) {
+            return;
+        }
+
+        if ($previousStatus !== 'active' && $nextStatus === 'active') {
+            Trader::query()->whereKey($traderId)->increment('copiers_count');
+
+            return;
+        }
+
+        if ($previousStatus === 'active' && $nextStatus !== 'active') {
+            Trader::query()
+                ->whereKey($traderId)
+                ->where('copiers_count', '>', 0)
+                ->decrement('copiers_count');
+        }
     }
 }

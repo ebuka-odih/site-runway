@@ -132,4 +132,63 @@ class CopyTradingFlowTest extends TestCase
         $this->assertSame('debit', $transaction->direction);
         $this->assertEqualsWithDelta(50, (float) $transaction->amount, 0.00000001);
     }
+
+    public function test_user_can_pause_and_resume_following_without_losing_relationship(): void
+    {
+        $user = User::factory()->create();
+
+        $trader = Trader::query()->create([
+            'display_name' => 'Alpha Whale',
+            'username' => 'alpha_whale',
+            'avatar_color' => 'emerald',
+            'strategy' => 'Momentum',
+            'copy_fee' => 50,
+            'total_return' => 12.5,
+            'win_rate' => 80,
+            'copiers_count' => 1,
+            'risk_score' => 3,
+            'joined_at' => now()->subDays(10),
+            'is_verified' => true,
+            'is_active' => true,
+        ]);
+
+        $relationship = CopyRelationship::query()->create([
+            'user_id' => $user->id,
+            'trader_id' => $trader->id,
+            'allocation_amount' => 50,
+            'copy_ratio' => 1,
+            'status' => 'active',
+            'pnl' => 0,
+            'trades_count' => 0,
+            'started_at' => now()->subDay(),
+        ]);
+
+        Sanctum::actingAs($user);
+
+        $this->patchJson("/api/v1/copy-trading/following/{$relationship->id}", [
+            'status' => 'paused',
+        ])
+            ->assertOk()
+            ->assertJsonPath('data.status', 'paused');
+
+        $trader->refresh();
+        $relationship->refresh();
+
+        $this->assertSame(0, (int) $trader->copiers_count);
+        $this->assertSame('paused', $relationship->status);
+        $this->assertNull($relationship->ended_at);
+
+        $this->patchJson("/api/v1/copy-trading/following/{$relationship->id}", [
+            'status' => 'active',
+        ])
+            ->assertOk()
+            ->assertJsonPath('data.status', 'active');
+
+        $trader->refresh();
+        $relationship->refresh();
+
+        $this->assertSame(1, (int) $trader->copiers_count);
+        $this->assertSame('active', $relationship->status);
+        $this->assertNull($relationship->ended_at);
+    }
 }
