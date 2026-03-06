@@ -108,6 +108,7 @@ class SettingController extends Controller
             'require_kyc_for_withdrawals' => ['required', 'boolean'],
             'session_timeout_minutes' => ['required', 'integer', 'min:5', 'max:240'],
             'support_email' => ['required', 'email'],
+            'admin_notification_email' => ['nullable', 'email'],
             'livechat_enabled' => ['required', 'boolean'],
             'livechat_provider' => ['nullable', 'string', 'max:60'],
             'livechat_embed_code' => ['nullable', 'string', 'max:20000'],

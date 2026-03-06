@@ -22,6 +22,7 @@ class SiteSettings
             'require_kyc_for_withdrawals' => true,
             'session_timeout_minutes' => 60,
             'support_email' => 'support@prologezprime.com',
+            'admin_notification_email' => null,
             'livechat_enabled' => false,
             'livechat_provider' => null,
             'livechat_embed_code' => null,

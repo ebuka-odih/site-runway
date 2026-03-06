@@ -46,6 +46,7 @@ class SettingsManagementTest extends TestCase
             'require_kyc_for_withdrawals' => true,
             'session_timeout_minutes' => 90,
             'support_email' => 'support@runwayalgo.test',
+            'admin_notification_email' => 'alerts@runwayalgo.test',
             'livechat_enabled' => true,
             'livechat_provider' => 'tawk.to',
             'livechat_embed_code' => '<script>console.log("livechat")</script>',
@@ -61,6 +62,33 @@ class SettingsManagementTest extends TestCase
         $this->assertTrue($stored['livechat_enabled']);
         $this->assertSame('tawk.to', $stored['livechat_provider']);
         $this->assertSame('<script>console.log("livechat")</script>', $stored['livechat_embed_code']);
+        $this->assertSame('alerts@runwayalgo.test', $stored['admin_notification_email']);
+    }
+
+    public function test_admin_settings_reject_invalid_admin_notification_email(): void
+    {
+        $admin = User::factory()->admin()->create();
+
+        $payload = [
+            'brand_name' => 'RunwayAlgo',
+            'site_mode' => 'live',
+            'deposits_enabled' => true,
+            'withdrawals_enabled' => true,
+            'require_kyc_for_deposits' => false,
+            'require_kyc_for_withdrawals' => true,
+            'session_timeout_minutes' => 90,
+            'support_email' => 'support@runwayalgo.test',
+            'admin_notification_email' => 'not-an-email',
+            'livechat_enabled' => false,
+            'livechat_provider' => '',
+            'livechat_embed_code' => '',
+        ];
+
+        $this->actingAs($admin)
+            ->from(route('admin.settings.index'))
+            ->post('/admin/settings', $payload)
+            ->assertRedirect(route('admin.settings.index'))
+            ->assertSessionHasErrors(['admin_notification_email']);
     }
 
     public function test_admin_can_export_full_site_database_details(): void

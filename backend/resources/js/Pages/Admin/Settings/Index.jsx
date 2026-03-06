@@ -16,6 +16,7 @@ export default function Index({ settings }) {
         require_kyc_for_withdrawals: Boolean(settings.require_kyc_for_withdrawals),
         session_timeout_minutes: Number(settings.session_timeout_minutes),
         support_email: settings.support_email,
+        admin_notification_email: settings.admin_notification_email || '',
         livechat_enabled: Boolean(settings.livechat_enabled),
         livechat_provider: settings.livechat_provider || '',
         livechat_embed_code: settings.livechat_embed_code || '',
@@ -63,6 +64,7 @@ export default function Index({ settings }) {
                 <div className="mt-5 flex flex-wrap gap-2">
                     {[
                         { key: 'site', label: 'Site Controls' },
+                        { key: 'mailer', label: 'Mailer' },
                         { key: 'livechat', label: 'Live Chat' },
                         { key: 'profile', label: 'Admin Profile' },
                         { key: 'security', label: 'Security' },
@@ -246,6 +248,44 @@ export default function Index({ settings }) {
                             className="rounded-xl bg-gradient-to-r from-cyan-500 to-emerald-500 px-5 py-2.5 text-sm font-semibold text-slate-950 transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
                         >
                             {form.processing ? 'Saving...' : 'Save Livechat Settings'}
+                        </button>
+                    </form>
+                )}
+
+                {activeTab === 'mailer' && (
+                    <form onSubmit={submit} className="mt-6 space-y-5 max-w-2xl">
+                        <div className="rounded-2xl border border-slate-800 bg-slate-950/60 p-4">
+                            <h3 className="text-base font-semibold text-slate-100">Admin Action Mailer</h3>
+                            <p className="mt-1 text-sm text-slate-400">
+                                Send deposit and withdrawal admin alerts to a dedicated mailbox in addition to admin user accounts.
+                            </p>
+                        </div>
+
+                        <label className="block">
+                            <span className="mb-2 block text-sm text-slate-300">Admin Notification Email</span>
+                            <input
+                                type="email"
+                                value={form.data.admin_notification_email}
+                                onChange={(event) => form.setData('admin_notification_email', event.target.value)}
+                                placeholder="alerts@example.com"
+                                className="w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2.5 text-sm text-slate-100 outline-none transition focus:border-cyan-400"
+                            />
+                            <span className="mt-2 block text-xs text-slate-500">
+                                Leave this blank to keep using only admin-user emails for these approval alerts.
+                            </span>
+                            {form.errors.admin_notification_email && (
+                                <span className="mt-1 block text-xs text-rose-300">
+                                    {form.errors.admin_notification_email}
+                                </span>
+                            )}
+                        </label>
+
+                        <button
+                            type="submit"
+                            disabled={form.processing}
+                            className="rounded-xl bg-gradient-to-r from-cyan-500 to-emerald-500 px-5 py-2.5 text-sm font-semibold text-slate-950 transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+                        >
+                            {form.processing ? 'Saving...' : 'Save Mailer Settings'}
                         </button>
                     </form>
                 )}

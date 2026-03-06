@@ -101,13 +101,6 @@ const Heatmap: React.FC = () => {
         )}
         </div>
       </div>
-
-      <div className="rounded-xl border border-amber-400/35 bg-amber-500/10 px-3 py-2">
-        <p className="text-[11px] text-amber-100/95 leading-relaxed font-medium">
-          Warning: Trading financial assets carries risk, and you can lose capital.
-          Invest only what you can afford to lose.
-        </p>
-      </div>
     </div>
   );
 };

@@ -15,11 +15,6 @@ export default function Layout({ brandName }: LayoutProps) {
 
   return (
     <div className="min-h-screen bg-[#050B14] text-white font-sans selection:bg-[#064E3B]/30">
-      {/* Top Warning Bar */}
-      <div className="bg-[#F1F5F9] text-[#1E293B] py-2 px-4 text-center text-[10px] md:text-xs font-medium">
-        Don't invest unless you're prepared to lose all the money you invest. This is a high-risk investment, and you should not expect to be protected if something goes wrong <Link to="/risk" className="underline text-[#065F46] hover:text-[#064E3B]">Take 2 mins to learn more.</Link>
-      </div>
-
       <header className="sticky top-0 z-50 bg-[#050B14]/80 backdrop-blur-md border-b border-white/5">
         <div className="flex items-center justify-between px-6 py-4 max-w-7xl mx-auto">
           <div className="flex items-center gap-10">
