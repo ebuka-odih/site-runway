@@ -5,7 +5,9 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\LoginRequest;
 use App\Models\User;
+use App\Notifications\AdminApprovalNotification;
 use App\Notifications\AuthOtpNotification;
+use App\Support\AdminActionNotificationRouter;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
@@ -199,6 +201,7 @@ class AuthController extends Controller
             });
 
             Cache::forget($this->pendingRegistrationCacheKey($normalizedEmail));
+            $this->notifyAdminsOfNewRegistration($creation['user']);
 
             return response()->json([
                 'message' => 'Email verified successfully.',
@@ -410,6 +413,19 @@ class AuthController extends Controller
     private function dispatchOtpToEmail(string $email, string $otp, string $purpose): void
     {
         Notification::route('mail', $email)->notify(new AuthOtpNotification($otp, $purpose));
+    }
+
+    private function notifyAdminsOfNewRegistration(User $user): void
+    {
+        AdminActionNotificationRouter::send(new AdminApprovalNotification(
+            title: 'New user registration',
+            message: sprintf(
+                'A new user account was created for %s (%s).',
+                (string) ($user->name ?? 'User'),
+                (string) ($user->email ?? '-')
+            ),
+            actionUrl: '/admin/users',
+        ));
     }
 
     private function pendingRegistrationCacheKey(string $email): string

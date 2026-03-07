@@ -3,8 +3,11 @@
 namespace Tests\Feature\Api;
 
 use App\Models\User;
+use App\Notifications\AdminApprovalNotification;
 use App\Notifications\AuthOtpNotification;
+use App\Support\SiteSettings;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Notification;
 use Tests\TestCase;
 
@@ -15,6 +18,16 @@ class AuthFlowTest extends TestCase
     public function test_user_can_register_verify_email_with_otp_and_login(): void
     {
         Notification::fake();
+
+        Cache::forever(SiteSettings::CACHE_KEY, [
+            ...SiteSettings::defaults(),
+            'support_email' => 'support@runwayalgo.test',
+            'admin_notification_email' => 'alerts@runwayalgo.test',
+        ]);
+
+        $admin = User::factory()->admin()->create([
+            'email' => 'admin@runwayalgo.test',
+        ]);
 
         $registerResponse = $this->postJson('/api/v1/auth/register', [
             'username' => 'algo_user',
@@ -70,6 +83,15 @@ class AuthFlowTest extends TestCase
         $user = User::query()->where('email', 'algo@example.com')->firstOrFail();
         $this->assertNotNull($user->email_verified_at);
         $this->assertSame('USD', $user->wallet?->currency);
+
+        Notification::assertSentTo($admin, AdminApprovalNotification::class);
+        Notification::assertSentOnDemand(AdminApprovalNotification::class, function (
+            AdminApprovalNotification $notification,
+            array $channels,
+            object $notifiable
+        ): bool {
+            return $notifiable->routeNotificationFor('mail') === 'alerts@runwayalgo.test';
+        });
 
         $this->postJson('/api/v1/auth/login', [
             'email' => 'algo@example.com',
