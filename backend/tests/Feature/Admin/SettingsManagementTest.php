@@ -5,6 +5,7 @@ namespace Tests\Feature\Admin;
 use App\Models\PaymentMethod;
 use App\Models\User;
 use App\Models\Wallet;
+use App\Support\SiteSettings;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
 use Tests\TestCase;
@@ -24,7 +25,7 @@ class SettingsManagementTest extends TestCase
             'require_kyc_for_deposits' => false,
             'require_kyc_for_withdrawals' => true,
             'session_timeout_minutes' => 90,
-            'support_email' => 'support@runwayalgo.test',
+            'support_email' => 'support@runwayalgo.com',
             'livechat_enabled' => true,
             'livechat_provider' => 'tawk.to',
             'livechat_embed_code' => '<script>console.log("livechat")</script>',
@@ -40,6 +41,20 @@ class SettingsManagementTest extends TestCase
         $this->assertTrue($stored['livechat_enabled']);
         $this->assertSame('tawk.to', $stored['livechat_provider']);
         $this->assertSame('<script>console.log("livechat")</script>', $stored['livechat_embed_code']);
+    }
+
+    public function test_site_settings_default_support_email_uses_dot_com(): void
+    {
+        $this->assertSame('support@runwayalgo.com', SiteSettings::defaults()['support_email']);
+    }
+
+    public function test_site_settings_normalizes_legacy_support_email(): void
+    {
+        Cache::forever(SiteSettings::CACHE_KEY, [
+            'support_email' => 'support@runwayalgo.test',
+        ]);
+
+        $this->assertSame('support@runwayalgo.com', SiteSettings::get()['support_email']);
     }
 
     public function test_admin_can_export_full_site_database_details(): void
