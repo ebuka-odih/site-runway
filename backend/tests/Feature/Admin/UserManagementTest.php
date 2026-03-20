@@ -193,6 +193,83 @@ class UserManagementTest extends TestCase
         );
     }
 
+    public function test_admin_can_deduct_user_balance_down_to_the_negative_floor(): void
+    {
+        $admin = User::factory()->admin()->create();
+        $customer = User::factory()->create([
+            'balance' => 50,
+            'profit_balance' => 20,
+            'holding_balance' => 30,
+        ]);
+
+        $wallet = Wallet::query()->create([
+            'user_id' => $customer->id,
+            'cash_balance' => 50,
+            'profit_loss' => 20,
+            'investing_balance' => 30,
+        ]);
+
+        $this->actingAs($admin)
+            ->post(route('admin.users.fund', $customer), [
+                'target' => 'balance',
+                'operation' => 'deduct',
+                'amount' => 120,
+                'notes' => 'Admin recovery',
+            ])
+            ->assertRedirect(route('admin.users.edit', $customer));
+
+        $customer->refresh();
+        $wallet->refresh();
+
+        $this->assertSame(-70.0, (float) $customer->balance);
+        $this->assertSame(20.0, (float) $customer->profit_balance);
+        $this->assertSame(30.0, (float) $customer->holding_balance);
+
+        $this->assertSame(-70.0, (float) $wallet->cash_balance);
+        $this->assertSame(20.0, (float) $wallet->profit_loss);
+        $this->assertSame(30.0, (float) $wallet->investing_balance);
+
+        $transaction = WalletTransaction::query()->where('wallet_id', $wallet->id)->sole();
+
+        $this->assertSame('debit', $transaction->direction);
+        $this->assertSame('deposit', $transaction->type);
+        $this->assertSame(120.0, (float) $transaction->amount);
+    }
+
+    public function test_admin_cannot_deduct_user_balance_below_the_negative_floor(): void
+    {
+        $admin = User::factory()->admin()->create();
+        $customer = User::factory()->create([
+            'balance' => 50,
+        ]);
+
+        $wallet = Wallet::query()->create([
+            'user_id' => $customer->id,
+            'cash_balance' => 50,
+            'profit_loss' => 0,
+            'investing_balance' => 0,
+        ]);
+
+        $this->actingAs($admin)
+            ->from(route('admin.users.edit', $customer))
+            ->post(route('admin.users.fund', $customer), [
+                'target' => 'balance',
+                'operation' => 'deduct',
+                'amount' => 151,
+            ])
+            ->assertRedirect(route('admin.users.edit', $customer))
+            ->assertSessionHasErrors([
+                'amount' => 'Cannot reduce balance below -$100.00.',
+            ]);
+
+        $customer->refresh();
+        $wallet->refresh();
+
+        $this->assertSame(50.0, (float) $customer->balance);
+        $this->assertSame(50.0, (float) $wallet->cash_balance);
+        $this->assertDatabaseCount('wallet_transactions', 0);
+    }
+
     public function test_admin_funding_requires_a_valid_target_and_positive_amount(): void
     {
         $admin = User::factory()->admin()->create();

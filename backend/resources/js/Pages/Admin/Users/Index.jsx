@@ -11,7 +11,9 @@ const money = (value) =>
         maximumFractionDigits: 2,
     }).format(Number(value || 0));
 
-export default function Index({ users, filters, stats }) {
+export default function Index({ users, filters, stats, fundingLimits }) {
+    const deductionFloor = Number(fundingLimits?.minimum_balance ?? -100);
+    const deductionFloorLabel = money(deductionFloor);
     const { url } = usePage();
     const usersIndexUrl = adminPath(url, 'users');
     const [search, setSearch] = useState(filters.search || '');
@@ -366,9 +368,12 @@ export default function Index({ users, filters, stats }) {
                     <section className="relative z-10 w-full max-w-xl rounded-2xl border border-slate-700 bg-slate-900 p-5 shadow-2xl">
                         <div className="flex items-start justify-between gap-3">
                             <div>
-                                <h4 className="text-lg font-semibold text-slate-100">Fund User Account</h4>
+                                <h4 className="text-lg font-semibold text-slate-100">Fund or Deduct User Account</h4>
                                 <p className="text-xs text-slate-400">
                                     {fundingUser.name} ({fundingUser.email})
+                                </p>
+                                <p className="mt-1 text-xs text-slate-500">
+                                    Deductions can reduce the selected balance to {deductionFloorLabel}.
                                 </p>
                             </div>
 
@@ -424,6 +429,11 @@ export default function Index({ users, filters, stats }) {
                                     />
                                     {fundForm.errors.amount && (
                                         <span className="mt-1 block text-xs text-rose-300">{fundForm.errors.amount}</span>
+                                    )}
+                                    {!fundForm.errors.amount && (
+                                        <span className="mt-1 block text-xs text-slate-500">
+                                            Deducting can take this balance down to {deductionFloorLabel}.
+                                        </span>
                                     )}
                                 </label>
 

@@ -17,6 +17,8 @@ use Inertia\Response;
 
 class UserController extends Controller
 {
+    private const ADMIN_DEDUCTION_FLOOR = -100.0;
+
     public function index(Request $request): Response
     {
         $search = trim((string) $request->string('search'));
@@ -81,6 +83,7 @@ class UserController extends Controller
                 'verification' => $verification,
             ],
             'stats' => $stats,
+            'fundingLimits' => $this->fundingLimits(),
         ]);
     }
 
@@ -116,6 +119,7 @@ class UserController extends Controller
         return Inertia::render('Admin/Users/Edit', [
             'user' => $this->userPayload($user),
             'options' => $this->formOptions(),
+            'fundingLimits' => $this->fundingLimits(),
         ]);
     }
 
@@ -204,13 +208,15 @@ class UserController extends Controller
             $walletColumn = $targetConfig['wallet_column'];
             $currentUserValue = (float) $lockedUser->{$validated['target']};
             $currentWalletValue = (float) $wallet->{$walletColumn};
+            $nextUserValue = round($currentUserValue - $amount, 8);
+            $nextWalletValue = round($currentWalletValue - $amount, 8);
 
-            if ($isDeduction && ($currentUserValue < $amount || $currentWalletValue < $amount)) {
+            if (
+                $isDeduction
+                && ($nextUserValue < self::ADMIN_DEDUCTION_FLOOR || $nextWalletValue < self::ADMIN_DEDUCTION_FLOOR)
+            ) {
                 throw ValidationException::withMessages([
-                    'amount' => sprintf(
-                        'Cannot deduct more than the current %s.',
-                        $targetLabel
-                    ),
+                    'amount' => sprintf('Cannot reduce %s below -$%s.', $targetLabel, number_format(abs(self::ADMIN_DEDUCTION_FLOOR), 2, '.', ',')),
                 ]);
             }
 
@@ -359,6 +365,16 @@ class UserController extends Controller
             'holding_balance' => 'holding balance',
             default => 'balance',
         };
+    }
+
+    /**
+     * @return array<string, float>
+     */
+    private function fundingLimits(): array
+    {
+        return [
+            'minimum_balance' => self::ADMIN_DEDUCTION_FLOOR,
+        ];
     }
 
     /**
