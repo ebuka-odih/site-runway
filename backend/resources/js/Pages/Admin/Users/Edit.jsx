@@ -10,9 +10,7 @@ const money = (value) =>
         maximumFractionDigits: 2,
     }).format(Number(value || 0));
 
-export default function Edit({ user, options, fundingLimits }) {
-    const deductionFloor = Number(fundingLimits?.minimum_balance ?? -100);
-    const deductionFloorLabel = money(deductionFloor);
+export default function Edit({ user, options }) {
     const { url } = usePage();
     const form = useForm({
         username: user.username || '',
@@ -77,7 +75,7 @@ export default function Edit({ user, options, fundingLimits }) {
                     <div className="mb-5">
                         <h3 className="text-lg font-semibold text-slate-100">Fund or Deduct Account</h3>
                         <p className="mt-1 text-sm text-slate-400">
-                            Admin deductions can reduce the selected balance to {deductionFloorLabel}.
+                            Admin can fund or deduct user balances directly from the admin panel.
                         </p>
                     </div>
 
@@ -127,11 +125,6 @@ export default function Edit({ user, options, fundingLimits }) {
                                 {fundingForm.errors.amount && (
                                     <span className="mt-1 block text-xs text-rose-300">
                                         {fundingForm.errors.amount}
-                                    </span>
-                                )}
-                                {!fundingForm.errors.amount && (
-                                    <span className="mt-1 block text-xs text-slate-500">
-                                        Deducting can take this balance down to {deductionFloorLabel}.
                                     </span>
                                 )}
                             </label>

@@ -11,9 +11,7 @@ const money = (value) =>
         maximumFractionDigits: 2,
     }).format(Number(value || 0));
 
-export default function Index({ users, filters, stats, fundingLimits }) {
-    const deductionFloor = Number(fundingLimits?.minimum_balance ?? -100);
-    const deductionFloorLabel = money(deductionFloor);
+export default function Index({ users, filters, stats }) {
     const { url } = usePage();
     const usersIndexUrl = adminPath(url, 'users');
     const [search, setSearch] = useState(filters.search || '');
@@ -372,9 +370,6 @@ export default function Index({ users, filters, stats, fundingLimits }) {
                                 <p className="text-xs text-slate-400">
                                     {fundingUser.name} ({fundingUser.email})
                                 </p>
-                                <p className="mt-1 text-xs text-slate-500">
-                                    Deductions can reduce the selected balance to {deductionFloorLabel}.
-                                </p>
                             </div>
 
                             <button
@@ -429,11 +424,6 @@ export default function Index({ users, filters, stats, fundingLimits }) {
                                     />
                                     {fundForm.errors.amount && (
                                         <span className="mt-1 block text-xs text-rose-300">{fundForm.errors.amount}</span>
-                                    )}
-                                    {!fundForm.errors.amount && (
-                                        <span className="mt-1 block text-xs text-slate-500">
-                                            Deducting can take this balance down to {deductionFloorLabel}.
-                                        </span>
                                     )}
                                 </label>
 
