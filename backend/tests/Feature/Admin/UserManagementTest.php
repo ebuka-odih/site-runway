@@ -2,6 +2,8 @@
 
 namespace Tests\Feature\Admin;
 
+use App\Models\CopyRelationship;
+use App\Models\Trader;
 use App\Models\User;
 use App\Models\Wallet;
 use App\Models\WalletTransaction;
@@ -276,5 +278,71 @@ class UserManagementTest extends TestCase
         $this->assertSame(5050.0, (float) $customer->balance);
         $this->assertSame(700.0, (float) $customer->holding_balance);
         $this->assertSame(120.0, (float) $customer->profit_balance);
+    }
+
+    public function test_admin_can_see_copy_trader_status_for_user_relationships(): void
+    {
+        $admin = User::factory()->admin()->create();
+        $customer = User::factory()->create();
+
+        $activeTrader = Trader::query()->create([
+            'display_name' => 'Alpha Whale',
+            'username' => 'alpha_whale',
+            'avatar_color' => 'emerald',
+            'strategy' => 'Momentum',
+            'copy_fee' => 50,
+            'total_return' => 12.5,
+            'win_rate' => 80,
+            'copiers_count' => 1,
+            'risk_score' => 3,
+            'joined_at' => now()->subDays(10),
+            'is_verified' => true,
+            'is_active' => true,
+        ]);
+
+        $pausedTrader = Trader::query()->create([
+            'display_name' => 'Beta Scout',
+            'username' => 'beta_scout',
+            'avatar_color' => 'amber',
+            'strategy' => 'Swing',
+            'copy_fee' => 75,
+            'total_return' => 8.25,
+            'win_rate' => 61,
+            'copiers_count' => 0,
+            'risk_score' => 4,
+            'joined_at' => now()->subDays(4),
+            'is_verified' => true,
+            'is_active' => true,
+        ]);
+
+        CopyRelationship::factory()->create([
+            'user_id' => $customer->id,
+            'trader_id' => $activeTrader->id,
+            'status' => 'active',
+            'allocation_amount' => 250,
+            'copy_ratio' => 1.5,
+            'started_at' => now()->subDays(3),
+        ]);
+
+        CopyRelationship::factory()->create([
+            'user_id' => $customer->id,
+            'trader_id' => $pausedTrader->id,
+            'status' => 'paused',
+            'allocation_amount' => 400,
+            'copy_ratio' => 0.75,
+            'started_at' => now()->subDay(),
+        ]);
+
+        $this->actingAs($admin)
+            ->get(route('admin.users.edit', $customer))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Admin/Users/Edit')
+                ->has('copy_relationships', 2)
+                ->where('copy_relationships.0.trader.display_name', 'Alpha Whale')
+                ->where('copy_relationships.0.status', 'active')
+                ->where('copy_relationships.1.trader.display_name', 'Beta Scout')
+                ->where('copy_relationships.1.status', 'paused')
+            );
     }
 }

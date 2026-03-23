@@ -10,8 +10,9 @@ const money = (value) =>
         maximumFractionDigits: 2,
     }).format(Number(value || 0));
 
-export default function Edit({ user, options }) {
+export default function Edit({ user, options, copy_relationships = [] }) {
     const { url } = usePage();
+    const copyRelationships = Array.isArray(copy_relationships) ? copy_relationships : [];
     const form = useForm({
         username: user.username || '',
         name: user.name || '',
@@ -164,6 +165,71 @@ export default function Edit({ user, options }) {
                             </button>
                         </div>
                     </form>
+                </section>
+
+                <section className="max-w-4xl rounded-2xl border border-slate-800 bg-slate-900/70 p-6">
+                    <div className="mb-5">
+                        <h3 className="text-lg font-semibold text-slate-100">Copied Trader Status</h3>
+                        <p className="mt-1 text-sm text-slate-400">
+                            Admin can see whether this user is actively copying a trader or has paused it.
+                        </p>
+                    </div>
+
+                    {copyRelationships.length === 0 ? (
+                        <div className="rounded-xl border border-slate-700 bg-slate-950/70 p-4 text-sm text-slate-400">
+                            This user is not actively following any copy trader.
+                        </div>
+                    ) : (
+                        <div className="space-y-3">
+                            {copyRelationships.map((relationship) => {
+                                const traderName =
+                                    relationship?.trader?.display_name || relationship?.trader?.username || 'Unknown trader';
+                                const username = relationship?.trader?.username || '';
+                                const strategy = relationship?.trader?.strategy || 'No strategy';
+                                const status = String(relationship?.status || 'paused');
+                                const isActive = status === 'active';
+                                const statusLabel = status.charAt(0).toUpperCase() + status.slice(1);
+
+                                return (
+                                    <article
+                                        key={relationship.id}
+                                        className="rounded-xl border border-slate-700 bg-slate-950/70 p-4"
+                                    >
+                                        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                                            <div>
+                                                <p className="text-sm font-semibold text-slate-100">{traderName}</p>
+                                                <p className="mt-0.5 text-xs text-slate-500">
+                                                    {username ? `@${username}` : 'No username'}
+                                                </p>
+                                                <p className="mt-1 text-xs text-slate-400">{strategy}</p>
+                                            </div>
+
+                                            <span
+                                                className={`inline-flex rounded-full border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide ${
+                                                    isActive
+                                                        ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-200'
+                                                        : 'border-amber-500/40 bg-amber-500/10 text-amber-200'
+                                                }`}
+                                            >
+                                                {statusLabel}
+                                            </span>
+                                        </div>
+
+                                        <div className="mt-3 grid gap-2 text-xs text-slate-400 sm:grid-cols-3">
+                                            <p>Allocation: {money(relationship?.allocation_amount)}</p>
+                                            <p>Copy Ratio: {Number(relationship?.copy_ratio || 0).toLocaleString()}x</p>
+                                            <p>
+                                                Started:{' '}
+                                                {relationship?.started_at
+                                                    ? new Date(relationship.started_at).toLocaleString()
+                                                    : '-'}
+                                            </p>
+                                        </div>
+                                    </article>
+                                );
+                            })}
+                        </div>
+                    )}
                 </section>
             </div>
         </AdminLayout>

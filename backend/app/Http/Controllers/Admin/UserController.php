@@ -112,9 +112,29 @@ class UserController extends Controller
 
     public function edit(User $user): Response
     {
+        $copyRelationships = $user->copyRelationships()
+            ->with('trader:id,display_name,username,strategy')
+            ->whereIn('status', ['active', 'paused'])
+            ->orderByRaw("CASE WHEN status = 'active' THEN 0 ELSE 1 END")
+            ->latest('created_at')
+            ->get();
+
         return Inertia::render('Admin/Users/Edit', [
             'user' => $this->userPayload($user),
             'options' => $this->formOptions(),
+            'copy_relationships' => $copyRelationships->map(fn ($relationship) => [
+                'id' => $relationship->id,
+                'status' => $relationship->status,
+                'allocation_amount' => (float) $relationship->allocation_amount,
+                'copy_ratio' => (float) $relationship->copy_ratio,
+                'started_at' => $relationship->started_at?->toIso8601String(),
+                'trader' => [
+                    'id' => $relationship->trader?->id,
+                    'display_name' => $relationship->trader?->display_name,
+                    'username' => $relationship->trader?->username,
+                    'strategy' => $relationship->trader?->strategy,
+                ],
+            ]),
         ]);
     }
 
