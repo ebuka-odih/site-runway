@@ -14,6 +14,7 @@ import CopyTrading from './components/CopyTrading';
 import WalletPage from './components/WalletPage';
 import ProfilePage from './components/ProfilePage';
 import WatchlistPage from './components/WatchlistPage';
+import JivoChatWidget from './components/JivoChatWidget';
 import LandingPage from './components/LandingPage';
 import AboutUsPage from './components/landing/AboutUsPage';
 import PrivacyPolicyPage from './components/landing/PrivacyPolicyPage';
@@ -182,6 +183,8 @@ const AppContent: React.FC = () => {
   if (selectedAsset) {
     return (
       <div className={`w-full ${DASHBOARD_MAX_WIDTH_CLASS} mx-auto min-h-screen relative bg-[#050505]`}>
+        <JivoChatWidget />
+
         {requiresAdminVerification && (
           <div className="mx-4 mt-4 rounded-2xl border border-amber-500/30 bg-amber-500/10 p-4">
             <div className="flex items-start gap-3">
@@ -216,6 +219,8 @@ const AppContent: React.FC = () => {
 
   return (
     <div className={`w-full ${DASHBOARD_MAX_WIDTH_CLASS} mx-auto min-h-screen pb-24 relative overflow-x-hidden bg-[#050505]`}>
+      <JivoChatWidget />
+
       <div className={`fixed top-0 left-1/2 -translate-x-1/2 w-full ${DASHBOARD_MAX_WIDTH_CLASS} h-[40vh] bg-gradient-to-b from-emerald-500/5 to-transparent pointer-events-none -z-10`} />
       <div className="fixed bottom-0 right-0 w-64 h-64 bg-emerald-500/5 blur-[120px] pointer-events-none -z-10" />
       <div className="fixed top-1/2 left-0 w-64 h-64 bg-emerald-500/5 blur-[120px] pointer-events-none -z-10" />

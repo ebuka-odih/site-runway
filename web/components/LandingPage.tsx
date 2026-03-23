@@ -7,6 +7,7 @@ import {
   apiVerifyEmailOtp,
   setAuthToken,
 } from '../lib/api';
+import JivoChatWidget from './JivoChatWidget';
 import LandingMarketing from './landing/LandingMarketing';
 import LandingAuthModal from './landing/LandingAuthModal';
 import type { AuthView, SignupFormState } from './landing/types';
@@ -228,6 +229,8 @@ const LandingPage: React.FC<LandingPageProps> = ({
 
   return (
     <div className="min-h-screen bg-[#050505] text-white overflow-x-hidden selection:bg-emerald-500/30">
+      <JivoChatWidget />
+
       {/* Background Decor */}
       <div className="fixed top-0 left-0 w-full h-full pointer-events-none -z-10 overflow-hidden">
         <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] bg-emerald-500/10 blur-[120px] rounded-full" />
