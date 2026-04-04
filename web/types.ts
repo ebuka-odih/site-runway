@@ -118,6 +118,7 @@ export interface PublicSettings {
   siteMode: string;
   depositsEnabled: boolean;
   withdrawalsEnabled: boolean;
+  emailOtpSignupEnabled: boolean;
   requireKycForDeposits: boolean;
   requireKycForWithdrawals: boolean;
   sessionTimeoutMinutes: number;

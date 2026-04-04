@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\LoginRequest;
 use App\Models\User;
 use App\Notifications\AuthOtpNotification;
+use App\Support\SiteSettings;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
@@ -100,6 +101,46 @@ class AuthController extends Controller
             'currency' => $normalizedCurrency,
         ];
 
+        if (! $this->emailOtpSignupEnabled()) {
+            /** @var array{user: User, token: string} $creation */
+            $creation = DB::transaction(function () use ($pendingRegistration): array {
+                $user = User::query()->create([
+                    'username' => $pendingRegistration['username'],
+                    'name' => $pendingRegistration['name'],
+                    'email' => $pendingRegistration['email'],
+                    'country' => $pendingRegistration['country'],
+                    'phone' => $pendingRegistration['phone'],
+                    'password' => $pendingRegistration['password_hash'],
+                    'membership_tier' => 'free',
+                    'kyc_status' => 'pending',
+                    'notification_email_alerts' => true,
+                    'timezone' => null,
+                    'email_verified_at' => now(),
+                    'email_otp_code' => null,
+                    'email_otp_expires_at' => null,
+                ]);
+
+                $user->wallet()->firstOrCreate([], [
+                    'currency' => $pendingRegistration['currency'],
+                ]);
+
+                return [
+                    'user' => $user,
+                    'token' => $user->createToken('web-client')->plainTextToken,
+                ];
+            });
+
+            Cache::forget($this->pendingRegistrationCacheKey($normalizedEmail));
+
+            return response()->json([
+                'message' => 'Account created successfully.',
+                'requires_verification' => false,
+                'token' => $creation['token'],
+                'token_type' => 'Bearer',
+                'user' => $this->authUser($creation['user']),
+            ], 201);
+        }
+
         $otp = str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT);
         $expiresAt = now()->addMinutes(self::OTP_EXPIRY_MINUTES);
         $cacheKey = $this->pendingRegistrationCacheKey($normalizedEmail);
@@ -116,6 +157,7 @@ class AuthController extends Controller
             'message' => 'Verification OTP sent. Verify your email to complete account creation.',
             'email' => $normalizedEmail,
             'otp_expires_in_minutes' => self::OTP_EXPIRY_MINUTES,
+            'requires_verification' => true,
         ], $this->debugOtpPayload($otp)), 201);
     }
 
@@ -458,6 +500,11 @@ class AuthController extends Controller
         }
 
         return [];
+    }
+
+    private function emailOtpSignupEnabled(): bool
+    {
+        return (bool) (SiteSettings::get()['email_otp_signup_enabled'] ?? false);
     }
 
     private function normalizeCountry(?string $country): string

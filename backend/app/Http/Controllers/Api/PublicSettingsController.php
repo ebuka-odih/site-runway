@@ -17,6 +17,7 @@ class PublicSettingsController extends Controller
                 'site_mode' => $settings['site_mode'],
                 'deposits_enabled' => (bool) $settings['deposits_enabled'],
                 'withdrawals_enabled' => (bool) $settings['withdrawals_enabled'],
+                'email_otp_signup_enabled' => (bool) ($settings['email_otp_signup_enabled'] ?? false),
                 'require_kyc_for_deposits' => (bool) ($settings['require_kyc_for_deposits'] ?? false),
                 'require_kyc_for_withdrawals' => (bool) $settings['require_kyc_for_withdrawals'],
                 'session_timeout_minutes' => (int) $settings['session_timeout_minutes'],

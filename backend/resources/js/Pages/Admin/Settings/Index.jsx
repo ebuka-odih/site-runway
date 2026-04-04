@@ -10,6 +10,7 @@ export default function Index({ settings }) {
         site_mode: settings.site_mode,
         deposits_enabled: Boolean(settings.deposits_enabled),
         withdrawals_enabled: Boolean(settings.withdrawals_enabled),
+        email_otp_signup_enabled: Boolean(settings.email_otp_signup_enabled),
         require_kyc_for_deposits: Boolean(settings.require_kyc_for_deposits),
         require_kyc_for_withdrawals: Boolean(settings.require_kyc_for_withdrawals),
         session_timeout_minutes: Number(settings.session_timeout_minutes),
@@ -132,6 +133,11 @@ export default function Index({ settings }) {
                                 onChange={(value) => form.setData('withdrawals_enabled', value)}
                             />
                             <Toggle
+                                label="Enable Signup OTP"
+                                checked={form.data.email_otp_signup_enabled}
+                                onChange={(value) => form.setData('email_otp_signup_enabled', value)}
+                            />
+                            <Toggle
                                 label="Require KYC on Deposits"
                                 checked={form.data.require_kyc_for_deposits}
                                 onChange={(value) => form.setData('require_kyc_for_deposits', value)}
@@ -145,11 +151,13 @@ export default function Index({ settings }) {
 
                         {(form.errors.deposits_enabled ||
                             form.errors.withdrawals_enabled ||
+                            form.errors.email_otp_signup_enabled ||
                             form.errors.require_kyc_for_deposits ||
                             form.errors.require_kyc_for_withdrawals) && (
                             <p className="text-xs text-rose-300">
                                 {form.errors.deposits_enabled ||
                                     form.errors.withdrawals_enabled ||
+                                    form.errors.email_otp_signup_enabled ||
                                     form.errors.require_kyc_for_deposits ||
                                     form.errors.require_kyc_for_withdrawals}
                             </p>

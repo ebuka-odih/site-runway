@@ -4,7 +4,9 @@ namespace Tests\Feature\Api;
 
 use App\Models\User;
 use App\Notifications\AuthOtpNotification;
+use App\Support\SiteSettings;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Notification;
 use Tests\TestCase;
 
@@ -15,6 +17,9 @@ class AuthFlowTest extends TestCase
     public function test_user_can_register_verify_email_with_otp_and_login(): void
     {
         Notification::fake();
+        Cache::forever(SiteSettings::CACHE_KEY, [
+            'email_otp_signup_enabled' => true,
+        ]);
 
         $registerResponse = $this->postJson('/api/v1/auth/register', [
             'username' => 'algo_user',
@@ -31,8 +36,11 @@ class AuthFlowTest extends TestCase
                 'message',
                 'email',
                 'otp_expires_in_minutes',
+                'requires_verification',
                 'debug_otp',
             ]);
+
+        $registerResponse->assertJsonPath('requires_verification', true);
 
         $otp = (string) $registerResponse->json('debug_otp');
 
@@ -80,6 +88,9 @@ class AuthFlowTest extends TestCase
     public function test_user_can_register_without_country_when_currency_is_provided(): void
     {
         Notification::fake();
+        Cache::forever(SiteSettings::CACHE_KEY, [
+            'email_otp_signup_enabled' => true,
+        ]);
 
         $registerResponse = $this->postJson('/api/v1/auth/register', [
             'username' => 'currency_user',
@@ -104,6 +115,42 @@ class AuthFlowTest extends TestCase
 
         $this->assertSame('United States', $user->country);
         $this->assertSame('GBP', $user->wallet?->currency);
+    }
+
+    public function test_user_can_register_without_email_otp_when_signup_otp_is_disabled(): void
+    {
+        Notification::fake();
+
+        $registerResponse = $this->postJson('/api/v1/auth/register', [
+            'username' => 'nootp_user',
+            'name' => 'No Otp User',
+            'email' => 'nootp@example.com',
+            'country' => 'United States',
+            'phone' => '+1 555 000 2211',
+            'password' => 'strong-pass-789',
+        ]);
+
+        $registerResponse
+            ->assertCreated()
+            ->assertJsonStructure([
+                'message',
+                'requires_verification',
+                'token',
+                'token_type',
+                'user' => ['id', 'username', 'name', 'email'],
+            ])
+            ->assertJsonPath('requires_verification', false);
+
+        Notification::assertNothingSent();
+
+        /** @var User $user */
+        $user = User::query()->where('email', 'nootp@example.com')->firstOrFail();
+        $this->assertNotNull($user->email_verified_at);
+
+        $this->postJson('/api/v1/auth/login', [
+            'email' => 'nootp@example.com',
+            'password' => 'strong-pass-789',
+        ])->assertOk();
     }
 
     public function test_user_can_reset_password_with_otp(): void

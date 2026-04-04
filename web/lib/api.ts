@@ -292,6 +292,7 @@ function mapPublicSettings(raw: any): PublicSettings {
     siteMode: String(raw.site_mode ?? 'live'),
     depositsEnabled: Boolean(raw.deposits_enabled),
     withdrawalsEnabled: Boolean(raw.withdrawals_enabled),
+    emailOtpSignupEnabled: Boolean(raw.email_otp_signup_enabled),
     requireKycForDeposits: Boolean(raw.require_kyc_for_deposits),
     requireKycForWithdrawals: Boolean(raw.require_kyc_for_withdrawals),
     sessionTimeoutMinutes: toNumber(raw.session_timeout_minutes),
@@ -382,7 +383,10 @@ export async function apiRegister(input: {
   currency?: string;
   phone: string;
   password: string;
-}): Promise<{ email: string }> {
+}): Promise<
+  | { requiresVerification: true; email: string }
+  | { requiresVerification: false; token: string; user: AuthUser }
+> {
   const payload = await request<any>('/auth/register', {
     method: 'POST',
     authenticated: false,
@@ -397,8 +401,17 @@ export async function apiRegister(input: {
     }),
   });
 
+  if (Boolean(payload.requires_verification)) {
+    return {
+      requiresVerification: true,
+      email: String(payload.email),
+    };
+  }
+
   return {
-    email: String(payload.email),
+    requiresVerification: false,
+    token: String(payload.token),
+    user: mapAuthUser(payload.user),
   };
 }
 

@@ -19,6 +19,7 @@ class SiteSettings
             'site_mode' => 'live',
             'deposits_enabled' => true,
             'withdrawals_enabled' => true,
+            'email_otp_signup_enabled' => false,
             'require_kyc_for_deposits' => false,
             'require_kyc_for_withdrawals' => true,
             'session_timeout_minutes' => 60,

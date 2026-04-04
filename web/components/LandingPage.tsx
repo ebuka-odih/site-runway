@@ -141,10 +141,16 @@ const LandingPage: React.FC<LandingPageProps> = ({
         password: signupForm.password,
       });
 
-      setVerifyEmail(payload.email);
-      setVerifyOtp('');
-      setAuthNotice('Verification OTP sent. Enter the code from your email to complete signup.');
-      setAuthView('verify');
+      if (payload.requiresVerification) {
+        setVerifyEmail(payload.email);
+        setVerifyOtp('');
+        setAuthNotice('Verification OTP sent. Enter the code from your email to complete signup.');
+        setAuthView('verify');
+      } else {
+        setAuthToken(payload.token);
+        setShowLogin(false);
+        window.location.reload();
+      }
     } catch (error) {
       setLocalError(getErrorMessage(error, 'Unable to create account right now.'));
     } finally {

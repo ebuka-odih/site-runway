@@ -22,6 +22,7 @@ class SettingsManagementTest extends TestCase
             'site_mode' => 'live',
             'deposits_enabled' => true,
             'withdrawals_enabled' => true,
+            'email_otp_signup_enabled' => true,
             'require_kyc_for_deposits' => false,
             'require_kyc_for_withdrawals' => true,
             'session_timeout_minutes' => 90,
@@ -39,6 +40,7 @@ class SettingsManagementTest extends TestCase
 
         $this->assertIsArray($stored);
         $this->assertTrue($stored['livechat_enabled']);
+        $this->assertTrue($stored['email_otp_signup_enabled']);
         $this->assertSame('tawk.to', $stored['livechat_provider']);
         $this->assertSame('<script>console.log("livechat")</script>', $stored['livechat_embed_code']);
     }
@@ -46,6 +48,11 @@ class SettingsManagementTest extends TestCase
     public function test_site_settings_default_support_email_uses_dot_com(): void
     {
         $this->assertSame('support@runwayalgo.com', SiteSettings::defaults()['support_email']);
+    }
+
+    public function test_site_settings_default_signup_otp_is_disabled(): void
+    {
+        $this->assertFalse(SiteSettings::defaults()['email_otp_signup_enabled']);
     }
 
     public function test_site_settings_normalizes_legacy_support_email(): void

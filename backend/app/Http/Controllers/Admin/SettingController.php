@@ -102,6 +102,7 @@ class SettingController extends Controller
             'site_mode' => ['required', 'string', 'in:live,maintenance'],
             'deposits_enabled' => ['required', 'boolean'],
             'withdrawals_enabled' => ['required', 'boolean'],
+            'email_otp_signup_enabled' => ['required', 'boolean'],
             'require_kyc_for_deposits' => ['required', 'boolean'],
             'require_kyc_for_withdrawals' => ['required', 'boolean'],
             'session_timeout_minutes' => ['required', 'integer', 'min:5', 'max:240'],
