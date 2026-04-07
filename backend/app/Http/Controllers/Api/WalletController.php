@@ -38,7 +38,7 @@ class WalletController extends Controller
     {
         $user = $request->user()->loadMissing('positions.asset:id,current_price');
         $wallet = $this->resolveUserWallet($user);
-        $displayCashBalance = $this->availableCashBalance($wallet);
+        $availableBalances = $this->availableWithdrawalBalances($wallet, (float) $wallet->cash_balance, (float) $wallet->profit_loss);
         $tradeProfit = $this->calculateTradeProfit($user, $wallet);
         $depositMethods = $this->availableDepositMethods();
         $summaryDepositMethods = $depositMethods->isNotEmpty()
@@ -54,13 +54,13 @@ class WalletController extends Controller
             'data' => [
                 'wallet' => [
                     'id' => $wallet->id,
-                    'cash_balance' => $displayCashBalance,
+                    'cash_balance' => $availableBalances['cash_balance'],
                     'investing_balance' => (float) $wallet->investing_balance,
-                    'profit_loss' => (float) $wallet->profit_loss,
+                    'profit_loss' => $availableBalances['profit_balance'],
                     'total_balance' => round(
-                        $displayCashBalance
+                        $availableBalances['cash_balance']
                         + (float) $wallet->investing_balance
-                        + (float) $wallet->profit_loss,
+                        + $availableBalances['profit_balance'],
                         8
                     ),
                     'trade_profit' => $tradeProfit,
@@ -326,12 +326,8 @@ class WalletController extends Controller
             ->where('symbol', $validated['currency'])
             ->first();
 
-        $pendingWithdrawalAmount = (float) $wallet->transactions()
-            ->where('type', 'withdrawal')
-            ->where('status', 'pending')
-            ->sum('amount');
-
-        $availableForWithdrawal = max(0, (float) $wallet->cash_balance - $pendingWithdrawalAmount);
+        $availableBalances = $this->availableWithdrawalBalances($wallet, (float) $wallet->cash_balance, (float) $wallet->profit_loss);
+        $availableForWithdrawal = $availableBalances['available_balance'];
 
         if ((float) $validated['amount'] > $availableForWithdrawal) {
             return response()->json([
@@ -341,6 +337,12 @@ class WalletController extends Controller
                 ],
             ], 422);
         }
+
+        $requestedAllocation = $this->allocateWithdrawal(
+            $availableBalances['cash_balance'],
+            $availableBalances['profit_balance'],
+            (float) $validated['amount']
+        );
 
         $withdrawal = WalletTransaction::query()->create([
             'wallet_id' => $wallet->id,
@@ -354,6 +356,8 @@ class WalletController extends Controller
             'occurred_at' => now(),
             'metadata' => [
                 'destination' => $validated['destination'],
+                'cash_debit' => $requestedAllocation['cash_debit'],
+                'profit_debit' => $requestedAllocation['profit_debit'],
             ],
         ]);
 
@@ -474,14 +478,63 @@ class WalletController extends Controller
         return round($realizedTradeProfit + ($positionsMarketValue - $positionsCostBasis), 8);
     }
 
-    private function availableCashBalance(Wallet $wallet): float
+    /**
+     * @return array{cash_balance: float, profit_balance: float, available_balance: float}
+     */
+    private function availableWithdrawalBalances(Wallet $wallet, float $cashBalance, float $profitBalance): array
     {
-        $pendingWithdrawalAmount = (float) $wallet->transactions()
+        $availableBalances = [
+            'cash_balance' => round($cashBalance, 8),
+            'profit_balance' => round($profitBalance, 8),
+        ];
+
+        $wallet->transactions()
             ->where('type', 'withdrawal')
             ->where('status', 'pending')
-            ->sum('amount');
+            ->orderBy('occurred_at')
+            ->orderBy('created_at')
+            ->get(['amount'])
+            ->each(function (WalletTransaction $transaction) use (&$availableBalances): void {
+                $allocation = $this->allocateWithdrawal(
+                    $availableBalances['cash_balance'],
+                    $availableBalances['profit_balance'],
+                    (float) $transaction->amount
+                );
 
-        return round(max(0.0, (float) $wallet->cash_balance - $pendingWithdrawalAmount), 8);
+                $availableBalances['cash_balance'] = $allocation['cash_balance'];
+                $availableBalances['profit_balance'] = $allocation['profit_balance'];
+            });
+
+        return [
+            'cash_balance' => round(max(0.0, $availableBalances['cash_balance']), 8),
+            'profit_balance' => round($availableBalances['profit_balance'], 8),
+            'available_balance' => round(
+                max(0.0, $availableBalances['cash_balance']) + max(0.0, $availableBalances['profit_balance']),
+                8
+            ),
+        ];
+    }
+
+    /**
+     * @return array{cash_balance: float, profit_balance: float, cash_debit: float, profit_debit: float, remaining: float}
+     */
+    private function allocateWithdrawal(float $cashBalance, float $profitBalance, float $amount): array
+    {
+        $availableProfit = max(0.0, $profitBalance);
+        $profitDebit = min($availableProfit, $amount);
+        $remaining = $amount - $profitDebit;
+
+        $availableCash = max(0.0, $cashBalance);
+        $cashDebit = min($availableCash, $remaining);
+        $remaining -= $cashDebit;
+
+        return [
+            'cash_balance' => round($cashBalance - $cashDebit, 8),
+            'profit_balance' => round($profitBalance - $profitDebit, 8),
+            'cash_debit' => round($cashDebit, 8),
+            'profit_debit' => round($profitDebit, 8),
+            'remaining' => round($remaining, 8),
+        ];
     }
 
     private function resolveAuthoritativeBalance(float $walletValue, float $userValue): float

@@ -64,9 +64,6 @@ class DashboardController extends Controller
         $settledCashBalance = $wallet instanceof Wallet
             ? $this->resolveAuthoritativeBalance((float) $wallet->cash_balance, (float) $user->balance)
             : (float) $user->balance;
-        $cashBalance = $wallet instanceof Wallet
-            ? $this->availableCashBalance($wallet, $settledCashBalance)
-            : $settledCashBalance;
         $persistedHoldingBalance = $wallet instanceof Wallet
             ? $this->resolveAuthoritativeBalance((float) $wallet->investing_balance, (float) $user->holding_balance)
             : (float) $user->holding_balance;
@@ -83,32 +80,50 @@ class DashboardController extends Controller
             ? $this->calculateFundedProfitBalance($wallet)
             : 0.0;
         $legacyFundedProfitBalance = max(0.0, $persistedProfitBalance - $tradingProfitBalance - $copyProfitBalance);
+        $usingLegacyPersistedProfit = false;
 
         if ($this->isEffectivelyZero($fundedProfitBalance) && $legacyFundedProfitBalance > 0) {
             $fundedProfitBalance = $legacyFundedProfitBalance;
+            $usingLegacyPersistedProfit = true;
         }
 
-        $nonTradingProfitBalance = round($copyProfitBalance + $fundedProfitBalance, 8);
-        $profitBalance = round($tradingProfitBalance + $nonTradingProfitBalance, 8);
-        $displayBuyingPower = round($cashBalance + $profitBalance, 8);
-        $investingTotal = round($holdingBalance + $profitBalance, 8);
+        $grossNonTradingProfitBalance = round($copyProfitBalance + $fundedProfitBalance, 8);
+        $grossProfitBalance = round($tradingProfitBalance + $grossNonTradingProfitBalance, 8);
+        $approvedProfitWithdrawalAmount = $wallet instanceof Wallet
+            ? $this->approvedProfitWithdrawalAmount($wallet)
+            : 0.0;
+        $settledProfitBalance = round(
+            $grossProfitBalance - ($usingLegacyPersistedProfit ? 0.0 : $approvedProfitWithdrawalAmount),
+            8
+        );
+        $availableBalances = $wallet instanceof Wallet
+            ? $this->availableWithdrawalBalances($wallet, $settledCashBalance, $settledProfitBalance)
+            : [
+                'cash_balance' => round($settledCashBalance, 8),
+                'profit_balance' => round($settledProfitBalance, 8),
+                'available_balance' => round(max(0.0, $settledCashBalance) + max(0.0, $settledProfitBalance), 8),
+            ];
+        $displayCashBalance = $availableBalances['cash_balance'];
+        $displayProfitBalance = $availableBalances['profit_balance'];
+        $displayBuyingPower = round($availableBalances['available_balance'], 8);
+        $investingTotal = round($holdingBalance + $displayProfitBalance, 8);
         $profitPercent = $holdingBalance > 0
-            ? ($profitBalance / $holdingBalance) * 100
+            ? ($displayProfitBalance / $holdingBalance) * 100
             : 0.0;
 
-        $this->syncAccountBalances($user, $settledCashBalance, $holdingBalance, $profitBalance);
+        $this->syncAccountBalances($user, $settledCashBalance, $holdingBalance, $settledProfitBalance);
 
-        $portfolioValue = $cashBalance + $holdingBalance;
-        $portfolioSnapshotService->captureFromValues($user, $portfolioValue, $cashBalance);
+        $portfolioValue = $displayCashBalance + $holdingBalance;
+        $portfolioSnapshotService->captureFromValues($user, $portfolioValue, $displayCashBalance);
         $copyPnlTimeline = $wallet instanceof Wallet
             ? $this->buildCopyPnlTimeline($wallet)
             : collect();
-        $portfolioHistory = $this->buildPortfolioHistory($user, $positions, $cashBalance, $portfolioValue, (string) $range);
+        $portfolioHistory = $this->buildPortfolioHistory($user, $positions, $displayCashBalance, $portfolioValue, (string) $range);
         $portfolioHistory = $this->enrichPortfolioHistoryWithInvestingTotals(
             $portfolioHistory,
             $holdingBalance,
             $tradingProfitBalance,
-            $nonTradingProfitBalance,
+            round($displayProfitBalance - $tradingProfitBalance, 8),
             $copyPnlTimeline
         );
 
@@ -118,6 +133,7 @@ class DashboardController extends Controller
             $portfolioHistory->put($lastIndex, [
                 ...$lastPoint,
                 'buying_power' => round($displayBuyingPower, 2),
+                'investing_total' => round($investingTotal, 2),
             ]);
         }
 
@@ -134,7 +150,7 @@ class DashboardController extends Controller
                 return $positionsMarketValue > 0 ? round(($bucketValue / $positionsMarketValue) * 100, 2) : 0;
             });
         $largestAllocationPercent = (float) ($allocationByType->max() ?? 0.0);
-        $cashSharePercent = $portfolioValue > 0 ? ($cashBalance / $portfolioValue) * 100 : 100.0;
+        $cashSharePercent = $portfolioValue > 0 ? ($displayCashBalance / $portfolioValue) * 100 : 100.0;
         $riskLevel = $this->resolveRiskLevel($largestAllocationPercent, $cashSharePercent, $positions->count());
 
         $watchlist = $user->watchlistItems
@@ -200,7 +216,7 @@ class DashboardController extends Controller
                     'buying_power' => round($displayBuyingPower, 2),
                     'holdings_value' => round($holdingBalance, 2),
                     'investing_total' => round($investingTotal, 2),
-                    'profit_balance' => round($profitBalance, 2),
+                    'profit_balance' => round($displayProfitBalance, 2),
                     'profit_percent' => round($profitPercent, 2),
                     'trade_profit' => round($tradingProfitBalance, 2),
                     'asset_profit' => round($tradingProfitBalance, 2),
@@ -503,6 +519,15 @@ class DashboardController extends Controller
         return round($fundedProfit, 8);
     }
 
+    private function approvedProfitWithdrawalAmount(Wallet $wallet): float
+    {
+        return round((float) $wallet->transactions()
+            ->where('type', 'withdrawal')
+            ->where('status', 'approved')
+            ->get(['metadata'])
+            ->sum(fn (WalletTransaction $transaction) => (float) data_get($transaction->metadata, 'profit_debit', 0)), 8);
+    }
+
     private function buildCopyPnlTimeline(Wallet $wallet): Collection
     {
         return $wallet->transactions()
@@ -582,14 +607,63 @@ class DashboardController extends Controller
         }
     }
 
-    private function availableCashBalance(Wallet $wallet, float $settledCashBalance): float
+    /**
+     * @return array{cash_balance: float, profit_balance: float, available_balance: float}
+     */
+    private function availableWithdrawalBalances(Wallet $wallet, float $cashBalance, float $profitBalance): array
     {
-        $pendingWithdrawalAmount = (float) $wallet->transactions()
+        $availableBalances = [
+            'cash_balance' => round($cashBalance, 8),
+            'profit_balance' => round($profitBalance, 8),
+        ];
+
+        $wallet->transactions()
             ->where('type', 'withdrawal')
             ->where('status', 'pending')
-            ->sum('amount');
+            ->orderBy('occurred_at')
+            ->orderBy('created_at')
+            ->get(['amount'])
+            ->each(function (WalletTransaction $transaction) use (&$availableBalances): void {
+                $allocation = $this->allocateWithdrawal(
+                    $availableBalances['cash_balance'],
+                    $availableBalances['profit_balance'],
+                    (float) $transaction->amount
+                );
 
-        return round(max(0.0, $settledCashBalance - $pendingWithdrawalAmount), 8);
+                $availableBalances['cash_balance'] = $allocation['cash_balance'];
+                $availableBalances['profit_balance'] = $allocation['profit_balance'];
+            });
+
+        return [
+            'cash_balance' => round(max(0.0, $availableBalances['cash_balance']), 8),
+            'profit_balance' => round($availableBalances['profit_balance'], 8),
+            'available_balance' => round(
+                max(0.0, $availableBalances['cash_balance']) + max(0.0, $availableBalances['profit_balance']),
+                8
+            ),
+        ];
+    }
+
+    /**
+     * @return array{cash_balance: float, profit_balance: float, cash_debit: float, profit_debit: float, remaining: float}
+     */
+    private function allocateWithdrawal(float $cashBalance, float $profitBalance, float $amount): array
+    {
+        $availableProfit = max(0.0, $profitBalance);
+        $profitDebit = min($availableProfit, $amount);
+        $remaining = $amount - $profitDebit;
+
+        $availableCash = max(0.0, $cashBalance);
+        $cashDebit = min($availableCash, $remaining);
+        $remaining -= $cashDebit;
+
+        return [
+            'cash_balance' => round($cashBalance - $cashDebit, 8),
+            'profit_balance' => round($profitBalance - $profitDebit, 8),
+            'cash_debit' => round($cashDebit, 8),
+            'profit_debit' => round($profitDebit, 8),
+            'remaining' => round($remaining, 8),
+        ];
     }
 
     private function isDrifted(float $current, float $expected): bool

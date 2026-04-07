@@ -274,19 +274,29 @@ class TransactionController extends Controller
                 ->firstOrFail();
 
             $withdrawalAmount = (float) $lockedWithdrawal->amount;
-            $cashBalance = (float) $wallet->cash_balance;
+            $allocation = $this->allocateWithdrawal(
+                (float) $wallet->cash_balance,
+                (float) $wallet->profit_loss,
+                $withdrawalAmount
+            );
 
-            if ($cashBalance < $withdrawalAmount) {
+            if ($allocation['remaining'] > 0) {
                 $approvalResult = 'insufficient_funds';
                 return;
             }
 
-            $wallet->cash_balance = $cashBalance - $withdrawalAmount;
+            $wallet->cash_balance = $allocation['cash_balance'];
+            $wallet->profit_loss = $allocation['profit_balance'];
             $wallet->save();
 
             $lockedWithdrawal->update([
                 'status' => 'approved',
                 'notes' => $lockedWithdrawal->notes ?? 'Withdrawal approved by admin panel',
+                'metadata' => [
+                    ...($lockedWithdrawal->metadata ?? []),
+                    'cash_debit' => $allocation['cash_debit'],
+                    'profit_debit' => $allocation['profit_debit'],
+                ],
             ]);
         });
 
@@ -322,6 +332,28 @@ class TransactionController extends Controller
         }
 
         return back()->with('success', 'Withdrawal transaction approved.');
+    }
+
+    /**
+     * @return array{cash_balance: float, profit_balance: float, cash_debit: float, profit_debit: float, remaining: float}
+     */
+    private function allocateWithdrawal(float $cashBalance, float $profitBalance, float $amount): array
+    {
+        $availableProfit = max(0.0, $profitBalance);
+        $profitDebit = min($availableProfit, $amount);
+        $remaining = $amount - $profitDebit;
+
+        $availableCash = max(0.0, $cashBalance);
+        $cashDebit = min($availableCash, $remaining);
+        $remaining -= $cashDebit;
+
+        return [
+            'cash_balance' => round($cashBalance - $cashDebit, 8),
+            'profit_balance' => round($profitBalance - $profitDebit, 8),
+            'cash_debit' => round($cashDebit, 8),
+            'profit_debit' => round($profitDebit, 8),
+            'remaining' => round($remaining, 8),
+        ];
     }
 
     public function declineWithdrawalTransaction(WalletTransaction $walletTransaction): RedirectResponse

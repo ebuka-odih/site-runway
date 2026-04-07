@@ -12,7 +12,7 @@ class TransactionWithdrawalManagementTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_admin_can_approve_pending_withdrawal_transaction(): void
+    public function test_admin_can_approve_pending_withdrawal_transaction_using_profit_before_cash(): void
     {
         $admin = User::factory()->admin()->create();
         $customer = User::factory()->create();
@@ -20,6 +20,7 @@ class TransactionWithdrawalManagementTest extends TestCase
         $wallet = Wallet::query()->create([
             'user_id' => $customer->id,
             'cash_balance' => 120,
+            'profit_loss' => 80,
         ]);
 
         $withdrawal = WalletTransaction::query()->create([
@@ -27,7 +28,7 @@ class TransactionWithdrawalManagementTest extends TestCase
             'type' => 'withdrawal',
             'status' => 'pending',
             'direction' => 'debit',
-            'amount' => 80,
+            'amount' => 100,
             'occurred_at' => now(),
         ]);
 
@@ -39,7 +40,10 @@ class TransactionWithdrawalManagementTest extends TestCase
         $wallet->refresh();
 
         $this->assertSame('approved', $withdrawal->status);
-        $this->assertEqualsWithDelta(40, (float) $wallet->cash_balance, 0.00000001);
+        $this->assertEqualsWithDelta(100, (float) $wallet->cash_balance, 0.00000001);
+        $this->assertEqualsWithDelta(0, (float) $wallet->profit_loss, 0.00000001);
+        $this->assertEqualsWithDelta(80, (float) data_get($withdrawal->metadata, 'profit_debit'), 0.00000001);
+        $this->assertEqualsWithDelta(20, (float) data_get($withdrawal->metadata, 'cash_debit'), 0.00000001);
     }
 
     public function test_admin_can_decline_pending_withdrawal_transaction(): void

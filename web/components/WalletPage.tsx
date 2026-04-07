@@ -704,9 +704,9 @@ const WalletPage: React.FC = () => {
             <>
               <header>
                 <p className="text-[10px] font-black text-zinc-500 uppercase tracking-widest mb-2">Withdrawal Request</p>
-                <h3 className="text-xl font-black text-white mb-2 leading-snug">Withdraw from your cash balance.</h3>
+                <h3 className="text-xl font-black text-white mb-2 leading-snug">Withdraw from your available balance.</h3>
                 <p className="text-sm text-zinc-600 font-bold">
-                  Choose a payout coin and destination wallet address.
+                  Profit is applied first, then your main balance. Choose a payout coin and destination wallet address.
                 </p>
               </header>
 
