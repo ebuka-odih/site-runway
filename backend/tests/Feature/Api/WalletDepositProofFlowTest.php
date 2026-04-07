@@ -171,6 +171,66 @@ class WalletDepositProofFlowTest extends TestCase
                 'network' => 'ERC20',
             ])
             ->assertStatus(422)
-            ->assertJsonPath('message', 'No active wallet is configured for the selected deposit method.');
+            ->assertJsonPath('message', 'No active payment details are configured for the selected deposit method.');
+    }
+
+    public function test_wallet_summary_and_deposit_creation_include_bank_transfer_instructions(): void
+    {
+        $this->seed();
+
+        $paymentMethod = PaymentMethod::query()->create([
+            'name' => 'USD Bank Wire',
+            'channel' => 'bank_transfer',
+            'currency' => 'USD',
+            'network' => 'SWIFT',
+            'status' => 'active',
+            'display_order' => 1,
+            'settings' => [
+                'bank_details' => [
+                    'bank_name' => 'JPMorgan Chase Bank',
+                    'account_name' => 'Runway Algo Operations',
+                    'account_number' => '000123456789',
+                    'routing_number' => '021000021',
+                    'swift_code' => 'CHASUS33',
+                    'bank_address' => '383 Madison Ave, New York, NY',
+                    'reference_letter' => 'Include your email in the transfer note.',
+                ],
+            ],
+        ]);
+
+        $token = $this->postJson('/api/v1/auth/login', [
+            'email' => 'tommygreymassey@yahoo.com',
+            'password' => 'password',
+            'device_name' => 'phpunit',
+        ])->json('token');
+
+        $this->withToken($token)
+            ->getJson('/api/v1/wallet')
+            ->assertOk()
+            ->assertJsonPath('data.deposit_methods.0.id', $paymentMethod->id)
+            ->assertJsonPath('data.deposit_methods.0.channel', 'bank_transfer')
+            ->assertJsonPath('data.deposit_methods.0.bank_details.bank_name', 'JPMorgan Chase Bank')
+            ->assertJsonPath('data.deposit_methods.0.bank_details.account_number', '000123456789')
+            ->assertJsonPath('data.deposit_methods.0.bank_details.reference_letter', 'Include your email in the transfer note.');
+
+        $createDepositResponse = $this
+            ->withToken($token)
+            ->postJson('/api/v1/wallet/deposits', [
+                'amount' => 1500,
+                'currency' => 'USD',
+                'network' => 'SWIFT',
+                'payment_method_id' => $paymentMethod->id,
+            ])
+            ->assertCreated()
+            ->assertJsonPath('data.channel', 'bank_transfer')
+            ->assertJsonPath('data.bank_details.bank_name', 'JPMorgan Chase Bank')
+            ->assertJsonPath('data.bank_details.account_number', '000123456789');
+
+        $this->assertDatabaseHas('deposit_requests', [
+            'id' => $createDepositResponse->json('data.id'),
+            'wallet_address' => '000123456789',
+            'currency' => 'USD',
+            'network' => 'SWIFT',
+        ]);
     }
 }

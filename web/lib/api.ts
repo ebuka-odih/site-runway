@@ -1,5 +1,6 @@
 import type {
   AuthUser,
+  BankAccountDetails,
   CopyFollowingSummary,
   CopyRelationshipItem,
   CopyTradeHistoryItem,
@@ -203,6 +204,26 @@ function mapNotification(raw: any): UserNotificationItem {
   };
 }
 
+function mapBankDetails(raw: any): BankAccountDetails | null {
+  if (!raw || typeof raw !== 'object') {
+    return null;
+  }
+
+  const bankDetails: BankAccountDetails = {
+    bankName: toNullableString(raw.bank_name ?? raw.bankName),
+    accountName: toNullableString(raw.account_name ?? raw.accountName),
+    accountNumber: toNullableString(raw.account_number ?? raw.accountNumber),
+    routingNumber: toNullableString(raw.routing_number ?? raw.routingNumber),
+    swiftCode: toNullableString(raw.swift_code ?? raw.swiftCode),
+    bankAddress: toNullableString(raw.bank_address ?? raw.bankAddress),
+    referenceLetter: toNullableString(raw.reference_letter ?? raw.referenceLetter),
+  };
+
+  return Object.values(bankDetails).some((value) => value)
+    ? bankDetails
+    : null;
+}
+
 function mapDepositRequest(raw: any): DepositRequestItem {
   return {
     id: String(raw.id),
@@ -212,6 +233,8 @@ function mapDepositRequest(raw: any): DepositRequestItem {
     status: String(raw.status),
     expiresAt: raw.expires_at ?? raw.expiresAt ?? null,
     walletAddress: raw.wallet_address,
+    channel: toNullableString(raw.channel),
+    bankDetails: mapBankDetails(raw.bank_details ?? raw.bankDetails),
   };
 }
 
@@ -226,6 +249,7 @@ function mapDepositMethod(raw: any): DepositMethodItem {
   const currency = String(raw.currency ?? raw.asset_symbol ?? raw.symbol ?? '').trim().toUpperCase();
   const network = toNullableString(raw.network ?? raw.chain ?? raw.protocol);
   const name = String(raw.name ?? `${currency || 'Crypto'}${network ? ` ${network}` : ''} Wallet`).trim();
+  const channel = toNullableString(raw.channel);
   const paymentMethodId = toNullableString(raw.id);
   const localSelectionId = paymentMethodId
     ?? [name, currency, network ?? '', walletAddress].join('|');
@@ -234,9 +258,11 @@ function mapDepositMethod(raw: any): DepositMethodItem {
     id: localSelectionId,
     paymentMethodId,
     name,
+    channel,
     currency,
     network,
     walletAddress,
+    bankDetails: mapBankDetails(raw.bank_details ?? raw.bankDetails),
   };
 }
 

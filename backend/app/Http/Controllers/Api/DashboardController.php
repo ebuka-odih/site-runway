@@ -61,9 +61,12 @@ class DashboardController extends Controller
                 ->sum(fn (WalletTransaction $transaction) => (float) data_get($transaction->metadata, 'realized_pnl', 0))
             : 0.0;
 
-        $cashBalance = $wallet instanceof Wallet
+        $settledCashBalance = $wallet instanceof Wallet
             ? $this->resolveAuthoritativeBalance((float) $wallet->cash_balance, (float) $user->balance)
             : (float) $user->balance;
+        $cashBalance = $wallet instanceof Wallet
+            ? $this->availableCashBalance($wallet, $settledCashBalance)
+            : $settledCashBalance;
         $persistedHoldingBalance = $wallet instanceof Wallet
             ? $this->resolveAuthoritativeBalance((float) $wallet->investing_balance, (float) $user->holding_balance)
             : (float) $user->holding_balance;
@@ -93,7 +96,7 @@ class DashboardController extends Controller
             ? ($profitBalance / $holdingBalance) * 100
             : 0.0;
 
-        $this->syncAccountBalances($user, $cashBalance, $holdingBalance, $profitBalance);
+        $this->syncAccountBalances($user, $settledCashBalance, $holdingBalance, $profitBalance);
 
         $portfolioValue = $cashBalance + $holdingBalance;
         $portfolioSnapshotService->captureFromValues($user, $portfolioValue, $cashBalance);
@@ -577,6 +580,16 @@ class DashboardController extends Controller
                     ]);
             });
         }
+    }
+
+    private function availableCashBalance(Wallet $wallet, float $settledCashBalance): float
+    {
+        $pendingWithdrawalAmount = (float) $wallet->transactions()
+            ->where('type', 'withdrawal')
+            ->where('status', 'pending')
+            ->sum('amount');
+
+        return round(max(0.0, $settledCashBalance - $pendingWithdrawalAmount), 8);
     }
 
     private function isDrifted(float $current, float $expected): bool

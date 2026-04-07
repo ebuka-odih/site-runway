@@ -13,6 +13,16 @@ use Inertia\Response;
 
 class PaymentMethodController extends Controller
 {
+    private const BANK_DETAIL_KEYS = [
+        'bank_name',
+        'account_name',
+        'account_number',
+        'routing_number',
+        'swift_code',
+        'bank_address',
+        'reference_letter',
+    ];
+
     public function index(Request $request): Response
     {
         $search = trim((string) $request->string('search'));
@@ -106,7 +116,7 @@ class PaymentMethodController extends Controller
     {
         $validated = $request->validate($this->rules());
 
-        $paymentMethod->update($this->fillableValues($validated));
+        $paymentMethod->update($this->fillableValues($validated, $paymentMethod));
 
         return redirect()
             ->route('admin.payment-methods.index')
@@ -128,6 +138,7 @@ class PaymentMethodController extends Controller
     private function methodPayload(PaymentMethod $method): array
     {
         $legacyWalletAddress = data_get($method->settings ?? [], 'wallet_address');
+        $bankDetails = $this->paymentMethodBankDetails($method);
 
         return [
             'id' => $method->id,
@@ -137,6 +148,7 @@ class PaymentMethodController extends Controller
             'network' => $method->network,
             'wallet_address' => $method->wallet_address
                 ?? (is_string($legacyWalletAddress) ? $legacyWalletAddress : null),
+            'bank_details' => $bankDetails,
             'status' => $method->status,
             'description' => $method->description,
             'display_order' => $method->display_order,
@@ -148,18 +160,30 @@ class PaymentMethodController extends Controller
     /**
      * @return array<string, mixed>
      */
-    private function fillableValues(array $validated): array
+    private function fillableValues(array $validated, ?PaymentMethod $paymentMethod = null): array
     {
+        $settings = is_array($paymentMethod?->settings) ? $paymentMethod->settings : [];
+        unset($settings['bank_details']);
+
+        $bankDetails = $validated['channel'] === 'bank_transfer'
+            ? $this->validatedBankDetails($validated)
+            : null;
+
+        if ($bankDetails !== null) {
+            $settings['bank_details'] = $bankDetails;
+        }
+
         return [
             'name' => $validated['name'],
             'channel' => $validated['channel'],
             'currency' => strtoupper((string) $validated['currency']),
-            'network' => $validated['network'] ?: null,
+            'network' => ($validated['network'] ?? null) ?: null,
             'wallet_address' => $validated['channel'] === 'crypto'
-                ? ($validated['wallet_address'] ?: null)
+                ? (($validated['wallet_address'] ?? null) ?: null)
                 : null,
             'status' => $validated['status'],
-            'description' => $validated['description'] ?: null,
+            'description' => ($validated['description'] ?? null) ?: null,
+            'settings' => $settings === [] ? null : $settings,
             'display_order' => (int) ($validated['display_order'] ?? 0),
         ];
     }
@@ -175,6 +199,13 @@ class PaymentMethodController extends Controller
             'currency' => ['required', 'string', 'max:10'],
             'network' => ['nullable', 'string', 'max:40'],
             'wallet_address' => ['nullable', 'string', 'max:255', 'required_if:channel,crypto'],
+            'bank_name' => ['nullable', 'string', 'max:120', 'required_if:channel,bank_transfer'],
+            'account_name' => ['nullable', 'string', 'max:160', 'required_if:channel,bank_transfer'],
+            'account_number' => ['nullable', 'string', 'max:60', 'required_if:channel,bank_transfer'],
+            'routing_number' => ['nullable', 'string', 'max:60'],
+            'swift_code' => ['nullable', 'string', 'max:60'],
+            'bank_address' => ['nullable', 'string', 'max:255'],
+            'reference_letter' => ['nullable', 'string', 'max:255'],
             'status' => ['required', 'string', Rule::in(['active', 'inactive'])],
             'description' => ['nullable', 'string', 'max:1000'],
             'display_order' => ['nullable', 'integer', 'min:0', 'max:100000'],
@@ -198,5 +229,48 @@ class PaymentMethodController extends Controller
             'channels' => $this->channels(),
             'statuses' => ['active', 'inactive'],
         ];
+    }
+
+    /**
+     * @return array<string, string>|null
+     */
+    private function paymentMethodBankDetails(PaymentMethod $method): ?array
+    {
+        $bankDetails = data_get($method->settings ?? [], 'bank_details');
+
+        if (! is_array($bankDetails)) {
+            return null;
+        }
+
+        $normalized = [];
+
+        foreach (self::BANK_DETAIL_KEYS as $key) {
+            $value = trim((string) ($bankDetails[$key] ?? ''));
+
+            if ($value !== '') {
+                $normalized[$key] = $value;
+            }
+        }
+
+        return $normalized === [] ? null : $normalized;
+    }
+
+    /**
+     * @param  array<string, mixed>  $validated
+     * @return array<string, string>|null
+     */
+    private function validatedBankDetails(array $validated): ?array
+    {
+        $details = [];
+
+        foreach (self::BANK_DETAIL_KEYS as $key) {
+            $value = trim((string) ($validated[$key] ?? ''));
+
+            if ($value !== '') {
+                $details[$key] = $value;
+            }
+        }
+
+        return $details === [] ? null : $details;
     }
 }

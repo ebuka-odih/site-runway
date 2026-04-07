@@ -13,6 +13,22 @@ const money = (value) =>
 const date = (value) => (value ? new Date(value).toLocaleString() : '-');
 const shortWallet = (value) =>
     value && value.length > 18 ? `${value.slice(0, 8)}...${value.slice(-6)}` : value || '-';
+const methodDetails = (method) => {
+    if (method.channel === 'crypto') {
+        return method.wallet_address ? shortWallet(method.wallet_address) : 'Required for crypto';
+    }
+
+    if (method.channel === 'bank_transfer') {
+        const accountName = method.bank_details?.account_name || 'Bank transfer';
+        const accountNumber = method.bank_details?.account_number || 'No account number';
+        const maskedAccountNumber =
+            accountNumber.length > 4 ? `****${accountNumber.slice(-4)}` : accountNumber;
+
+        return `${accountName} · ${maskedAccountNumber}`;
+    }
+
+    return '-';
+};
 
 export default function Index({ methods, filters, filter_options, stats, usage }) {
     const { url } = usePage();
@@ -144,11 +160,9 @@ export default function Index({ methods, filters, filter_options, stats, usage }
                                     <dd className="text-slate-300">{method.display_order}</dd>
                                 </div>
                                 <div className="flex justify-between gap-2">
-                                    <dt>Wallet Address</dt>
+                                    <dt>Details</dt>
                                     <dd className="max-w-[180px] truncate text-slate-300">
-                                        {method.channel === 'crypto'
-                                            ? method.wallet_address || 'Required for crypto'
-                                            : '-'}
+                                        {methodDetails(method)}
                                     </dd>
                                 </div>
                                 <div className="flex justify-between gap-2">
@@ -184,7 +198,7 @@ export default function Index({ methods, filters, filter_options, stats, usage }
                                 <th className="pb-3 pr-3">Channel</th>
                                 <th className="pb-3 pr-3">Currency</th>
                                 <th className="pb-3 pr-3">Network</th>
-                                <th className="pb-3 pr-3">Wallet Address</th>
+                                <th className="pb-3 pr-3">Details</th>
                                 <th className="pb-3 pr-3">Status</th>
                                 <th className="pb-3 pr-3">Updated</th>
                                 <th className="pb-3">Actions</th>
@@ -200,11 +214,7 @@ export default function Index({ methods, filters, filter_options, stats, usage }
                                     <td className="py-3 pr-3 uppercase">{method.channel}</td>
                                     <td className="py-3 pr-3 uppercase">{method.currency}</td>
                                     <td className="py-3 pr-3 uppercase">{method.network || '-'}</td>
-                                    <td className="py-3 pr-3">
-                                        {method.channel === 'crypto'
-                                            ? shortWallet(method.wallet_address)
-                                            : '-'}
-                                    </td>
+                                    <td className="py-3 pr-3">{methodDetails(method)}</td>
                                     <td className="py-3 pr-3">
                                         <StatusBadge value={method.status} />
                                     </td>

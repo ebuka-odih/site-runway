@@ -13,6 +13,7 @@ export default function PaymentMethodForm({
     const { url } = usePage();
     const cancelUrl = cancelHref || adminPath(url, 'payment-methods');
     const isCrypto = form.data.channel === 'crypto';
+    const isBankTransfer = form.data.channel === 'bank_transfer';
 
     return (
         <section className="max-w-4xl rounded-2xl border border-slate-800 bg-slate-900/70 p-6">
@@ -42,6 +43,16 @@ export default function PaymentMethodForm({
 
                                 if (nextChannel !== 'crypto') {
                                     form.setData('wallet_address', '');
+                                }
+
+                                if (nextChannel !== 'bank_transfer') {
+                                    form.setData('bank_name', '');
+                                    form.setData('account_name', '');
+                                    form.setData('account_number', '');
+                                    form.setData('routing_number', '');
+                                    form.setData('swift_code', '');
+                                    form.setData('bank_address', '');
+                                    form.setData('reference_letter', '');
                                 }
                             }}
                             className={inputClass(form.errors.channel)}
@@ -114,6 +125,90 @@ export default function PaymentMethodForm({
                         />
                     </Field>
                 </div>
+
+                {isBankTransfer && (
+                    <section className="rounded-2xl border border-slate-800 bg-slate-950/60 p-5">
+                        <div className="mb-4">
+                            <h4 className="text-sm font-semibold uppercase tracking-[0.18em] text-slate-200">
+                                Bank Account Details
+                            </h4>
+                            <p className="mt-1 text-sm text-slate-400">
+                                These instructions will be shown on the user deposit screen when this bank method is selected.
+                            </p>
+                        </div>
+
+                        <div className="grid gap-4 md:grid-cols-2">
+                            <Field label="Bank Name" error={form.errors.bank_name} required>
+                                <input
+                                    type="text"
+                                    value={form.data.bank_name}
+                                    onChange={(event) => form.setData('bank_name', event.target.value)}
+                                    className={inputClass(form.errors.bank_name)}
+                                    required
+                                />
+                            </Field>
+
+                            <Field label="Account Name" error={form.errors.account_name} required>
+                                <input
+                                    type="text"
+                                    value={form.data.account_name}
+                                    onChange={(event) => form.setData('account_name', event.target.value)}
+                                    className={inputClass(form.errors.account_name)}
+                                    required
+                                />
+                            </Field>
+
+                            <Field label="Account Number" error={form.errors.account_number} required>
+                                <input
+                                    type="text"
+                                    value={form.data.account_number}
+                                    onChange={(event) => form.setData('account_number', event.target.value)}
+                                    className={inputClass(form.errors.account_number)}
+                                    required
+                                />
+                            </Field>
+
+                            <Field label="Routing Number" error={form.errors.routing_number}>
+                                <input
+                                    type="text"
+                                    value={form.data.routing_number}
+                                    onChange={(event) => form.setData('routing_number', event.target.value)}
+                                    className={inputClass(form.errors.routing_number)}
+                                />
+                            </Field>
+
+                            <Field label="Swift Code" error={form.errors.swift_code}>
+                                <input
+                                    type="text"
+                                    value={form.data.swift_code}
+                                    onChange={(event) => form.setData('swift_code', event.target.value)}
+                                    className={inputClass(form.errors.swift_code)}
+                                />
+                            </Field>
+
+                            <Field label="Reference Letter" error={form.errors.reference_letter}>
+                                <input
+                                    type="text"
+                                    value={form.data.reference_letter}
+                                    onChange={(event) => form.setData('reference_letter', event.target.value)}
+                                    className={inputClass(form.errors.reference_letter)}
+                                />
+                            </Field>
+
+                            <div className="md:col-span-2">
+                                <Field label="Bank Address" error={form.errors.bank_address}>
+                                    <textarea
+                                        value={form.data.bank_address}
+                                        onChange={(event) => form.setData('bank_address', event.target.value)}
+                                        rows={3}
+                                        className={inputClass(form.errors.bank_address)}
+                                        placeholder="Street, city, state, postal code, country"
+                                    />
+                                </Field>
+                            </div>
+                        </div>
+                    </section>
+                )}
 
                 <Field label="Description" error={form.errors.description}>
                     <textarea

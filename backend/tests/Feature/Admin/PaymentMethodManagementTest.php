@@ -86,6 +86,44 @@ class PaymentMethodManagementTest extends TestCase
             ->assertSessionHasErrors('wallet_address');
     }
 
+    public function test_admin_can_store_bank_transfer_details(): void
+    {
+        $admin = User::factory()->admin()->create();
+
+        $this->actingAs($admin)
+            ->post('/admin/payment-methods', [
+                'name' => 'USD Wire Transfer',
+                'channel' => 'bank_transfer',
+                'currency' => 'usd',
+                'network' => 'SWIFT',
+                'bank_name' => 'Chase Bank',
+                'account_name' => 'Runway Algo Ltd',
+                'account_number' => '00123456789',
+                'routing_number' => '021000021',
+                'swift_code' => 'CHASUS33',
+                'bank_address' => '270 Park Avenue, New York, NY',
+                'reference_letter' => 'Use your registered email as payment reference.',
+                'status' => 'active',
+                'display_order' => 3,
+            ])
+            ->assertRedirect(route('admin.payment-methods.index'));
+
+        $method = PaymentMethod::query()->where('name', 'USD Wire Transfer')->firstOrFail();
+
+        $this->assertSame('USD', $method->currency);
+        $this->assertNull($method->wallet_address);
+        $this->assertSame('Chase Bank', data_get($method->settings, 'bank_details.bank_name'));
+        $this->assertSame('Runway Algo Ltd', data_get($method->settings, 'bank_details.account_name'));
+        $this->assertSame('00123456789', data_get($method->settings, 'bank_details.account_number'));
+        $this->assertSame('021000021', data_get($method->settings, 'bank_details.routing_number'));
+        $this->assertSame('CHASUS33', data_get($method->settings, 'bank_details.swift_code'));
+        $this->assertSame('270 Park Avenue, New York, NY', data_get($method->settings, 'bank_details.bank_address'));
+        $this->assertSame(
+            'Use your registered email as payment reference.',
+            data_get($method->settings, 'bank_details.reference_letter')
+        );
+    }
+
     public function test_admin_can_filter_payment_methods_by_channel_and_status(): void
     {
         $admin = User::factory()->admin()->create();

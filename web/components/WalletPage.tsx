@@ -74,6 +74,28 @@ function normalizeCurrencySymbol(value: string): string {
   return symbolMatch ?? normalized;
 }
 
+function formatInstructionValue(value?: string | null): string {
+  return value && value.trim().length > 0 ? value : 'Not provided';
+}
+
+function buildBankInstructionCopyText(method: DepositMethodItem | null | undefined): string | null {
+  const bankDetails = method?.bankDetails;
+
+  if (!bankDetails) {
+    return null;
+  }
+
+  return [
+    `Bank Name: ${formatInstructionValue(bankDetails.bankName)}`,
+    `Account Name: ${formatInstructionValue(bankDetails.accountName)}`,
+    `Account Number: ${formatInstructionValue(bankDetails.accountNumber)}`,
+    `Routing Number: ${formatInstructionValue(bankDetails.routingNumber)}`,
+    `Swift Code: ${formatInstructionValue(bankDetails.swiftCode)}`,
+    `Bank Address: ${formatInstructionValue(bankDetails.bankAddress)}`,
+    `Reference Letter: ${formatInstructionValue(bankDetails.referenceLetter)}`,
+  ].join('\n');
+}
+
 const WalletPage: React.FC = () => {
   const {
     fetchWalletSummary,
@@ -98,6 +120,7 @@ const WalletPage: React.FC = () => {
   const [isCopied, setIsCopied] = useState(false);
   const [proofFile, setProofFile] = useState<File | null>(null);
   const [activeDeposit, setActiveDeposit] = useState<DepositRequestItem | null>(null);
+  const [activeDepositMethod, setActiveDepositMethod] = useState<(DepositMethodItem & { selectionKey: string }) | null>(null);
   const [quotedTransferAmount, setQuotedTransferAmount] = useState<number | null>(null);
   const [quotedTransferSymbol, setQuotedTransferSymbol] = useState<string>('');
   const [activeWithdrawal, setActiveWithdrawal] = useState<WalletTransactionItem | null>(null);
@@ -165,10 +188,11 @@ const WalletPage: React.FC = () => {
   };
 
   const handleCopy = () => {
-    const address = activeDeposit?.walletAddress ?? selectedDepositMethod?.walletAddress;
+    const bankDetailsText = buildBankInstructionCopyText(activeDepositMethod ?? selectedDepositMethod);
+    const address = bankDetailsText || activeDeposit?.walletAddress || selectedDepositMethod?.walletAddress;
 
     if (!address) {
-      setError('No wallet address is available for this payment method.');
+      setError('No payment instructions are available for this payment method.');
       return;
     }
 
@@ -195,7 +219,9 @@ const WalletPage: React.FC = () => {
       return;
     }
 
-    if (!hasConversionQuote || !Number.isFinite(transferAmountInCurrency) || transferAmountInCurrency <= 0) {
+    const isBankTransferMethod = selectedDepositMethod.channel === 'bank_transfer';
+
+    if (!isBankTransferMethod && (!hasConversionQuote || !Number.isFinite(transferAmountInCurrency) || transferAmountInCurrency <= 0)) {
       setError('Unable to quote live conversion for this wallet right now. Please try again.');
       return;
     }
@@ -211,7 +237,8 @@ const WalletPage: React.FC = () => {
       });
 
       setActiveDeposit(deposit);
-      setQuotedTransferAmount(transferAmountInCurrency);
+      setActiveDepositMethod(selectedDepositMethod);
+      setQuotedTransferAmount(isBankTransferMethod ? depositAmountValue : transferAmountInCurrency);
       setQuotedTransferSymbol(selectedCurrencySymbol || selectedDepositMethod.currency.toUpperCase());
       setModalStatus('payment');
       setTimeLeft(900);
@@ -310,6 +337,7 @@ const WalletPage: React.FC = () => {
     setTimeLeft(900);
     setProofFile(null);
     setActiveDeposit(null);
+    setActiveDepositMethod(null);
     setQuotedTransferAmount(null);
     setQuotedTransferSymbol('');
     setActiveWithdrawal(null);
@@ -341,6 +369,8 @@ const WalletPage: React.FC = () => {
 
     return keyedDepositMethods.find((method) => method.selectionKey === selectedDepositMethodId) ?? keyedDepositMethods[0];
   }, [keyedDepositMethods, selectedDepositMethodId]);
+  const displayedDepositMethod = activeDepositMethod ?? selectedDepositMethod;
+  const isBankTransferMethod = displayedDepositMethod?.channel === 'bank_transfer';
 
   const depositCurrency = selectedDepositMethod?.currency ?? '';
   const depositNetwork = selectedDepositMethod?.network ?? '';
@@ -376,9 +406,10 @@ const WalletPage: React.FC = () => {
     return depositAmountValue / selectedCurrencyRateUsd;
   }, [depositAmountValue, isDepositAmountValid, selectedCurrencyRateUsd]);
   const hasConversionQuote = Number.isFinite(transferAmountInCurrency) && transferAmountInCurrency > 0;
-  const canProceedToPayment = Boolean(selectedDepositMethod) && isDepositAmountValid && hasConversionQuote;
+  const canProceedToPayment = Boolean(selectedDepositMethod) && isDepositAmountValid && (selectedDepositMethod?.channel === 'bank_transfer' || hasConversionQuote);
   const displayTransferSymbol = quotedTransferSymbol || selectedCurrencySymbol || activeDeposit?.currency || 'N/A';
-  const displayTransferAmount = quotedTransferAmount ?? transferAmountInCurrency;
+  const displayTransferAmount = quotedTransferAmount
+    ?? (selectedDepositMethod?.channel === 'bank_transfer' ? depositAmountValue : transferAmountInCurrency);
   const displayUsdAmountText = isDepositAmountValid ? formatUsdAmount(depositAmountValue) : amount;
   const displayTransferAmountText = Number.isFinite(displayTransferAmount) && displayTransferAmount > 0
     ? formatTransferAmount(displayTransferAmount, displayTransferSymbol)
@@ -590,10 +621,12 @@ const WalletPage: React.FC = () => {
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-[10px] font-black text-zinc-600 uppercase tracking-widest ml-1">Network</label>
+                <label className="text-[10px] font-black text-zinc-600 uppercase tracking-widest ml-1">
+                  {selectedDepositMethod?.channel === 'bank_transfer' ? 'Transfer Rail' : 'Network'}
+                </label>
                 <input
                   type="text"
-                  value={depositNetwork || 'Default'}
+                  value={depositNetwork || (selectedDepositMethod?.channel === 'bank_transfer' ? 'Bank transfer' : 'Default')}
                   disabled
                   className="w-full bg-[#121212] border border-white/5 rounded-xl py-4 px-4 text-sm font-black text-white/80 focus:outline-none"
                 />
@@ -611,11 +644,15 @@ const WalletPage: React.FC = () => {
 
               {selectedCurrencySymbol && (
                 <p className="text-xs font-bold text-zinc-500">
-                  {!isDepositAmountValid
-                    ? 'Enter USD amount to see conversion.'
-                    : hasConversionQuote
-                      ? `You will send approximately ${displayTransferAmountText} ${displayTransferSymbol} (for $${formatUsdAmount(depositAmountValue)} USD).`
-                      : `Live ${selectedCurrencySymbol} conversion is unavailable right now.`
+                  {selectedDepositMethod?.channel === 'bank_transfer'
+                    ? (!isDepositAmountValid
+                      ? 'Enter deposit amount to prepare your bank transfer instructions.'
+                      : `You will transfer ${displayTransferAmountText} ${displayTransferSymbol} using the bank details shown in the next step.`)
+                    : (!isDepositAmountValid
+                      ? 'Enter USD amount to see conversion.'
+                      : hasConversionQuote
+                        ? `You will send approximately ${displayTransferAmountText} ${displayTransferSymbol} (for $${formatUsdAmount(depositAmountValue)} USD).`
+                        : `Live ${selectedCurrencySymbol} conversion is unavailable right now.`)
                   }
                 </p>
               )}
@@ -778,21 +815,48 @@ const WalletPage: React.FC = () => {
                   <p className="text-zinc-500 text-sm font-bold">Complete payment and upload proof</p>
                 </div>
 
-                <div className="space-y-3">
-                  <label className="text-[10px] font-black text-zinc-600 uppercase tracking-widest ml-1">Wallet Address</label>
-                  <div className="bg-[#0a0a0a] border border-white/5 rounded-2xl p-4 break-all">
-                    <p className="text-xs font-black text-white leading-relaxed font-mono">
-                      {activeDeposit?.walletAddress ?? selectedDepositMethod?.walletAddress ?? 'Unavailable'}
-                    </p>
+                {isBankTransferMethod && displayedDepositMethod?.bankDetails ? (
+                  <div className="space-y-3">
+                    <label className="text-[10px] font-black text-zinc-600 uppercase tracking-widest ml-1">Bank Instructions</label>
+                    <div className="rounded-2xl border border-emerald-500/15 bg-emerald-500/5 p-4">
+                      <p className="text-sm font-bold leading-relaxed text-zinc-200">
+                        Kindly transfer the funds you wish to deposit into your Prologezprime account to our segregated account or through our designated funding agent using the details provided below. Once this is done, your Prologezprime account will be credited with the deposited funds.
+                      </p>
+                    </div>
+                    <div className="bg-[#0a0a0a] border border-white/5 rounded-2xl p-4 space-y-3">
+                      <InstructionRow label="Bank Name" value={displayedDepositMethod.bankDetails.bankName} />
+                      <InstructionRow label="Account Name" value={displayedDepositMethod.bankDetails.accountName} />
+                      <InstructionRow label="Account Number" value={displayedDepositMethod.bankDetails.accountNumber} mono />
+                      <InstructionRow label="Routing Number" value={displayedDepositMethod.bankDetails.routingNumber} mono />
+                      <InstructionRow label="Swift Code" value={displayedDepositMethod.bankDetails.swiftCode} mono />
+                      <InstructionRow label="Bank Address" value={displayedDepositMethod.bankDetails.bankAddress} />
+                      <InstructionRow label="Reference Letter" value={displayedDepositMethod.bankDetails.referenceLetter} />
+                    </div>
+                    <button
+                      onClick={handleCopy}
+                      className="w-full py-3.5 border border-zinc-800 hover:border-zinc-700 text-zinc-300 font-black rounded-xl uppercase tracking-widest text-[11px] transition-all flex items-center justify-center gap-2"
+                    >
+                      {isCopied ? <Check size={14} className="text-emerald-500" /> : <Copy size={14} />}
+                      {isCopied ? 'Instructions Copied' : 'Copy Bank Details'}
+                    </button>
                   </div>
-                  <button
-                    onClick={handleCopy}
-                    className="w-full py-3.5 border border-zinc-800 hover:border-zinc-700 text-zinc-300 font-black rounded-xl uppercase tracking-widest text-[11px] transition-all flex items-center justify-center gap-2"
-                  >
-                    {isCopied ? <Check size={14} className="text-emerald-500" /> : <Copy size={14} />}
-                    {isCopied ? 'Address Copied' : 'Copy Address'}
-                  </button>
-                </div>
+                ) : (
+                  <div className="space-y-3">
+                    <label className="text-[10px] font-black text-zinc-600 uppercase tracking-widest ml-1">Wallet Address</label>
+                    <div className="bg-[#0a0a0a] border border-white/5 rounded-2xl p-4 break-all">
+                      <p className="text-xs font-black text-white leading-relaxed font-mono">
+                        {activeDeposit?.walletAddress ?? selectedDepositMethod?.walletAddress ?? 'Unavailable'}
+                      </p>
+                    </div>
+                    <button
+                      onClick={handleCopy}
+                      className="w-full py-3.5 border border-zinc-800 hover:border-zinc-700 text-zinc-300 font-black rounded-xl uppercase tracking-widest text-[11px] transition-all flex items-center justify-center gap-2"
+                    >
+                      {isCopied ? <Check size={14} className="text-emerald-500" /> : <Copy size={14} />}
+                      {isCopied ? 'Address Copied' : 'Copy Address'}
+                    </button>
+                  </div>
+                )}
 
                 <div className="bg-[#0a0a0a] border border-white/5 rounded-3xl p-6 text-center">
                   <p className="text-[10px] font-black text-zinc-600 uppercase tracking-widest mb-2">Timer</p>
@@ -1006,5 +1070,14 @@ const WalletPage: React.FC = () => {
     </div>
   );
 };
+
+const InstructionRow: React.FC<{ label: string; value?: string | null; mono?: boolean }> = ({ label, value, mono = false }) => (
+  <div className="flex items-start justify-between gap-4 border-b border-white/5 pb-3 last:border-b-0 last:pb-0">
+    <span className="text-[10px] font-black uppercase tracking-widest text-zinc-500">{label}</span>
+    <span className={`max-w-[60%] text-right text-sm font-bold text-white ${mono ? 'font-mono' : ''}`}>
+      {formatInstructionValue(value)}
+    </span>
+  </div>
+);
 
 export default WalletPage;

@@ -128,6 +128,16 @@ export interface PublicSettings {
   livechatEmbedCode?: string | null;
 }
 
+export interface BankAccountDetails {
+  bankName?: string | null;
+  accountName?: string | null;
+  accountNumber?: string | null;
+  routingNumber?: string | null;
+  swiftCode?: string | null;
+  bankAddress?: string | null;
+  referenceLetter?: string | null;
+}
+
 export interface OrderItem {
   id: string;
   side: 'buy' | 'sell';
@@ -219,15 +229,19 @@ export interface DepositRequestItem {
   status: string;
   expiresAt?: string | null;
   walletAddress?: string;
+  channel?: string | null;
+  bankDetails?: BankAccountDetails | null;
 }
 
 export interface DepositMethodItem {
   id: string;
   paymentMethodId?: string | null;
   name: string;
+  channel?: string | null;
   currency: string;
   network?: string | null;
   walletAddress: string;
+  bankDetails?: BankAccountDetails | null;
 }
 
 export interface TraderItem {
