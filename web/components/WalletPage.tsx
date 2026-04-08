@@ -818,8 +818,8 @@ const WalletPage: React.FC = () => {
                 {isBankTransferMethod && displayedDepositMethod?.bankDetails ? (
                   <div className="space-y-3">
                     <label className="text-[10px] font-black text-zinc-600 uppercase tracking-widest ml-1">Bank Instructions</label>
-                    <div className="rounded-2xl border border-emerald-500/15 bg-emerald-500/5 p-4">
-                      <p className="text-sm font-bold leading-relaxed text-zinc-200">
+                    <div className="rounded-2xl border border-yellow-500/30 bg-yellow-500/12 p-4">
+                      <p className="text-sm font-bold leading-relaxed text-yellow-100">
                         Kindly transfer the funds you wish to deposit into your Prologezprime account to our segregated account or through our designated funding agent using the details provided below. Once this is done, your Prologezprime account will be credited with the deposited funds.
                       </p>
                     </div>
