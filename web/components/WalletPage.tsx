@@ -371,6 +371,9 @@ const WalletPage: React.FC = () => {
   }, [keyedDepositMethods, selectedDepositMethodId]);
   const displayedDepositMethod = activeDepositMethod ?? selectedDepositMethod;
   const isBankTransferMethod = displayedDepositMethod?.channel === 'bank_transfer';
+  const cashBalance = summary?.wallet.cashBalance ?? 0;
+  const profitBalance = summary?.wallet.profitLoss ?? 0;
+  const consolidatedWalletBalance = cashBalance + profitBalance;
 
   const depositCurrency = selectedDepositMethod?.currency ?? '';
   const depositNetwork = selectedDepositMethod?.network ?? '';
@@ -504,9 +507,10 @@ const WalletPage: React.FC = () => {
             <div className="bg-[#121212] border border-white/5 rounded-[24px] p-6 md:col-span-2">
               <p className="text-[10px] font-black text-zinc-500 uppercase tracking-widest mb-2">Wallet Balance</p>
               <h3 className="text-3xl font-black text-white mb-1 tabular-nums">
-                ${formatUsdAmount(summary?.wallet.cashBalance ?? 0)}
+                ${formatUsdAmount(consolidatedWalletBalance)}
               </h3>
-              <p className="text-xs text-zinc-500 font-bold">Main cash balance available in the wallet</p>
+              <p className="text-xs font-black text-emerald-500">+${formatUsdAmount(profitBalance)} profit</p>
+              <p className="mt-1 text-xs text-zinc-500 font-bold">Cash balance plus available profit</p>
             </div>
 
             <div className="bg-[#121212] border border-white/5 rounded-[24px] p-6">
