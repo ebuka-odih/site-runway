@@ -40,12 +40,15 @@ class DashboardController extends Controller
 
         $range = $validated['range'] ?? '24h';
 
-        $user = $request->user()->load([
-            'wallet',
-            'positions.asset',
-            'watchlistItems.asset',
-            'copyRelationships',
-        ]);
+        $authUser = $request->user();
+        $user = User::query()
+            ->with([
+                'wallet',
+                'positions.asset',
+                'watchlistItems.asset',
+                'copyRelationships',
+            ])
+            ->findOrFail($authUser->getKey());
 
         $positions = $user->positions;
         $wallet = $user->wallet;
@@ -92,8 +95,11 @@ class DashboardController extends Controller
         $approvedProfitWithdrawalAmount = $wallet instanceof Wallet
             ? $this->approvedProfitWithdrawalAmount($wallet)
             : 0.0;
+        $approvedProfitTradeDebitAmount = $wallet instanceof Wallet
+            ? $this->approvedProfitTradeDebitAmount($wallet)
+            : 0.0;
         $settledProfitBalance = round(
-            $grossProfitBalance - ($usingLegacyPersistedProfit ? 0.0 : $approvedProfitWithdrawalAmount),
+            $grossProfitBalance - ($usingLegacyPersistedProfit ? 0.0 : ($approvedProfitWithdrawalAmount + $approvedProfitTradeDebitAmount)),
             8
         );
         $availableBalances = $wallet instanceof Wallet
@@ -114,11 +120,11 @@ class DashboardController extends Controller
         $this->syncAccountBalances($user, $settledCashBalance, $holdingBalance, $settledProfitBalance);
 
         $portfolioValue = $displayCashBalance + $holdingBalance;
-        $portfolioSnapshotService->captureFromValues($user, $portfolioValue, $displayCashBalance);
+        $portfolioSnapshotService->captureFromValues($user, $portfolioValue, $displayBuyingPower);
         $copyPnlTimeline = $wallet instanceof Wallet
             ? $this->buildCopyPnlTimeline($wallet)
             : collect();
-        $portfolioHistory = $this->buildPortfolioHistory($user, $positions, $displayCashBalance, $portfolioValue, (string) $range);
+        $portfolioHistory = $this->buildPortfolioHistory($user, $positions, $displayBuyingPower, $portfolioValue, $holdingBalance, (string) $range);
         $portfolioHistory = $this->enrichPortfolioHistoryWithInvestingTotals(
             $portfolioHistory,
             $holdingBalance,
@@ -241,15 +247,15 @@ class DashboardController extends Controller
         ]);
     }
 
-    private function buildPortfolioHistory(User $user, $positions, float $cashBalance, float $currentPortfolioValue, string $range): Collection
+    private function buildPortfolioHistory(User $user, $positions, float $buyingPower, float $currentPortfolioValue, float $currentHoldingBalance, string $range): Collection
     {
-        $snapshotHistory = $this->buildSnapshotBackedPortfolioHistory($user, $cashBalance, $currentPortfolioValue, $range);
+        $snapshotHistory = $this->buildSnapshotBackedPortfolioHistory($user, $buyingPower, $currentPortfolioValue, $currentHoldingBalance, $range);
 
         if ($snapshotHistory !== null) {
             return $snapshotHistory;
         }
 
-        return $this->buildSimulatedPortfolioHistory($positions, $cashBalance, $currentPortfolioValue, $range);
+        return $this->buildSimulatedPortfolioHistory($positions, $buyingPower, $currentPortfolioValue, $currentHoldingBalance, $range);
     }
 
     private function resolveRiskLevel(float $largestAllocationPercent, float $cashSharePercent, int $assetCount): string
@@ -269,7 +275,7 @@ class DashboardController extends Controller
         return 'Conservative';
     }
 
-    private function buildSnapshotBackedPortfolioHistory(User $user, float $cashBalance, float $currentPortfolioValue, string $range): ?Collection
+    private function buildSnapshotBackedPortfolioHistory(User $user, float $buyingPower, float $currentPortfolioValue, float $currentHoldingBalance, string $range): ?Collection
     {
         $config = self::RANGE_CONFIG[$range] ?? self::RANGE_CONFIG['24h'];
         $points = $config['points'];
@@ -365,15 +371,15 @@ class DashboardController extends Controller
                 'time' => $this->formatHistoryTime($now, $range),
                 'timestamp' => $now->getTimestampMs(),
                 'value' => round($currentPortfolioValue, 2),
-                'buying_power' => round($cashBalance, 2),
-                'holdings_value' => round(max(0, $currentPortfolioValue - $cashBalance), 2),
+                'buying_power' => round($buyingPower, 2),
+                'holdings_value' => round($currentHoldingBalance, 2),
             ]);
         }
 
         return $history;
     }
 
-    private function buildSimulatedPortfolioHistory($positions, float $cashBalance, float $currentPortfolioValue, string $range): Collection
+    private function buildSimulatedPortfolioHistory($positions, float $buyingPower, float $currentPortfolioValue, float $currentHoldingBalance, string $range): Collection
     {
         $config = self::RANGE_CONFIG[$range] ?? self::RANGE_CONFIG['24h'];
         $points = $config['points'];
@@ -382,9 +388,13 @@ class DashboardController extends Controller
         $noiseScale = $config['noise_scale'];
         $now = now();
         $hasPositions = $positions->isNotEmpty();
+        $currentHoldingsValue = $positions->sum(
+            fn (Position $position) => (float) $position->quantity * (float) $position->asset->current_price
+        );
+        $cashBalance = max(0.0, $currentPortfolioValue - $currentHoldingsValue);
 
         $history = collect(range(0, $points - 1))
-            ->map(function (int $index) use ($positions, $cashBalance, $points, $intervalMinutes, $now, $trendScale, $noiseScale, $range, $hasPositions) {
+            ->map(function (int $index) use ($positions, $buyingPower, $cashBalance, $currentPortfolioValue, $points, $intervalMinutes, $now, $trendScale, $noiseScale, $range, $hasPositions) {
                 $progress = $points > 1 ? $index / ($points - 1) : 1.0;
                 $timestamp = $now->copy()->subMinutes(($points - 1 - $index) * $intervalMinutes);
                 $timeLabel = $this->formatHistoryTime($timestamp, $range);
@@ -393,8 +403,8 @@ class DashboardController extends Controller
                     return [
                         'time' => $timeLabel,
                         'timestamp' => $timestamp->getTimestampMs(),
-                        'value' => round($cashBalance, 2),
-                        'buying_power' => round($cashBalance, 2),
+                        'value' => round($currentPortfolioValue, 2),
+                        'buying_power' => round($buyingPower, 2),
                         'holdings_value' => 0.0,
                     ];
                 }
@@ -430,7 +440,7 @@ class DashboardController extends Controller
                     'time' => $timeLabel,
                     'timestamp' => $timestamp->getTimestampMs(),
                     'value' => round($cashBalance + $holdingsValue, 2),
-                    'buying_power' => round($cashBalance, 2),
+                    'buying_power' => round($buyingPower, 2),
                     'holdings_value' => round($holdingsValue, 2),
                 ];
             })
@@ -445,8 +455,8 @@ class DashboardController extends Controller
                 'time' => $this->formatHistoryTime($now, $range),
                 'timestamp' => $now->getTimestampMs(),
                 'value' => round($currentPortfolioValue, 2),
-                'buying_power' => round($cashBalance, 2),
-                'holdings_value' => round(max(0, $currentPortfolioValue - $cashBalance), 2),
+                'buying_power' => round($buyingPower, 2),
+                'holdings_value' => round($currentHoldingBalance, 2),
             ]);
         }
 
@@ -523,6 +533,15 @@ class DashboardController extends Controller
     {
         return round((float) $wallet->transactions()
             ->where('type', 'withdrawal')
+            ->where('status', 'approved')
+            ->get(['metadata'])
+            ->sum(fn (WalletTransaction $transaction) => (float) data_get($transaction->metadata, 'profit_debit', 0)), 8);
+    }
+
+    private function approvedProfitTradeDebitAmount(Wallet $wallet): float
+    {
+        return round((float) $wallet->transactions()
+            ->where('type', 'trade_buy')
             ->where('status', 'approved')
             ->get(['metadata'])
             ->sum(fn (WalletTransaction $transaction) => (float) data_get($transaction->metadata, 'profit_debit', 0)), 8);

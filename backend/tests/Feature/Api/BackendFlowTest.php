@@ -149,6 +149,79 @@ class BackendFlowTest extends TestCase
         $this->assertEqualsWithDelta((float) $wallet->cash_balance, (float) $user->balance, 0.00000001);
     }
 
+    public function test_buy_order_can_use_profit_balance_after_cash_balance(): void
+    {
+        $asset = Asset::query()->create([
+            'symbol' => 'MIXD',
+            'name' => 'Mixed Funding Asset',
+            'type' => 'stock',
+            'current_price' => 120,
+            'change_percent' => 0,
+            'change_value' => 0,
+            'is_active' => true,
+        ]);
+
+        $user = User::factory()->create([
+            'email' => 'profit-buy@example.com',
+            'balance' => 100,
+            'profit_balance' => 50,
+            'holding_balance' => 0,
+        ]);
+
+        $wallet = Wallet::query()->create([
+            'user_id' => $user->id,
+            'cash_balance' => 100,
+            'investing_balance' => 0,
+            'profit_loss' => 50,
+            'currency' => 'USD',
+        ]);
+
+        $token = $this->postJson('/api/v1/auth/login', [
+            'email' => 'profit-buy@example.com',
+            'password' => 'password',
+            'device_name' => 'phpunit',
+        ])->json('token');
+
+        $this->withToken($token)
+            ->postJson('/api/v1/orders', [
+                'asset_id' => $asset->id,
+                'side' => 'buy',
+                'quantity' => 1,
+                'order_type' => 'market',
+            ])
+            ->assertCreated();
+
+        $wallet->refresh();
+        $user->refresh();
+
+        $this->assertEqualsWithDelta(0, (float) $wallet->cash_balance, 0.00000001);
+        $this->assertEqualsWithDelta(30, (float) $wallet->profit_loss, 0.00000001);
+        $this->assertEqualsWithDelta(120, (float) $wallet->investing_balance, 0.00000001);
+        $this->assertEqualsWithDelta(0, (float) $user->balance, 0.00000001);
+        $this->assertEqualsWithDelta(30, (float) $user->profit_balance, 0.00000001);
+        $this->assertEqualsWithDelta(120, (float) $user->holding_balance, 0.00000001);
+
+        $this->assertDatabaseHas('wallet_transactions', [
+            'wallet_id' => $wallet->id,
+            'type' => 'trade_buy',
+            'status' => 'approved',
+        ]);
+
+        $transactionMetadata = $wallet->transactions()
+            ->where('type', 'trade_buy')
+            ->latest('occurred_at')
+            ->firstOrFail()
+            ->metadata;
+
+        $this->assertEqualsWithDelta(100, (float) data_get($transactionMetadata, 'cash_debit'), 0.00000001);
+        $this->assertEqualsWithDelta(20, (float) data_get($transactionMetadata, 'profit_debit'), 0.00000001);
+
+        $this->withToken($token)
+            ->getJson('/api/v1/dashboard')
+            ->assertOk()
+            ->assertJsonPath('data.portfolio.buying_power', 30);
+    }
+
     public function test_dashboard_syncs_user_and_wallet_balances_from_positions(): void
     {
         $this->seed();

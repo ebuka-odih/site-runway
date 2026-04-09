@@ -49,18 +49,31 @@ class OrderController extends Controller
             $fillPrice = (float) ($validated['requested_price'] ?? $asset->current_price);
             $totalValue = $quantity * $fillPrice;
             $realizedProfit = 0.0;
+            $purchaseAllocation = [
+                'cash_debit' => 0.0,
+                'profit_debit' => 0.0,
+                'cash_balance' => (float) $wallet->cash_balance,
+                'profit_balance' => (float) $wallet->profit_loss,
+                'remaining' => 0.0,
+            ];
 
             /** @var Position|null $position */
             $position = $lockedUser->positions()->where('asset_id', $asset->id)->lockForUpdate()->first();
 
             if ($side === 'buy') {
-                if ((float) $wallet->cash_balance < $totalValue) {
+                $purchaseAllocation = $this->allocatePurchaseFunding(
+                    (float) $wallet->cash_balance,
+                    (float) $wallet->profit_loss,
+                    $totalValue
+                );
+
+                if ((float) $purchaseAllocation['remaining'] > 0) {
                     throw ValidationException::withMessages([
                         'quantity' => 'Insufficient buying power for this order.',
                     ]);
                 }
 
-                $wallet->cash_balance = (float) $wallet->cash_balance - $totalValue;
+                $wallet->cash_balance = (float) $purchaseAllocation['cash_balance'];
 
                 if ($position) {
                     $existingQty = (float) $position->quantity;
@@ -127,16 +140,19 @@ class OrderController extends Controller
                 'occurred_at' => now(),
                 'metadata' => [
                     'order_id' => $order->id,
+                    'cash_debit' => $side === 'buy' ? $purchaseAllocation['cash_debit'] : 0,
+                    'profit_debit' => $side === 'buy' ? $purchaseAllocation['profit_debit'] : 0,
                     'realized_pnl' => $side === 'sell' ? $realizedProfit : 0,
                 ],
             ]);
 
             $wallet = $this->refreshWalletMetrics($wallet);
+            $this->syncAccountBalances($lockedUser, $wallet);
 
             PortfolioSnapshot::query()->create([
                 'user_id' => $lockedUser->id,
                 'value' => (float) $wallet->cash_balance + (float) $wallet->investing_balance,
-                'buying_power' => (float) $wallet->cash_balance,
+                'buying_power' => (float) $wallet->cash_balance + (float) $wallet->profit_loss,
                 'recorded_at' => now(),
             ]);
 
@@ -199,18 +215,45 @@ class OrderController extends Controller
             8
         );
         $legacyFundedProfitBalance = max(0.0, $persistedProfitBalance - $tradingProfitBalance - $copyProfitBalance);
+        $approvedProfitTradeDebitAmount = $this->approvedProfitTradeDebitAmount($wallet);
 
         if ($this->isEffectivelyZero($fundedProfitBalance) && $legacyFundedProfitBalance > 0) {
             $fundedProfitBalance = $legacyFundedProfitBalance;
         }
 
-        $totalProfitBalance = round($tradingProfitBalance + $copyProfitBalance + $fundedProfitBalance, 8);
+        $totalProfitBalance = round(
+            $tradingProfitBalance + $copyProfitBalance + $fundedProfitBalance - $approvedProfitTradeDebitAmount,
+            8
+        );
 
         $wallet->investing_balance = $investingValue;
         $wallet->profit_loss = $totalProfitBalance;
         $wallet->save();
 
         return $wallet;
+    }
+
+    private function syncAccountBalances(User $user, Wallet $wallet): void
+    {
+        $cashBalance = (float) $wallet->cash_balance;
+        $holdingBalance = (float) $wallet->investing_balance;
+        $profitBalance = (float) $wallet->profit_loss;
+
+        if (
+            $this->isDrifted((float) $user->balance, $cashBalance) ||
+            $this->isDrifted((float) $user->holding_balance, $holdingBalance) ||
+            $this->isDrifted((float) $user->profit_balance, $profitBalance)
+        ) {
+            User::withoutTimestamps(function () use ($user, $cashBalance, $holdingBalance, $profitBalance): void {
+                User::query()
+                    ->whereKey($user->id)
+                    ->update([
+                        'balance' => $cashBalance,
+                        'holding_balance' => $holdingBalance,
+                        'profit_balance' => $profitBalance,
+                    ]);
+            });
+        }
     }
 
     private function resolveTradingWallet(User $user): Wallet
@@ -331,6 +374,37 @@ class OrderController extends Controller
             }, 0.0);
 
         return round($fundedProfit, 8);
+    }
+
+    private function approvedProfitTradeDebitAmount(Wallet $wallet): float
+    {
+        return round((float) $wallet->transactions()
+            ->where('type', 'trade_buy')
+            ->where('status', 'approved')
+            ->get(['metadata'])
+            ->sum(fn (WalletTransaction $transaction) => (float) data_get($transaction->metadata, 'profit_debit', 0)), 8);
+    }
+
+    /**
+     * @return array{cash_balance: float, profit_balance: float, cash_debit: float, profit_debit: float, remaining: float}
+     */
+    private function allocatePurchaseFunding(float $cashBalance, float $profitBalance, float $amount): array
+    {
+        $availableCash = max(0.0, $cashBalance);
+        $cashDebit = min($availableCash, $amount);
+        $remaining = $amount - $cashDebit;
+
+        $availableProfit = max(0.0, $profitBalance);
+        $profitDebit = min($availableProfit, $remaining);
+        $remaining -= $profitDebit;
+
+        return [
+            'cash_balance' => round($cashBalance - $cashDebit, 8),
+            'profit_balance' => round($profitBalance - $profitDebit, 8),
+            'cash_debit' => round($cashDebit, 8),
+            'profit_debit' => round($profitDebit, 8),
+            'remaining' => round($remaining, 8),
+        ];
     }
 
     private function formatQuantity(float $value): string

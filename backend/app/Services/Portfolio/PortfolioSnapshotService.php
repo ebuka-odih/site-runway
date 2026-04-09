@@ -17,7 +17,7 @@ class PortfolioSnapshotService
     public function captureForUser(User $user, ?Carbon $recordedAt = null): bool
     {
         $user->loadMissing([
-            'wallet:id,user_id,cash_balance',
+            'wallet:id,user_id,cash_balance,profit_loss',
             'positions:id,user_id,asset_id,quantity',
             'positions.asset:id,current_price',
         ]);
@@ -25,14 +25,18 @@ class PortfolioSnapshotService
         $cashBalance = $user->wallet !== null
             ? $this->resolveAuthoritativeBalance((float) $user->wallet->cash_balance, (float) $user->balance)
             : (float) $user->balance;
+        $profitBalance = $user->wallet !== null
+            ? $this->resolveAuthoritativeBalance((float) $user->wallet->profit_loss, (float) $user->profit_balance)
+            : (float) $user->profit_balance;
 
         $holdingsValue = $user->positions->sum(
             fn (Position $position) => (float) $position->quantity * (float) $position->asset->current_price
         );
 
         $portfolioValue = $cashBalance + $holdingsValue;
+        $buyingPower = $cashBalance + $profitBalance;
 
-        return $this->captureFromValues($user, $portfolioValue, $cashBalance, $recordedAt);
+        return $this->captureFromValues($user, $portfolioValue, $buyingPower, $recordedAt);
     }
 
     public function captureForActiveUsers(?Carbon $recordedAt = null): int
@@ -44,7 +48,7 @@ class PortfolioSnapshotService
                 $query->whereHas('wallet')->orWhereHas('positions');
             })
             ->with([
-                'wallet:id,user_id,cash_balance',
+                'wallet:id,user_id,cash_balance,profit_loss',
                 'positions:id,user_id,asset_id,quantity',
                 'positions.asset:id,current_price',
             ])
