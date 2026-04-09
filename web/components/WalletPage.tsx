@@ -416,7 +416,7 @@ const WalletPage: React.FC = () => {
   const isBankTransferMethod = displayedDepositMethod?.channel === 'bank_transfer';
   const cashBalance = summary?.wallet.cashBalance ?? 0;
   const profitBalance = summary?.wallet.profitLoss ?? 0;
-  const consolidatedWalletBalance = cashBalance + profitBalance;
+  const buyingPowerBalance = cashBalance + profitBalance;
 
   const depositCurrency = selectedDepositMethod?.currency ?? '';
   const depositNetwork = selectedDepositMethod?.network ?? '';
@@ -550,16 +550,16 @@ const WalletPage: React.FC = () => {
             <div className="bg-[#121212] border border-white/5 rounded-[24px] p-6">
               <p className="text-[10px] font-black text-zinc-500 uppercase tracking-widest mb-2">Wallet Balance</p>
               <h3 className="text-3xl font-black text-white mb-1 tabular-nums">
-                ${formatUsdAmount(consolidatedWalletBalance)}
+                ${formatUsdAmount(cashBalance)}
               </h3>
               <p className="text-xs font-black text-emerald-500">+${formatUsdAmount(profitBalance)} profit</p>
-              <p className="mt-1 text-xs text-zinc-500 font-bold">Cash balance plus available profit</p>
+              <p className="mt-1 text-xs text-zinc-500 font-bold">Main wallet cash balance after purchases and withdrawals</p>
             </div>
 
             <div className="bg-[#121212] border border-white/5 rounded-[24px] p-6">
               <p className="text-[10px] font-black text-zinc-500 uppercase tracking-widest mb-2">Buying Power</p>
               <h3 className="text-3xl font-black text-white mb-1 tabular-nums">
-                ${formatUsdAmount(consolidatedWalletBalance)}
+                ${formatUsdAmount(buyingPowerBalance)}
               </h3>
               <p className="text-xs text-zinc-500 font-bold">Available for asset purchases using cash first, then profit</p>
             </div>
@@ -943,15 +943,17 @@ const WalletPage: React.FC = () => {
       {modalStatus !== 'input' && (
         <div className="fixed inset-0 z-[200] bg-black/80 backdrop-blur-sm flex items-end sm:items-center justify-center p-4 animate-in fade-in duration-300">
           <div className="bg-[#121212] w-full max-w-md rounded-[32px] p-6 border border-white/5 animate-in slide-in-from-bottom-8 shadow-2xl relative overflow-hidden">
+            <button
+              type="button"
+              aria-label="Close payment modal"
+              onClick={() => setModalStatus('input')}
+              className="absolute top-4 right-4 z-10 inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-black/40 text-zinc-300 transition-colors hover:border-white/20 hover:bg-black/60 hover:text-white"
+            >
+              <X size={18} />
+            </button>
+
             {modalStatus === 'payment' && (
               <div className="space-y-8 animate-in zoom-in-95 duration-300">
-                <button
-                  onClick={() => setModalStatus('input')}
-                  className="absolute top-6 right-6 p-2 text-zinc-500 hover:text-white transition-colors"
-                >
-                  <X size={20} />
-                </button>
-
                 <div className="text-center pt-2">
                   <h3 className="text-2xl font-black text-white mb-2 tracking-tight">Send {displayTransferAmountText} {displayTransferSymbol}</h3>
                   <p className="text-zinc-500 text-sm font-bold">Complete payment and upload proof</p>
