@@ -126,4 +126,45 @@ class TransactionTabsTest extends TestCase
                 ->where('transactions.data.0.delete_url', route('admin.transactions.withdrawals.destroy', $withdrawalTransaction, false))
             );
     }
+
+    public function test_withdrawal_transactions_include_bank_transfer_metadata_for_admin_review(): void
+    {
+        $admin = User::factory()->admin()->create();
+        $customer = User::factory()->create();
+
+        $wallet = Wallet::query()->create([
+            'user_id' => $customer->id,
+        ]);
+
+        $withdrawalTransaction = WalletTransaction::query()->create([
+            'wallet_id' => $wallet->id,
+            'type' => 'withdrawal',
+            'status' => 'pending',
+            'direction' => 'debit',
+            'amount' => 75,
+            'occurred_at' => now(),
+            'metadata' => [
+                'payout_method' => 'bank_transfer',
+                'bank_details' => [
+                    'bank_name' => 'First Test Bank',
+                    'account_name' => 'Jane Customer',
+                    'account_number' => '0123456789',
+                    'routing_number' => '110000000',
+                    'swift_code' => 'TESTUS33',
+                    'bank_address' => '123 Demo Street',
+                ],
+            ],
+        ]);
+
+        $this->actingAs($admin)
+            ->get('/admin/transactions?tab=withdrawal')
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Admin/Transactions/Index')
+                ->where('transactions.data.0.id', $withdrawalTransaction->id)
+                ->where('transactions.data.0.payout_method', 'bank_transfer')
+                ->where('transactions.data.0.bank_details.bank_name', 'First Test Bank')
+                ->where('transactions.data.0.bank_details.account_number', '0123456789')
+            );
+    }
 }

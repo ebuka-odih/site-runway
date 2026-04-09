@@ -761,8 +761,15 @@ export async function apiCreateDeposit(input: {
 export async function apiCreateWithdrawal(input: {
   amount: number;
   currency: string;
+  payoutMethod?: 'crypto' | 'bank_transfer';
   network?: string;
-  destination: string;
+  destination?: string;
+  bankName?: string;
+  accountName?: string;
+  accountNumber?: string;
+  routingNumber?: string;
+  swiftCode?: string;
+  bankAddress?: string;
   assetId?: string;
 }): Promise<WalletTransactionItem> {
   const payload = await request<any>('/wallet/withdrawals', {
@@ -770,8 +777,15 @@ export async function apiCreateWithdrawal(input: {
     body: JSON.stringify({
       amount: input.amount,
       currency: input.currency,
+      payout_method: input.payoutMethod,
       network: input.network,
       destination: input.destination,
+      bank_name: input.bankName,
+      account_name: input.accountName,
+      account_number: input.accountNumber,
+      routing_number: input.routingNumber,
+      swift_code: input.swiftCode,
+      bank_address: input.bankAddress,
       asset_id: input.assetId,
     }),
   });

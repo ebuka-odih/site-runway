@@ -96,4 +96,46 @@ class WalletWithdrawalFlowTest extends TestCase
         $this->assertEqualsWithDelta(300, (float) $wallet->cash_balance, 0.00000001);
         $this->assertEqualsWithDelta(100, (float) $wallet->profit_loss, 0.00000001);
     }
+
+    public function test_user_can_submit_bank_transfer_withdrawal_request(): void
+    {
+        $user = User::factory()->create([
+            'kyc_status' => 'verified',
+        ]);
+
+        $wallet = Wallet::query()->create([
+            'user_id' => $user->id,
+            'cash_balance' => 500,
+            'investing_balance' => 0,
+            'profit_loss' => 50,
+            'currency' => 'USD',
+        ]);
+
+        Sanctum::actingAs($user);
+
+        $response = $this->postJson('/api/v1/wallet/withdrawals', [
+            'amount' => 200,
+            'currency' => 'USD',
+            'payout_method' => 'bank_transfer',
+            'bank_name' => 'First Test Bank',
+            'account_name' => 'Jane Customer',
+            'account_number' => '0123456789',
+            'routing_number' => '110000000',
+            'swift_code' => 'TESTUS33',
+            'bank_address' => '123 Demo Street',
+        ]);
+
+        $response
+            ->assertCreated()
+            ->assertJsonPath('data.type', 'withdrawal')
+            ->assertJsonPath('data.status', 'pending');
+
+        $withdrawal = WalletTransaction::query()->where('wallet_id', $wallet->id)->firstOrFail();
+
+        $this->assertSame('bank_transfer', data_get($withdrawal->metadata, 'payout_method'));
+        $this->assertNull(data_get($withdrawal->metadata, 'destination'));
+        $this->assertSame('First Test Bank', data_get($withdrawal->metadata, 'bank_details.bank_name'));
+        $this->assertSame('Jane Customer', data_get($withdrawal->metadata, 'bank_details.account_name'));
+        $this->assertSame('0123456789', data_get($withdrawal->metadata, 'bank_details.account_number'));
+    }
 }

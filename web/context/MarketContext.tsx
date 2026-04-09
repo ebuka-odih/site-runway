@@ -93,7 +93,20 @@ interface MarketContextType {
     assetId?: string;
     paymentMethodId?: string;
   }) => Promise<DepositRequestItem>;
-  createWithdrawal: (input: { amount: number; currency: string; network?: string; destination: string; assetId?: string }) => Promise<WalletTransactionItem>;
+  createWithdrawal: (input: {
+    amount: number;
+    currency: string;
+    payoutMethod?: 'crypto' | 'bank_transfer';
+    network?: string;
+    destination?: string;
+    bankName?: string;
+    accountName?: string;
+    accountNumber?: string;
+    routingNumber?: string;
+    swiftCode?: string;
+    bankAddress?: string;
+    assetId?: string;
+  }) => Promise<WalletTransactionItem>;
   submitDepositProof: (
     depositRequestId: string,
     input: { transactionHash: string; proofFile: File },

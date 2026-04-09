@@ -34,6 +34,15 @@ class WalletController extends Controller
         'reference_letter',
     ];
 
+    private const WITHDRAWAL_BANK_DETAIL_KEYS = [
+        'bank_name',
+        'account_name',
+        'account_number',
+        'routing_number',
+        'swift_code',
+        'bank_address',
+    ];
+
     public function summary(Request $request): JsonResponse
     {
         $user = $request->user()->loadMissing('positions.asset:id,current_price');
@@ -73,7 +82,7 @@ class WalletController extends Controller
                     'direction' => $transaction->direction,
                     'amount' => (float) $transaction->amount,
                     'quantity' => $transaction->quantity ? (float) $transaction->quantity : null,
-                    'symbol' => $transaction->asset?->symbol,
+                    'symbol' => $transaction->asset?->symbol ?? data_get($transaction->metadata, 'currency'),
                     'occurred_at' => $transaction->occurred_at?->toIso8601String(),
                 ]),
                 'pending_deposits' => $wallet->depositRequests
@@ -277,6 +286,7 @@ class WalletController extends Controller
         $validated = $request->validated();
         $user = $request->user();
         $settings = SiteSettings::get();
+        $payoutMethod = $validated['payout_method'] ?? 'crypto';
 
         if (! $settings['withdrawals_enabled']) {
             return response()->json([
@@ -322,9 +332,9 @@ class WalletController extends Controller
             }
         }
 
-        $asset = Asset::query()
-            ->where('symbol', $validated['currency'])
-            ->first();
+        $asset = $payoutMethod === 'crypto'
+            ? Asset::query()->where('symbol', $validated['currency'])->first()
+            : null;
 
         $availableBalances = $this->availableWithdrawalBalances($wallet, (float) $wallet->cash_balance, (float) $wallet->profit_loss);
         $availableForWithdrawal = $availableBalances['available_balance'];
@@ -351,11 +361,18 @@ class WalletController extends Controller
             'status' => 'pending',
             'direction' => 'debit',
             'amount' => $validated['amount'],
-            'network' => $validated['network'] ?? null,
+            'network' => $payoutMethod === 'crypto' ? ($validated['network'] ?? null) : null,
             'notes' => 'Withdrawal request submitted. Awaiting admin approval.',
             'occurred_at' => now(),
             'metadata' => [
-                'destination' => $validated['destination'],
+                'payout_method' => $payoutMethod,
+                'currency' => $validated['currency'],
+                'destination' => $payoutMethod === 'crypto' ? ($validated['destination'] ?? null) : null,
+                'bank_details' => $payoutMethod === 'bank_transfer'
+                    ? collect(self::WITHDRAWAL_BANK_DETAIL_KEYS)
+                        ->mapWithKeys(fn (string $key) => [$key => $validated[$key] ?? null])
+                        ->all()
+                    : null,
                 'cash_debit' => $requestedAllocation['cash_debit'],
                 'profit_debit' => $requestedAllocation['profit_debit'],
             ],
@@ -373,6 +390,7 @@ class WalletController extends Controller
                 'wallet_transaction_id' => $withdrawal->id,
                 'amount' => (float) $withdrawal->amount,
                 'currency' => $validated['currency'],
+                'payout_method' => $payoutMethod,
                 'network' => $withdrawal->network,
                 'status' => $withdrawal->status,
             ],

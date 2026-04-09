@@ -125,8 +125,15 @@ const WalletPage: React.FC = () => {
   const [quotedTransferSymbol, setQuotedTransferSymbol] = useState<string>('');
   const [activeWithdrawal, setActiveWithdrawal] = useState<WalletTransactionItem | null>(null);
   const [withdrawalAmount, setWithdrawalAmount] = useState('0.00');
+  const [withdrawalMethod, setWithdrawalMethod] = useState<'crypto' | 'bank_transfer'>('crypto');
   const [withdrawalCrypto, setWithdrawalCrypto] = useState('USDT');
   const [withdrawalDestination, setWithdrawalDestination] = useState('');
+  const [withdrawalBankName, setWithdrawalBankName] = useState('');
+  const [withdrawalAccountName, setWithdrawalAccountName] = useState('');
+  const [withdrawalAccountNumber, setWithdrawalAccountNumber] = useState('');
+  const [withdrawalRoutingNumber, setWithdrawalRoutingNumber] = useState('');
+  const [withdrawalSwiftCode, setWithdrawalSwiftCode] = useState('');
+  const [withdrawalBankAddress, setWithdrawalBankAddress] = useState('');
   const [withdrawalStatus, setWithdrawalStatus] = useState<'input' | 'processing' | 'success'>('input');
   const quoteRefreshSymbolRef = useRef<string>('');
 
@@ -289,7 +296,12 @@ const WalletPage: React.FC = () => {
       return;
     }
 
-    if (!withdrawalDestination.trim()) {
+    if (withdrawalMethod === 'bank_transfer') {
+      if (!withdrawalBankName.trim() || !withdrawalAccountName.trim() || !withdrawalAccountNumber.trim()) {
+        setError('Bank name, account name, and account number are required for bank withdrawals.');
+        return;
+      }
+    } else if (!withdrawalDestination.trim()) {
       setError('Destination wallet address is required for withdrawals.');
       return;
     }
@@ -298,16 +310,38 @@ const WalletPage: React.FC = () => {
     setWithdrawalStatus('processing');
 
     try {
-      const transaction = await createWithdrawal({
-        amount: parsedAmount,
-        currency: withdrawalCrypto,
-        destination: withdrawalDestination.trim(),
-      });
+      const transaction = await createWithdrawal(
+        withdrawalMethod === 'bank_transfer'
+          ? {
+            amount: parsedAmount,
+            currency: 'USD',
+            payoutMethod: 'bank_transfer',
+            bankName: withdrawalBankName.trim(),
+            accountName: withdrawalAccountName.trim(),
+            accountNumber: withdrawalAccountNumber.trim(),
+            routingNumber: withdrawalRoutingNumber.trim(),
+            swiftCode: withdrawalSwiftCode.trim(),
+            bankAddress: withdrawalBankAddress.trim(),
+          }
+          : {
+            amount: parsedAmount,
+            currency: withdrawalCrypto,
+            payoutMethod: 'crypto',
+            destination: withdrawalDestination.trim(),
+          },
+      );
 
       setActiveWithdrawal(transaction);
       setWithdrawalStatus('success');
       setWithdrawalAmount('0.00');
+      setWithdrawalMethod('crypto');
       setWithdrawalDestination('');
+      setWithdrawalBankName('');
+      setWithdrawalAccountName('');
+      setWithdrawalAccountNumber('');
+      setWithdrawalRoutingNumber('');
+      setWithdrawalSwiftCode('');
+      setWithdrawalBankAddress('');
       await loadSummary();
     } catch (exception) {
       const message = exception instanceof Error ? exception.message : 'Unable to create withdrawal request.';
@@ -326,6 +360,7 @@ const WalletPage: React.FC = () => {
     setError(null);
     setIsDepositFormOpen(false);
     setWithdrawalStatus('input');
+    setWithdrawalMethod('crypto');
     setIsWithdrawalFormOpen(true);
   };
 
@@ -341,6 +376,14 @@ const WalletPage: React.FC = () => {
     setQuotedTransferAmount(null);
     setQuotedTransferSymbol('');
     setActiveWithdrawal(null);
+    setWithdrawalMethod('crypto');
+    setWithdrawalDestination('');
+    setWithdrawalBankName('');
+    setWithdrawalAccountName('');
+    setWithdrawalAccountNumber('');
+    setWithdrawalRoutingNumber('');
+    setWithdrawalSwiftCode('');
+    setWithdrawalBankAddress('');
     setWithdrawalStatus('input');
   };
 
@@ -708,11 +751,39 @@ const WalletPage: React.FC = () => {
                 <p className="text-[10px] font-black text-zinc-500 uppercase tracking-widest mb-2">Withdrawal Request</p>
                 <h3 className="text-xl font-black text-white mb-2 leading-snug">Withdraw from your available balance.</h3>
                 <p className="text-sm text-zinc-600 font-bold">
-                  Profit is applied first, then your main balance. Choose a payout coin and destination wallet address.
+                  Profit is applied first, then your main balance. Choose whether to receive your payout in crypto or by bank transfer.
                 </p>
               </header>
 
               <div className="space-y-4">
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-black text-zinc-600 uppercase tracking-widest ml-1">Withdrawal Method</label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setWithdrawalMethod('crypto')}
+                      className={`rounded-xl border px-4 py-3 text-sm font-black transition-all ${
+                        withdrawalMethod === 'crypto'
+                          ? 'border-orange-400/50 bg-orange-500/12 text-orange-200'
+                          : 'border-white/5 bg-[#121212] text-zinc-400 hover:border-white/10'
+                      }`}
+                    >
+                      Crypto Wallet
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setWithdrawalMethod('bank_transfer')}
+                      className={`rounded-xl border px-4 py-3 text-sm font-black transition-all ${
+                        withdrawalMethod === 'bank_transfer'
+                          ? 'border-orange-400/50 bg-orange-500/12 text-orange-200'
+                          : 'border-white/5 bg-[#121212] text-zinc-400 hover:border-white/10'
+                      }`}
+                    >
+                      Bank Transfer
+                    </button>
+                  </div>
+                </div>
+
                 <div className="space-y-1.5">
                   <label className="text-[10px] font-black text-zinc-600 uppercase tracking-widest ml-1">Amount</label>
                   <input
@@ -749,36 +820,116 @@ const WalletPage: React.FC = () => {
                   )}
                 </div>
 
-                <div className="space-y-1.5">
-                  <label className="text-[10px] font-black text-zinc-600 uppercase tracking-widest ml-1">Payout Coin</label>
-                  <div className="relative">
-                    <select
-                      value={withdrawalCrypto}
-                      onChange={(event) => setWithdrawalCrypto(event.target.value)}
-                      className="w-full bg-[#121212] border border-white/5 rounded-xl py-4 px-4 text-sm font-black text-white appearance-none focus:outline-none focus:border-orange-500/50 transition-all"
-                    >
-                      <option>USDT</option>
-                      <option>USDC</option>
-                      <option>BTC</option>
-                      <option>ETH</option>
-                      <option>SOL</option>
-                      <option>XRP</option>
-                      <option>BNB</option>
-                    </select>
-                    <ChevronDown size={18} className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-500 pointer-events-none" />
-                  </div>
-                </div>
+                {withdrawalMethod === 'crypto' ? (
+                  <>
+                    <div className="space-y-1.5">
+                      <label className="text-[10px] font-black text-zinc-600 uppercase tracking-widest ml-1">Payout Coin</label>
+                      <div className="relative">
+                        <select
+                          value={withdrawalCrypto}
+                          onChange={(event) => setWithdrawalCrypto(event.target.value)}
+                          className="w-full bg-[#121212] border border-white/5 rounded-xl py-4 px-4 text-sm font-black text-white appearance-none focus:outline-none focus:border-orange-500/50 transition-all"
+                        >
+                          <option>USDT</option>
+                          <option>USDC</option>
+                          <option>BTC</option>
+                          <option>ETH</option>
+                          <option>SOL</option>
+                          <option>XRP</option>
+                          <option>BNB</option>
+                        </select>
+                        <ChevronDown size={18} className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-500 pointer-events-none" />
+                      </div>
+                    </div>
 
-                <div className="space-y-1.5">
-                  <label className="text-[10px] font-black text-zinc-600 uppercase tracking-widest ml-1">Destination Address</label>
-                  <input
-                    type="text"
-                    value={withdrawalDestination}
-                    onChange={(event) => setWithdrawalDestination(event.target.value)}
-                    placeholder="Paste destination wallet address"
-                    className="w-full bg-[#121212] border border-white/5 rounded-xl py-4 px-4 text-sm font-black text-white focus:outline-none focus:border-orange-500/50 transition-all placeholder:text-zinc-700"
-                  />
-                </div>
+                    <div className="space-y-1.5">
+                      <label className="text-[10px] font-black text-zinc-600 uppercase tracking-widest ml-1">Destination Address</label>
+                      <input
+                        type="text"
+                        value={withdrawalDestination}
+                        onChange={(event) => setWithdrawalDestination(event.target.value)}
+                        placeholder="Paste destination wallet address"
+                        className="w-full bg-[#121212] border border-white/5 rounded-xl py-4 px-4 text-sm font-black text-white focus:outline-none focus:border-orange-500/50 transition-all placeholder:text-zinc-700"
+                      />
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div className="rounded-2xl border border-yellow-500/20 bg-yellow-500/8 p-4">
+                      <p className="text-xs font-bold leading-relaxed text-yellow-100">
+                        Submit your bank payout details below. Admin will review and process the withdrawal to the account you provide.
+                      </p>
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <label className="text-[10px] font-black text-zinc-600 uppercase tracking-widest ml-1">Bank Name</label>
+                      <input
+                        type="text"
+                        value={withdrawalBankName}
+                        onChange={(event) => setWithdrawalBankName(event.target.value)}
+                        placeholder="Enter receiving bank name"
+                        className="w-full bg-[#121212] border border-white/5 rounded-xl py-4 px-4 text-sm font-black text-white focus:outline-none focus:border-orange-500/50 transition-all placeholder:text-zinc-700"
+                      />
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <label className="text-[10px] font-black text-zinc-600 uppercase tracking-widest ml-1">Account Name</label>
+                      <input
+                        type="text"
+                        value={withdrawalAccountName}
+                        onChange={(event) => setWithdrawalAccountName(event.target.value)}
+                        placeholder="Enter account holder name"
+                        className="w-full bg-[#121212] border border-white/5 rounded-xl py-4 px-4 text-sm font-black text-white focus:outline-none focus:border-orange-500/50 transition-all placeholder:text-zinc-700"
+                      />
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <label className="text-[10px] font-black text-zinc-600 uppercase tracking-widest ml-1">Account Number</label>
+                      <input
+                        type="text"
+                        value={withdrawalAccountNumber}
+                        onChange={(event) => setWithdrawalAccountNumber(event.target.value)}
+                        placeholder="Enter account number"
+                        className="w-full bg-[#121212] border border-white/5 rounded-xl py-4 px-4 text-sm font-black text-white focus:outline-none focus:border-orange-500/50 transition-all placeholder:text-zinc-700"
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                      <div className="space-y-1.5">
+                        <label className="text-[10px] font-black text-zinc-600 uppercase tracking-widest ml-1">Routing Number</label>
+                        <input
+                          type="text"
+                          value={withdrawalRoutingNumber}
+                          onChange={(event) => setWithdrawalRoutingNumber(event.target.value)}
+                          placeholder="Optional"
+                          className="w-full bg-[#121212] border border-white/5 rounded-xl py-4 px-4 text-sm font-black text-white focus:outline-none focus:border-orange-500/50 transition-all placeholder:text-zinc-700"
+                        />
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <label className="text-[10px] font-black text-zinc-600 uppercase tracking-widest ml-1">Swift Code</label>
+                        <input
+                          type="text"
+                          value={withdrawalSwiftCode}
+                          onChange={(event) => setWithdrawalSwiftCode(event.target.value)}
+                          placeholder="Optional"
+                          className="w-full bg-[#121212] border border-white/5 rounded-xl py-4 px-4 text-sm font-black text-white focus:outline-none focus:border-orange-500/50 transition-all placeholder:text-zinc-700"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <label className="text-[10px] font-black text-zinc-600 uppercase tracking-widest ml-1">Bank Address</label>
+                      <input
+                        type="text"
+                        value={withdrawalBankAddress}
+                        onChange={(event) => setWithdrawalBankAddress(event.target.value)}
+                        placeholder="Optional"
+                        className="w-full bg-[#121212] border border-white/5 rounded-xl py-4 px-4 text-sm font-black text-white focus:outline-none focus:border-orange-500/50 transition-all placeholder:text-zinc-700"
+                      />
+                    </div>
+                  </>
+                )}
               </div>
 
               <div className="space-y-3">
