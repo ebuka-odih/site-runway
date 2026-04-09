@@ -29,11 +29,8 @@ const toChartPoint = (
   buyingPowerFallback: number,
 ): ChartPoint => {
   const buyingPower = Number(point.buyingPower ?? buyingPowerFallback);
-  const investingTotal = Number(point.investingTotal);
   const totalValue = Number(point.value);
-  const resolvedValue = Number.isFinite(investingTotal)
-    ? investingTotal
-    : (Number.isFinite(totalValue) ? totalValue : 0);
+  const resolvedValue = Number.isFinite(totalValue) ? totalValue : 0;
 
   return {
     time: point.time,
@@ -46,14 +43,14 @@ const toChartPoint = (
 
 const buildHistory = (
   points: PortfolioHistoryPoint[],
-  currentInvestingValue: number,
+  currentBalanceValue: number,
   buyingPower: number,
 ): ChartPoint[] => {
   if (points.length === 0) {
     return [{
       time: 'Now',
-      value: roundMoney(currentInvestingValue),
-      rawValue: roundMoney(currentInvestingValue),
+      value: roundMoney(currentBalanceValue),
+      rawValue: roundMoney(currentBalanceValue),
       buyingPower: roundMoney(buyingPower),
       timestamp: Date.now(),
     }];
@@ -65,8 +62,8 @@ const buildHistory = (
   const last = mapped[lastIndex];
   mapped[lastIndex] = {
     ...last,
-    value: roundMoney(currentInvestingValue),
-    rawValue: roundMoney(currentInvestingValue),
+    value: roundMoney(currentBalanceValue),
+    rawValue: roundMoney(currentBalanceValue),
     buyingPower: roundMoney(buyingPower),
     timestamp: Date.now(),
   };
@@ -81,6 +78,9 @@ const PortfolioCard: React.FC = () => {
 
   const portfolio = dashboard?.portfolio;
   const buyingPower = portfolio?.buyingPower ?? 0;
+  const portfolioBalance = Number(portfolio?.value ?? 0);
+  const profitValue = Number(portfolio?.totalProfit ?? 0);
+  const profitPercent = Number(portfolio?.totalProfitPercent ?? 0);
 
   const derivedCurrentHoldingValue = useMemo(() => {
     const holdingsFromSummary = Number(portfolio?.holdingsValue);
@@ -104,50 +104,26 @@ const PortfolioCard: React.FC = () => {
     return 0;
   }, [buyingPower, dashboard?.positions, portfolio?.holdingsValue, portfolio?.value]);
 
-  const currentInvestingValue = useMemo(() => {
-    const directInvestingTotal = Number(portfolio?.investingTotal);
-    if (Number.isFinite(directInvestingTotal)) {
-      return directInvestingTotal;
+  const currentBalanceValue = useMemo(() => {
+    if (Number.isFinite(portfolioBalance)) {
+      return portfolioBalance;
     }
 
     const holdingsValue = Number(portfolio?.holdingsValue);
     const safeHoldingsValue = Number.isFinite(holdingsValue) ? holdingsValue : derivedCurrentHoldingValue;
-    const totalProfit = Number(portfolio?.totalProfit ?? 0);
-    const assetProfit = Number(portfolio?.assetProfit ?? portfolio?.tradeProfit ?? 0);
 
-    if (
-      Number.isFinite(safeHoldingsValue) &&
-      Number.isFinite(totalProfit) &&
-      Number.isFinite(assetProfit)
-    ) {
-      return safeHoldingsValue + totalProfit + assetProfit;
-    }
-
-    const portfolioValue = Number(portfolio?.value);
-    return Number.isFinite(portfolioValue) ? portfolioValue : 0;
-  }, [
-    derivedCurrentHoldingValue,
-    portfolio?.assetProfit,
-    portfolio?.holdingsValue,
-    portfolio?.investingTotal,
-    portfolio?.totalProfit,
-    portfolio?.tradeProfit,
-    portfolio?.value,
-  ]);
+    return safeHoldingsValue + buyingPower;
+  }, [buyingPower, derivedCurrentHoldingValue, portfolio?.holdingsValue, portfolioBalance]);
 
   const history = useMemo<ChartPoint[]>(() => {
     const points = dashboard?.portfolio.history ?? [];
-    return buildHistory(points, currentInvestingValue, buyingPower);
-  }, [buyingPower, currentInvestingValue, dashboard?.portfolio.history]);
+    return buildHistory(points, currentBalanceValue, buyingPower);
+  }, [buyingPower, currentBalanceValue, dashboard?.portfolio.history]);
 
-  const chartEndValue = history[history.length - 1]?.value ?? currentInvestingValue;
-  const dailyChange = Number.isFinite(Number(portfolio?.dailyChange))
-    ? Number(portfolio?.dailyChange)
-    : 0;
-  const dailyChangePercent = Number.isFinite(Number(portfolio?.dailyChangePercent))
-    ? Number(portfolio?.dailyChangePercent)
-    : 0;
-  const isPositive = dailyChange >= 0;
+  const chartEndValue = history[history.length - 1]?.value ?? currentBalanceValue;
+  const displayedProfitValue = Number.isFinite(profitValue) ? profitValue : 0;
+  const displayedProfitPercent = Number.isFinite(profitPercent) ? profitPercent : 0;
+  const isPositive = displayedProfitValue >= 0;
   const isFlatHistory = useMemo(() => {
     if (history.length < 3) {
       return true;
@@ -178,7 +154,7 @@ const PortfolioCard: React.FC = () => {
     return span < minVisibleSpan;
   }, [history]);
   const shouldAnimateLive = isFlatHistory || isRecentFlat;
-  const investingDisplayValue = currentInvestingValue;
+  const balanceDisplayValue = currentBalanceValue;
 
   useEffect(() => {
     void refreshDashboard(activeRange).catch(() => {
@@ -252,23 +228,23 @@ const PortfolioCard: React.FC = () => {
   return (
     <div className="px-4 py-6">
       <div className="mb-6">
-        <p className="text-xs font-bold text-green-500 tracking-widest uppercase mb-1">Investing</p>
+        <p className="text-xs font-bold text-green-500 tracking-widest uppercase mb-1">Wallet Balance</p>
         <h2 className="text-4xl font-extrabold tracking-tight mb-2 tabular-nums">
-          ${investingDisplayValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+          ${balanceDisplayValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
         </h2>
         <div className="flex items-center gap-2">
           <div className={`flex items-center font-bold text-sm ${isPositive ? 'text-green-500' : 'text-orange-500'}`}>
             {isPositive ? <ArrowUpRight size={16} className="mr-0.5" /> : <ArrowDownRight size={16} className="mr-0.5" />}
             <span className="tabular-nums">
-              ${Math.abs(dailyChange).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-              ({isPositive ? '+' : ''}{dailyChangePercent.toFixed(2)}%)
+              {isPositive ? '+' : '-'}${Math.abs(displayedProfitValue).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              ({isPositive ? '+' : ''}{displayedProfitPercent.toFixed(2)}%)
             </span>
             <span className="relative ml-2 inline-flex h-2 w-2">
               <span className={`absolute inline-flex h-full w-full rounded-full opacity-60 animate-ping ${isPositive ? 'bg-green-500' : 'bg-orange-500'}`} />
               <span className={`relative inline-flex h-2 w-2 rounded-full ${isPositive ? 'bg-green-500' : 'bg-orange-500'}`} />
             </span>
-          </div>
-          <span className="text-zinc-500 text-sm font-medium">Today</span>
+            </div>
+          <span className="text-zinc-500 text-sm font-medium">Profit</span>
         </div>
       </div>
 
@@ -290,7 +266,7 @@ const PortfolioCard: React.FC = () => {
                 const raw = Number(entry?.payload?.rawValue);
                 const safeValue = Number.isFinite(raw) ? raw : Number(_value);
 
-                return [`$${safeValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, 'Investing Total'];
+                return [`$${safeValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, 'Balance'];
               }}
             />
             <Line

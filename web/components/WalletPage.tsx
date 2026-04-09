@@ -504,30 +504,28 @@ const WalletPage: React.FC = () => {
             <div className="bg-[#121212] border border-white/5 rounded-[24px] p-6 md:col-span-2">
               <p className="text-[10px] font-black text-zinc-500 uppercase tracking-widest mb-2">Wallet Balance</p>
               <h3 className="text-3xl font-black text-white mb-1 tabular-nums">
-                ${(summary?.wallet.totalBalance ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                ${formatUsdAmount(summary?.wallet.cashBalance ?? 0)}
               </h3>
-              <p className="text-xs text-zinc-500 font-bold">Consolidated cash + investing + profit</p>
+              <p className="text-xs text-zinc-500 font-bold">Main cash balance available in the wallet</p>
             </div>
 
             <div className="bg-[#121212] border border-white/5 rounded-[24px] p-6">
-              <p className="text-[10px] font-black text-zinc-500 uppercase tracking-widest mb-2">Investing</p>
+              <p className="text-[10px] font-black text-zinc-500 uppercase tracking-widest mb-2">Invested Balance</p>
               <h3 className="text-3xl font-black text-white mb-1 tabular-nums">
-                ${(summary?.wallet.investingBalance ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                ${formatUsdAmount(summary?.wallet.investingBalance ?? 0)}
               </h3>
-              <p className="text-xs text-zinc-500 font-bold">Total amount invested</p>
+              <p className="text-xs text-zinc-500 font-bold">Capital currently tied to positions</p>
             </div>
 
             <div className="bg-[#121212] border border-white/5 rounded-[24px] p-6">
-              <p className="text-[10px] font-black text-zinc-500 uppercase tracking-widest mb-2">Profit</p>
+              <p className="text-[10px] font-black text-zinc-500 uppercase tracking-widest mb-2">Profit Balance</p>
               <h3 className="text-3xl font-black text-white mb-1 tabular-nums">
-                ${(summary?.wallet.profitLoss ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                <span className="ml-2 text-base font-bold text-zinc-400">
-                  (
-                  ${(summary?.wallet.tradeProfit ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                  )
-                </span>
+                ${formatUsdAmount(summary?.wallet.profitLoss ?? 0)}
               </h3>
-              <p className="text-xs text-emerald-500 font-black">Lifetime performance (trade profit)</p>
+              <p className="text-xs text-emerald-500 font-black">Current profit available in the wallet</p>
+              <p className="mt-2 text-[11px] text-zinc-500 font-bold">
+                Trade profit history: ${formatUsdAmount(summary?.wallet.tradeProfit ?? 0)}
+              </p>
             </div>
           </div>
 
