@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { X, ChevronDown, Info, Delete, AlertCircle, Check, Search, ArrowLeft, Loader2 } from 'lucide-react';
 import { useMarket } from '../context/MarketContext';
 import type { OrderItem, SelectableAsset } from '../types';
@@ -11,7 +11,7 @@ interface TradeModalProps {
 }
 
 const TradeModal: React.FC<TradeModalProps> = ({ asset: initialAsset, type: initialType, onClose, buyingPower }) => {
-  const { prices, marketAssets, positions, placeOrder } = useMarket();
+  const { prices, marketAssets, positions, placeOrder, refreshDashboard } = useMarket();
   const [currentAsset, setCurrentAsset] = useState(initialAsset);
   const [tradeType, setTradeType] = useState<'buy' | 'sell'>(initialType);
   const [status, setStatus] = useState<'input' | 'review' | 'processing' | 'success'>('input');
@@ -48,6 +48,12 @@ const TradeModal: React.FC<TradeModalProps> = ({ asset: initialAsset, type: init
   const positionForCurrentAsset = positions.find((position) => position.symbol === currentAsset.symbol);
   const ownedShares = positionForCurrentAsset?.quantity ?? currentAsset.shares ?? 0;
 
+  useEffect(() => {
+    void refreshDashboard().catch(() => {
+      // Keep the modal usable even if the background refresh fails.
+    });
+  }, [refreshDashboard]);
+
   const handleKeyPress = (key: string) => {
     setError(null);
 
@@ -71,11 +77,6 @@ const TradeModal: React.FC<TradeModalProps> = ({ asset: initialAsset, type: init
 
     if (!Number.isFinite(quantity) || quantity <= 0) {
       setError('Please enter a valid quantity.');
-      return;
-    }
-
-    if (tradeType === 'buy' && estimatedTotal > buyingPower) {
-      setError('Insufficient buying power.');
       return;
     }
 

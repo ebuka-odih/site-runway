@@ -547,7 +547,7 @@ const WalletPage: React.FC = () => {
       {!isDepositFormOpen && !isWithdrawalFormOpen && (
         <>
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-            <div className="bg-[#121212] border border-white/5 rounded-[24px] p-6 md:col-span-2">
+            <div className="bg-[#121212] border border-white/5 rounded-[24px] p-6">
               <p className="text-[10px] font-black text-zinc-500 uppercase tracking-widest mb-2">Wallet Balance</p>
               <h3 className="text-3xl font-black text-white mb-1 tabular-nums">
                 ${formatUsdAmount(consolidatedWalletBalance)}
@@ -557,22 +557,11 @@ const WalletPage: React.FC = () => {
             </div>
 
             <div className="bg-[#121212] border border-white/5 rounded-[24px] p-6">
-              <p className="text-[10px] font-black text-zinc-500 uppercase tracking-widest mb-2">Invested Balance</p>
+              <p className="text-[10px] font-black text-zinc-500 uppercase tracking-widest mb-2">Buying Power</p>
               <h3 className="text-3xl font-black text-white mb-1 tabular-nums">
-                ${formatUsdAmount(summary?.wallet.investingBalance ?? 0)}
+                ${formatUsdAmount(consolidatedWalletBalance)}
               </h3>
-              <p className="text-xs text-zinc-500 font-bold">Capital currently tied to positions</p>
-            </div>
-
-            <div className="bg-[#121212] border border-white/5 rounded-[24px] p-6">
-              <p className="text-[10px] font-black text-zinc-500 uppercase tracking-widest mb-2">Profit Balance</p>
-              <h3 className="text-3xl font-black text-white mb-1 tabular-nums">
-                ${formatUsdAmount(summary?.wallet.profitLoss ?? 0)}
-              </h3>
-              <p className="text-xs text-emerald-500 font-black">Current profit available in the wallet</p>
-              <p className="mt-2 text-[11px] text-zinc-500 font-bold">
-                Trade profit history: ${formatUsdAmount(summary?.wallet.tradeProfit ?? 0)}
-              </p>
+              <p className="text-xs text-zinc-500 font-bold">Available for asset purchases using cash first, then profit</p>
             </div>
           </div>
 

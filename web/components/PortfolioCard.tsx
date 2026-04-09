@@ -17,7 +17,6 @@ interface ChartPoint {
   time: string;
   value: number;
   rawValue: number;
-  buyingPower: number;
   timestamp: number;
 }
 
@@ -26,45 +25,40 @@ const roundMoney = (value: number): number => Number(value.toFixed(2));
 const toChartPoint = (
   point: PortfolioHistoryPoint,
   index: number,
-  buyingPowerFallback: number,
+  holdingsValueFallback: number,
 ): ChartPoint => {
-  const buyingPower = Number(point.buyingPower ?? buyingPowerFallback);
-  const totalValue = Number(point.value);
-  const resolvedValue = Number.isFinite(totalValue) ? totalValue : 0;
+  const holdingsValue = Number(point.holdingsValue);
+  const resolvedValue = Number.isFinite(holdingsValue) ? holdingsValue : holdingsValueFallback;
 
   return {
     time: point.time,
     value: roundMoney(resolvedValue),
     rawValue: roundMoney(resolvedValue),
-    buyingPower,
     timestamp: Number(point.timestamp ?? index),
   };
 };
 
 const buildHistory = (
   points: PortfolioHistoryPoint[],
-  currentBalanceValue: number,
-  buyingPower: number,
+  currentInvestedValue: number,
 ): ChartPoint[] => {
   if (points.length === 0) {
     return [{
       time: 'Now',
-      value: roundMoney(currentBalanceValue),
-      rawValue: roundMoney(currentBalanceValue),
-      buyingPower: roundMoney(buyingPower),
+      value: roundMoney(currentInvestedValue),
+      rawValue: roundMoney(currentInvestedValue),
       timestamp: Date.now(),
     }];
   }
 
-  const mapped = points.map((point, index) => toChartPoint(point, index, buyingPower));
+  const mapped = points.map((point, index) => toChartPoint(point, index, currentInvestedValue));
 
   const lastIndex = mapped.length - 1;
   const last = mapped[lastIndex];
   mapped[lastIndex] = {
     ...last,
-    value: roundMoney(currentBalanceValue),
-    rawValue: roundMoney(currentBalanceValue),
-    buyingPower: roundMoney(buyingPower),
+    value: roundMoney(currentInvestedValue),
+    rawValue: roundMoney(currentInvestedValue),
     timestamp: Date.now(),
   };
 
@@ -78,9 +72,7 @@ const PortfolioCard: React.FC = () => {
 
   const portfolio = dashboard?.portfolio;
   const buyingPower = portfolio?.buyingPower ?? 0;
-  const portfolioBalance = Number(portfolio?.value ?? 0);
-  const profitValue = Number(portfolio?.totalProfit ?? 0);
-  const profitPercent = Number(portfolio?.totalProfitPercent ?? 0);
+  const assetProfitValue = Number(portfolio?.assetProfit ?? portfolio?.tradeProfit ?? 0);
 
   const derivedCurrentHoldingValue = useMemo(() => {
     const holdingsFromSummary = Number(portfolio?.holdingsValue);
@@ -104,25 +96,32 @@ const PortfolioCard: React.FC = () => {
     return 0;
   }, [buyingPower, dashboard?.positions, portfolio?.holdingsValue, portfolio?.value]);
 
-  const currentBalanceValue = useMemo(() => {
-    if (Number.isFinite(portfolioBalance)) {
-      return portfolioBalance;
+  const currentInvestedValue = useMemo(() => {
+    const holdingsValue = Number(portfolio?.holdingsValue);
+    return Number.isFinite(holdingsValue) ? holdingsValue : derivedCurrentHoldingValue;
+  }, [derivedCurrentHoldingValue, portfolio?.holdingsValue]);
+
+  const assetProfitPercent = useMemo(() => {
+    if (!Number.isFinite(assetProfitValue) || Math.abs(assetProfitValue) < 0.00000001) {
+      return 0;
     }
 
-    const holdingsValue = Number(portfolio?.holdingsValue);
-    const safeHoldingsValue = Number.isFinite(holdingsValue) ? holdingsValue : derivedCurrentHoldingValue;
+    const estimatedCostBasis = currentInvestedValue - assetProfitValue;
+    if (Math.abs(estimatedCostBasis) < 0.00000001) {
+      return 0;
+    }
 
-    return safeHoldingsValue + buyingPower;
-  }, [buyingPower, derivedCurrentHoldingValue, portfolio?.holdingsValue, portfolioBalance]);
+    return (assetProfitValue / estimatedCostBasis) * 100;
+  }, [assetProfitValue, currentInvestedValue]);
 
   const history = useMemo<ChartPoint[]>(() => {
     const points = dashboard?.portfolio.history ?? [];
-    return buildHistory(points, currentBalanceValue, buyingPower);
-  }, [buyingPower, currentBalanceValue, dashboard?.portfolio.history]);
+    return buildHistory(points, currentInvestedValue);
+  }, [currentInvestedValue, dashboard?.portfolio.history]);
 
-  const chartEndValue = history[history.length - 1]?.value ?? currentBalanceValue;
-  const displayedProfitValue = Number.isFinite(profitValue) ? profitValue : 0;
-  const displayedProfitPercent = Number.isFinite(profitPercent) ? profitPercent : 0;
+  const chartEndValue = history[history.length - 1]?.value ?? currentInvestedValue;
+  const displayedProfitValue = Number.isFinite(assetProfitValue) ? assetProfitValue : 0;
+  const displayedProfitPercent = Number.isFinite(assetProfitPercent) ? assetProfitPercent : 0;
   const isPositive = displayedProfitValue >= 0;
   const isFlatHistory = useMemo(() => {
     if (history.length < 3) {
@@ -154,7 +153,7 @@ const PortfolioCard: React.FC = () => {
     return span < minVisibleSpan;
   }, [history]);
   const shouldAnimateLive = isFlatHistory || isRecentFlat;
-  const balanceDisplayValue = currentBalanceValue;
+  const investedDisplayValue = currentInvestedValue;
 
   useEffect(() => {
     void refreshDashboard(activeRange).catch(() => {
@@ -228,9 +227,9 @@ const PortfolioCard: React.FC = () => {
   return (
     <div className="px-4 py-6">
       <div className="mb-6">
-        <p className="text-xs font-bold text-green-500 tracking-widest uppercase mb-1">Wallet Balance</p>
+        <p className="text-xs font-bold text-green-500 tracking-widest uppercase mb-1">Investing</p>
         <h2 className="text-4xl font-extrabold tracking-tight mb-2 tabular-nums">
-          ${balanceDisplayValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+          ${investedDisplayValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
         </h2>
         <div className="flex items-center gap-2">
           <div className={`flex items-center font-bold text-sm ${isPositive ? 'text-green-500' : 'text-orange-500'}`}>
@@ -244,7 +243,7 @@ const PortfolioCard: React.FC = () => {
               <span className={`relative inline-flex h-2 w-2 rounded-full ${isPositive ? 'bg-green-500' : 'bg-orange-500'}`} />
             </span>
             </div>
-          <span className="text-zinc-500 text-sm font-medium">Profit</span>
+          <span className="text-zinc-500 text-sm font-medium">Asset P/L</span>
         </div>
       </div>
 
@@ -266,7 +265,7 @@ const PortfolioCard: React.FC = () => {
                 const raw = Number(entry?.payload?.rawValue);
                 const safeValue = Number.isFinite(raw) ? raw : Number(_value);
 
-                return [`$${safeValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, 'Balance'];
+                return [`$${safeValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, 'Invested Value'];
               }}
             />
             <Line
