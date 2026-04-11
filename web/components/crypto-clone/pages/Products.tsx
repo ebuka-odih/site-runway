@@ -25,7 +25,7 @@ type ProductSection = {
 const sections: ProductSection[] = [
   {
     id: 'buy-crypto',
-    title: 'Buy Crypto',
+    title: 'Buy Crypto and Stocks',
     summary:
       'Fund quickly and purchase major assets with clear pricing, account-tier controls, and immediate execution feedback.',
     whatItSolves:

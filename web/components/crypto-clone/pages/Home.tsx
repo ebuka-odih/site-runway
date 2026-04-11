@@ -60,6 +60,42 @@ const TradingViewWidget = () => {
   );
 };
 
+const TeslaChartWidget = () => {
+  const container = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!container.current) return;
+
+    container.current.innerHTML = '';
+
+    const script = document.createElement("script");
+    script.src = "https://s3.tradingview.com/external-embedding/embed-widget-mini-symbol-overview.js";
+    script.type = "text/javascript";
+    script.async = true;
+    script.innerHTML = JSON.stringify({
+      "symbol": "NASDAQ:TSLA",
+      "width": "100%",
+      "height": "220",
+      "locale": "en",
+      "dateRange": "12M",
+      "colorTheme": "light",
+      "isTransparent": true,
+      "autosize": true,
+      "largeChartUrl": "",
+      "chartOnly": false,
+      "noTimeScale": false,
+    });
+
+    container.current.appendChild(script);
+  }, []);
+
+  return (
+    <div className="tradingview-widget-container h-[220px] w-full overflow-hidden rounded-xl" ref={container}>
+      <div className="tradingview-widget-container__widget h-full w-full" />
+    </div>
+  );
+};
+
 interface HomeProps {
   brandName?: string;
 }
@@ -177,25 +213,8 @@ export default function Home({ brandName }: HomeProps) {
 
               {/* New Listings */}
               <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6">
-                <h3 className="text-lg font-bold mb-6">New Listings</h3>
-                <div className="space-y-6">
-                  {[
-                    { pair: 'APE/USDT', price: '0.1071', change: '-4.72%' },
-                    { pair: 'ETC/USDT', price: '8.7', change: '-6.75%' },
-                    { pair: 'ETH/USDT', price: '1,949.76', change: '-2.18%' },
-                  ].map((coin, i) => (
-                    <div key={i} className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-full bg-slate-100" />
-                        <span className="font-bold text-sm">{coin.pair}</span>
-                      </div>
-                      <div className="text-right">
-                        <div className="text-sm font-medium">{coin.price} USD</div>
-                        <div className="text-xs text-[#F23645] font-bold">{coin.change} 24h</div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
+                <h3 className="text-lg font-bold mb-6">Tesla Chart</h3>
+                <TeslaChartWidget />
               </div>
             </div>
           </div>
@@ -323,7 +342,7 @@ export default function Home({ brandName }: HomeProps) {
       {/* Final CTA */}
       <section className="bg-[#F1F5F9] pb-24 text-[#1A1A1A]">
         <div className="max-w-7xl mx-auto px-6 text-center space-y-8">
-          <h2 className="text-4xl font-bold">Embark on Your Crypto Journey Today!</h2>
+          <h2 className="text-4xl font-bold">Embark on Your Crypto and Stock Journey Today!</h2>
           <Link
             to="/signup"
             className="inline-flex px-10 py-4 rounded-full bg-[#059669] text-white font-bold text-lg hover:bg-[#047857] transition-all items-center gap-2 mx-auto"

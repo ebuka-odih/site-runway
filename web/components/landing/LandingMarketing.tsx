@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useRef } from 'react';
 import { Link } from 'react-router-dom';
 import {
   ArrowRight,
@@ -20,10 +20,7 @@ import {
   Award,
   User,
 } from 'lucide-react';
-import LiveChatEmbed from '../LiveChatEmbed';
-import { apiPublicSettings } from '../../lib/api';
 import { resolveBrandName } from '../../lib/branding';
-import type { PublicSettings } from '../../types';
 import type { AuthView } from './types';
 
 interface LandingMarketingProps {
@@ -106,33 +103,7 @@ const TradingViewMarketsWidget: React.FC = () => {
 };
 
 const LandingMarketing: React.FC<LandingMarketingProps> = ({ onOpenAuth, brandName }) => {
-  const [publicSettings, setPublicSettings] = useState<PublicSettings | null>(null);
   const resolvedBrandName = resolveBrandName(brandName);
-
-  useEffect(() => {
-    let isActive = true;
-
-    const load = async () => {
-      try {
-        const settings = await apiPublicSettings();
-        if (isActive) {
-          setPublicSettings(settings);
-        }
-      } catch {
-        if (isActive) {
-          setPublicSettings(null);
-        }
-      }
-    };
-
-    void load();
-
-    return () => {
-      isActive = false;
-    };
-  }, []);
-
-  const supportEmail = publicSettings?.supportEmail || 'support@runwayalgo.com';
 
   return (
     <>
@@ -490,7 +461,7 @@ const LandingMarketing: React.FC<LandingMarketingProps> = ({ onOpenAuth, brandNa
             {[
               { Icon: Globe, href: '#markets', label: 'Global markets' },
               { Icon: Activity, href: '#trading-desk', label: 'Trading desk' },
-              { Icon: DollarSign, href: '#support-hub', label: 'Support hub' },
+              { Icon: DollarSign, href: '#contact-us', label: 'Contact us' },
             ].map(({ Icon, href, label }) => (
               <a
                 key={label}
@@ -516,7 +487,7 @@ const LandingMarketing: React.FC<LandingMarketingProps> = ({ onOpenAuth, brandNa
           <ul className="space-y-4 text-zinc-500 text-sm font-bold">
             <li><Link to="/about-us" className="hover:text-emerald-500 transition-colors">About Us</Link></li>
             <li><Link to="/risk-disclosure" className="hover:text-emerald-500 transition-colors">Risk Disclosure</Link></li>
-            <li><a href="#support-hub" className="hover:text-emerald-500 transition-colors">Support Hub</a></li>
+            <li><a href="#contact-us" className="hover:text-emerald-500 transition-colors">Contact Us</a></li>
           </ul>
         </div>
       </div>
@@ -530,27 +501,20 @@ const LandingMarketing: React.FC<LandingMarketingProps> = ({ onOpenAuth, brandNa
             Read full disclosure
           </Link>
         </section>
-        <section id="support-hub" className="rounded-3xl border border-white/10 bg-white/[0.02] p-6">
-          <h5 className="text-[10px] font-black text-white uppercase tracking-widest mb-3">Support Hub</h5>
-          <p className="text-zinc-500 text-sm font-medium leading-relaxed mb-4">
-            Need onboarding or account help? Reach the support desk for assistance with verification, security, and funding flows.
-          </p>
-          <a href={`mailto:${supportEmail}`} className="text-emerald-500 text-xs font-black uppercase tracking-widest hover:text-emerald-400 transition-colors">
-            {supportEmail}
-          </a>
-          {publicSettings?.livechatEnabled && publicSettings.livechatEmbedCode ? (
-            <div className="mt-5 rounded-2xl border border-emerald-500/20 bg-emerald-500/5 p-4">
-              <LiveChatEmbed
-                enabled={publicSettings.livechatEnabled}
-                embedCode={publicSettings.livechatEmbedCode}
-                className="text-white"
-              />
+        <section id="contact-us" className="rounded-3xl border border-white/10 bg-white/[0.02] p-6">
+          <h5 className="text-[10px] font-black text-white uppercase tracking-widest mb-3">Contact Us</h5>
+          <div className="space-y-5 text-sm font-medium text-zinc-500">
+            <div>
+              <p className="mb-2 text-[10px] font-black uppercase tracking-widest text-white">Phone Number</p>
+              <a href="tel:+13292059032" className="text-emerald-500 transition-colors hover:text-emerald-400">
+                +1 329-205-9032
+              </a>
             </div>
-          ) : (
-            <p className="mt-4 text-[10px] font-black uppercase tracking-widest text-zinc-600">
-              Live chat is currently offline.
-            </p>
-          )}
+            <div>
+              <p className="mb-2 text-[10px] font-black uppercase tracking-widest text-white">Head Office Address</p>
+              <p>405 Lexington Avenue, New York City, NY 10174</p>
+            </div>
+          </div>
         </section>
       </div>
       <div className="grid md:grid-cols-2 gap-6 mb-10">

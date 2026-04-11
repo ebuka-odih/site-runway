@@ -26,7 +26,7 @@ export default function Layout({ brandName }: LayoutProps) {
             </Link>
             
             <nav className="hidden lg:flex items-center gap-8 text-sm font-medium text-slate-300">
-              <Link to="/products#buy-crypto" className="hover:text-[#059669] transition-colors">Buy Crypto</Link>
+              <Link to="/products#buy-crypto" className="hover:text-[#059669] transition-colors">Buy Crypto and Stocks</Link>
               <Link to="/products#markets" className="hover:text-[#059669] transition-colors">Markets</Link>
               <Link to="/products#trade" className="hover:text-[#059669] transition-colors">Trade</Link>
               <Link to="/products#derivatives" className="hover:text-[#059669] transition-colors">Derivatives</Link>
@@ -66,7 +66,7 @@ export default function Layout({ brandName }: LayoutProps) {
             >
               <nav className="flex flex-col p-6 gap-3">
                 {[
-                  { name: 'Buy Crypto', path: '/products#buy-crypto' },
+                  { name: 'Buy Crypto and Stocks', path: '/products#buy-crypto' },
                   { name: 'Markets', path: '/products#markets' },
                   { name: 'Trade', path: '/products#trade' },
                   { name: 'Derivatives', path: '/products#derivatives' },
