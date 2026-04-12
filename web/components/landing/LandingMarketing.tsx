@@ -511,6 +511,12 @@ const LandingMarketing: React.FC<LandingMarketingProps> = ({ onOpenAuth, brandNa
               </a>
             </div>
             <div>
+              <p className="mb-2 text-[10px] font-black uppercase tracking-widest text-white">Email</p>
+              <a href="mailto:support@prologezprime.com" className="text-emerald-500 transition-colors hover:text-emerald-400">
+                support@prologezprime.com
+              </a>
+            </div>
+            <div>
               <p className="mb-2 text-[10px] font-black uppercase tracking-widest text-white">Head Office Address</p>
               <p>405 Lexington Avenue, New York City, NY 10174</p>
             </div>
