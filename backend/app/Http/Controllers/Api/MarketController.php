@@ -129,6 +129,48 @@ class MarketController extends Controller
             return;
         }
 
+        $stockUniverse = array_keys((array) config('stocks.popular', []));
+        $stockUniverseCount = count($stockUniverse);
+
+        if ($stockUniverseCount === 0) {
+            return;
+        }
+
+        $targetCount = min(
+            max(1, (int) config('stocks.sync.market_min_assets', 40)),
+            $stockUniverseCount
+        );
+        $currentCount = (int) Asset::query()
+            ->whereIn('symbol', $stockUniverse)
+            ->whereIn('type', ['stock', 'share', 'etf'])
+            ->count();
+
+        if ($currentCount < $targetCount) {
+            if (! Cache::add('stocks:finnhub:bootstrap-sync-lock', now()->timestamp, now()->addMinutes(10))) {
+                return;
+            }
+
+            $calls = min(
+                $stockUniverseCount,
+                max(
+                    $targetCount,
+                    (int) config('stocks.sync.bootstrap_calls', 25)
+                )
+            );
+
+            try {
+                $stockSyncService->sync($calls);
+            } catch (Throwable $exception) {
+                Log::warning('Finnhub bootstrap sync failed during market assets request.', [
+                    'exception' => $exception->getMessage(),
+                    'current_count' => $currentCount,
+                    'target_count' => $targetCount,
+                ]);
+            }
+
+            return;
+        }
+
         // Fallback sync when scheduler/cron is delayed. Throttle to once per minute.
         if (! Cache::add('stocks:finnhub:lazy-sync-lock', now()->timestamp, now()->addSeconds(55))) {
             return;

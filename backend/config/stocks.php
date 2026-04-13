@@ -14,6 +14,8 @@ return [
 
     'sync' => [
         'max_calls_per_run' => (int) env('FINNHUB_SYNC_CALLS_PER_RUN', 5),
+        'bootstrap_calls' => (int) env('FINNHUB_BOOTSTRAP_CALLS', 25),
+        'market_min_assets' => (int) env('FINNHUB_MARKET_MIN_ASSETS', 40),
     ],
 
     /*
