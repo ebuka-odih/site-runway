@@ -144,14 +144,47 @@ export default function Layout({ brandName }: LayoutProps) {
       </button>
 
       <footer className="bg-[#0A0F1A] border-t border-white/5">
-        <div className="max-w-7xl mx-auto px-6 py-12 flex flex-col md:flex-row items-center justify-between gap-6 text-sm text-slate-500">
-          <div>
-            © 2026 {resolvedBrandName}. All rights reserved.
+        <div className="max-w-7xl mx-auto px-6 py-12 space-y-10 text-sm text-slate-500">
+          <div className="grid gap-10 md:grid-cols-[1.2fr_0.8fr] md:items-start">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">Contact Us</p>
+              <div className="mt-5 space-y-4">
+                <div>
+                  <p className="text-xs uppercase tracking-[0.18em] text-slate-500">Phone Number</p>
+                  <a href="tel:+13292059032" className="mt-1 inline-block text-white transition-colors hover:text-[#34D399]">
+                    +1 329-205-9032
+                  </a>
+                </div>
+                <div>
+                  <p className="text-xs uppercase tracking-[0.18em] text-slate-500">Email</p>
+                  <a href="mailto:support@prologezprime.com" className="mt-1 inline-block text-white transition-colors hover:text-[#34D399]">
+                    support@prologezprime.com
+                  </a>
+                </div>
+                <div>
+                  <p className="text-xs uppercase tracking-[0.18em] text-slate-500">Head Office Address</p>
+                  <p className="mt-1 text-white">405 Lexington Avenue, New York City, NY 10174</p>
+                </div>
+              </div>
+            </div>
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">Legal</p>
+              <div className="mt-5 flex flex-col gap-3">
+                <Link to="/risk" className="hover:text-[#059669] transition-colors">Risk Disclosure</Link>
+                <Link to="/privacy" className="hover:text-[#059669] transition-colors">Privacy Policy</Link>
+                <Link to="/terms" className="hover:text-[#059669] transition-colors">Terms of Service</Link>
+              </div>
+            </div>
           </div>
-          <div className="flex items-center gap-8">
-            <Link to="/risk" className="hover:text-[#059669] transition-colors">Risk Disclosure</Link>
-            <Link to="/privacy" className="hover:text-[#059669] transition-colors">Privacy Policy</Link>
-            <Link to="/terms" className="hover:text-[#059669] transition-colors">Terms of Service</Link>
+          <div className="flex flex-col gap-4 border-t border-white/5 pt-6 md:flex-row md:items-center md:justify-between">
+            <div>
+              © 2026 {resolvedBrandName}. All rights reserved.
+            </div>
+            <div className="flex items-center gap-8">
+              <Link to="/risk" className="hover:text-[#059669] transition-colors">Risk Disclosure</Link>
+              <Link to="/privacy" className="hover:text-[#059669] transition-colors">Privacy Policy</Link>
+              <Link to="/terms" className="hover:text-[#059669] transition-colors">Terms of Service</Link>
+            </div>
           </div>
         </div>
       </footer>
