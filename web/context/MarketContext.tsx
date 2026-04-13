@@ -253,10 +253,6 @@ export const MarketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   }, [refreshDashboard]);
 
   useEffect(() => {
-    refreshMarketAssetsRef.current = refreshMarketAssets;
-  }, [refreshMarketAssets]);
-
-  useEffect(() => {
     dashboardRef.current = dashboard;
   }, [dashboard]);
 
@@ -291,6 +287,10 @@ export const MarketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
     return nextAssets;
   }, [dashboard]);
+
+  useEffect(() => {
+    refreshMarketAssetsRef.current = refreshMarketAssets;
+  }, [refreshMarketAssets]);
 
   const refreshOrders = useCallback(async () => {
     const nextOrders = await apiOrders();
