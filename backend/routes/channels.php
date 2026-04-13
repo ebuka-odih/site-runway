@@ -9,3 +9,7 @@ Broadcast::channel('App.Models.User.{id}', function ($user, $id) {
 Broadcast::channel('portfolio.{userId}', function ($user, $userId) {
     return (string) $user->id === (string) $userId;
 });
+
+Broadcast::channel('market', function ($user) {
+    return $user !== null;
+});

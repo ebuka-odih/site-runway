@@ -43,6 +43,7 @@ import type {
   DepositRequestItem,
   MarketAssetDetail,
   OrderItem,
+  MarketAssetsUpdatedEventAsset,
   PriceState,
   ProfileData,
   SelectableAsset,
@@ -176,6 +177,19 @@ function mergeAssetsBySymbol(input: SelectableAsset[]): SelectableAsset[] {
   return [...map.values()];
 }
 
+function mapRealtimeAssets(input: MarketAssetsUpdatedEventAsset[]): SelectableAsset[] {
+  return input.map((asset) => ({
+    id: asset.id,
+    symbol: asset.symbol,
+    name: asset.symbol,
+    type: asset.type,
+    price: asset.price,
+    changePercent: asset.changePercent ?? asset.change_percent ?? 0,
+    changeValue: asset.changeValue ?? asset.change_value,
+    lastPriceUpdateAt: asset.lastPriceUpdateAt ?? asset.last_price_update_at ?? null,
+  }));
+}
+
 function isLoopbackHost(host: string): boolean {
   const normalized = host.trim().toLowerCase();
 
@@ -204,6 +218,9 @@ export const MarketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const [authError, setAuthError] = useState<string | null>(null);
   const activeDashboardRangeRef = useRef<DashboardRange>('24h');
   const refreshDashboardRef = useRef<MarketContextType['refreshDashboard']>(async () => {});
+  const refreshMarketAssetsRef = useRef<MarketContextType['refreshMarketAssets']>(async () => []);
+  const dashboardRef = useRef<DashboardData | null>(null);
+  const marketAssetsRef = useRef<SelectableAsset[]>([]);
 
   const refreshDashboard = useCallback(async (range?: DashboardRange) => {
     const effectiveRange = range ?? activeDashboardRangeRef.current;
@@ -234,6 +251,18 @@ export const MarketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   useEffect(() => {
     refreshDashboardRef.current = refreshDashboard;
   }, [refreshDashboard]);
+
+  useEffect(() => {
+    refreshMarketAssetsRef.current = refreshMarketAssets;
+  }, [refreshMarketAssets]);
+
+  useEffect(() => {
+    dashboardRef.current = dashboard;
+  }, [dashboard]);
+
+  useEffect(() => {
+    marketAssetsRef.current = marketAssets;
+  }, [marketAssets]);
 
   const refreshMarketAssets = useCallback(async (params?: { type?: string; search?: string }) => {
     const nextAssets = await apiMarketAssets(params);
@@ -541,9 +570,12 @@ export const MarketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       },
     });
 
-    const channelName = `portfolio.${user.id}`;
-    const channel = echo.private(channelName);
-    let refreshTimeout: number | null = null;
+    const portfolioChannelName = `portfolio.${user.id}`;
+    const portfolioChannel = echo.private(portfolioChannelName);
+    const marketChannelName = 'market';
+    const marketChannel = echo.private(marketChannelName);
+    let portfolioRefreshTimeout: number | null = null;
+    let marketRefreshTimeout: number | null = null;
     let disconnectedByError = false;
 
     const connector = echo.connector as { pusher?: { connection?: { bind: (event: string, callback: () => void) => void; unbind: (event: string, callback: () => void) => void } } };
@@ -563,31 +595,87 @@ export const MarketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         return;
       }
 
-      if (refreshTimeout !== null) {
+      if (portfolioRefreshTimeout !== null) {
         return;
       }
 
-      refreshTimeout = window.setTimeout(() => {
-        refreshTimeout = null;
+      portfolioRefreshTimeout = window.setTimeout(() => {
+        portfolioRefreshTimeout = null;
         void refreshDashboardRef.current(activeDashboardRangeRef.current).catch(() => {
           // Keep current state if a live refresh fails.
         });
       }, 350);
     };
 
-    channel.listen('.portfolio.snapshot.updated', queueRefresh);
+    const queueMarketRefresh = () => {
+      if (disconnectedByError) {
+        return;
+      }
+
+      if (marketRefreshTimeout !== null) {
+        return;
+      }
+
+      marketRefreshTimeout = window.setTimeout(() => {
+        marketRefreshTimeout = null;
+
+        void Promise.all([
+          refreshMarketAssetsRef.current(),
+          refreshDashboardRef.current(activeDashboardRangeRef.current),
+        ]).catch(() => {
+          // Keep current state if a live refresh fails.
+        });
+      }, 350);
+    };
+
+    const handleMarketAssetsUpdated = (event: { assets?: MarketAssetsUpdatedEventAsset[] }) => {
+      const assets = Array.isArray(event.assets) ? event.assets : [];
+
+      if (assets.length > 0) {
+        setMarketAssets((previous) => mergeAssetsBySymbol([
+          ...previous,
+          ...mapRealtimeAssets(assets),
+        ]));
+
+        setPrices((previous) => buildPriceState(previous, mergeAssetsBySymbol([
+          ...marketAssetsRef.current,
+          ...mapRealtimeAssets(assets),
+          ...(dashboardRef.current?.positions ?? []).map((position) => ({
+            id: position.assetId,
+            symbol: position.symbol,
+            name: position.name,
+            type: position.type,
+            price: position.price,
+            changePercent: position.changePercent,
+            shares: position.quantity,
+          })),
+          ...(dashboardRef.current?.watchlist ?? []),
+        ])));
+      }
+
+      queueMarketRefresh();
+    };
+
+    portfolioChannel.listen('.portfolio.snapshot.updated', queueRefresh);
+    marketChannel.listen('.market.assets.updated', handleMarketAssetsUpdated);
     socketConnection?.bind('failed', disableRealtime);
     socketConnection?.bind('unavailable', disableRealtime);
 
     return () => {
-      if (refreshTimeout !== null) {
-        window.clearTimeout(refreshTimeout);
+      if (portfolioRefreshTimeout !== null) {
+        window.clearTimeout(portfolioRefreshTimeout);
       }
 
-      channel.stopListening('.portfolio.snapshot.updated');
+      if (marketRefreshTimeout !== null) {
+        window.clearTimeout(marketRefreshTimeout);
+      }
+
+      portfolioChannel.stopListening('.portfolio.snapshot.updated');
+      marketChannel.stopListening('.market.assets.updated');
       socketConnection?.unbind('failed', disableRealtime);
       socketConnection?.unbind('unavailable', disableRealtime);
-      echo.leave(channelName);
+      echo.leave(portfolioChannelName);
+      echo.leave(marketChannelName);
       echo.disconnect();
     };
   }, [user]);

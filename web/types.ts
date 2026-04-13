@@ -183,6 +183,19 @@ export interface MarketAssetDetail {
   }>;
 }
 
+export interface MarketAssetsUpdatedEventAsset {
+  id: string;
+  symbol: string;
+  type: string;
+  price: number;
+  changePercent?: number;
+  changeValue?: number;
+  lastPriceUpdateAt?: string | null;
+  change_percent?: number;
+  change_value?: number;
+  last_price_update_at?: string | null;
+}
+
 export interface WalletTransactionItem {
   id: string;
   type: string;

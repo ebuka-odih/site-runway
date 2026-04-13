@@ -2,8 +2,10 @@
 
 namespace App\Services\Finnhub;
 
+use App\Events\MarketAssetsUpdated;
 use App\Models\Asset;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Log;
 use RuntimeException;
 use Throwable;
 
@@ -57,6 +59,7 @@ class FinnhubStockSyncService
         $updated = [];
         $skipped = [];
         $errors = [];
+        $broadcastAssets = [];
 
         foreach ($symbolsToSync as $symbol) {
             try {
@@ -103,7 +106,19 @@ class FinnhubStockSyncService
                 'change_percent' => (float) $asset->change_percent,
                 'change_value' => (float) $asset->change_value,
             ];
+
+            $broadcastAssets[] = [
+                'id' => (string) $asset->id,
+                'symbol' => (string) $asset->symbol,
+                'type' => (string) $asset->type,
+                'price' => (float) $asset->current_price,
+                'change_percent' => (float) $asset->change_percent,
+                'change_value' => (float) $asset->change_value,
+                'last_price_update_at' => optional($asset->updated_at)->toIso8601String(),
+            ];
         }
+
+        $this->broadcastMarketUpdates($broadcastAssets);
 
         return [
             'requested_universe' => count($universe),
@@ -169,5 +184,32 @@ class FinnhubStockSyncService
         $name = config('stocks.popular.'.strtoupper($symbol));
 
         return is_string($name) && $name !== '' ? $name : strtoupper($symbol);
+    }
+
+    /**
+     * @param  array<int, array{
+     *   id: string,
+     *   symbol: string,
+     *   type: string,
+     *   price: float,
+     *   change_percent: float,
+     *   change_value: float,
+     *   last_price_update_at: string|null
+     * }>  $assets
+     */
+    private function broadcastMarketUpdates(array $assets): void
+    {
+        if ($assets === []) {
+            return;
+        }
+
+        try {
+            event(new MarketAssetsUpdated($assets, now()->getTimestampMs()));
+        } catch (Throwable $exception) {
+            Log::warning('Market asset broadcast failed after Finnhub sync.', [
+                'symbols' => array_column($assets, 'symbol'),
+                'message' => $exception->getMessage(),
+            ]);
+        }
     }
 }
