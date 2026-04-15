@@ -14,7 +14,6 @@ import {
 } from 'lucide-react';
 import { useLocation } from 'react-router-dom';
 import { useMarket } from '../context/MarketContext';
-import LiveChatEmbed from './LiveChatEmbed';
 import { apiConfirmKycOtp, apiPublicSettings, apiSendKycOtp, apiSubmitKyc } from '../lib/api';
 import type { KycDocumentType, ProfileData, PublicSettings } from '../types';
 
@@ -725,21 +724,8 @@ const ProfilePage: React.FC = () => {
           <div className="bg-[#121212] border border-white/5 rounded-2xl p-6">
             <h4 className="text-base font-black text-white">Live Chat</h4>
             <p className="text-xs text-zinc-500 font-bold mt-2">
-              Chat with our team directly if live chat is enabled.
+              The Chaport widget is available across the dashboard. Open it from the chat button at the bottom-right of the screen.
             </p>
-            {publicSettings?.livechatEnabled && publicSettings.livechatEmbedCode ? (
-              <div className="mt-4 rounded-2xl border border-emerald-500/20 bg-emerald-500/5 p-4">
-                <LiveChatEmbed
-                  enabled={publicSettings.livechatEnabled}
-                  embedCode={publicSettings.livechatEmbedCode}
-                  className="text-white"
-                />
-              </div>
-            ) : (
-              <p className="mt-4 text-[10px] font-black uppercase tracking-widest text-zinc-600">
-                Live chat is currently offline.
-              </p>
-            )}
           </div>
         </div>
       </div>

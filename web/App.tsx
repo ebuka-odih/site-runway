@@ -16,6 +16,7 @@ import ProfilePage from './components/ProfilePage';
 import WatchlistPage from './components/WatchlistPage';
 import LandingPage from './components/LandingPage';
 import AuthPage from './components/AuthPage';
+import ChaportLiveChat from './components/ChaportLiveChat';
 import CryptoHomeDashboard from './components/crypto/CryptoHomeDashboard';
 import CryptoCloneLayout from './components/crypto-clone/Layout';
 import CryptoCloneHome from './components/crypto-clone/pages/Home';
@@ -229,88 +230,91 @@ const AppContent: React.FC = () => {
 
   if (!isAuthenticated) {
     return (
-      <Routes>
-        <Route path="/" element={<CryptoCloneLayout brandName={siteBrandName} />}>
-          <Route index element={<CryptoCloneHome brandName={siteBrandName} />} />
-          <Route path="products" element={<CryptoCloneProducts />} />
-          <Route path="about" element={<CryptoCloneAbout brandName={siteBrandName} />} />
-          <Route path="privacy" element={<CryptoClonePrivacy brandName={siteBrandName} />} />
-          <Route path="terms" element={<CryptoCloneTerms brandName={siteBrandName} />} />
-          <Route path="risk" element={<CryptoCloneRisk brandName={siteBrandName} />} />
-        </Route>
-        <Route path="/crypto" element={<Navigate to="/" replace />} />
-        <Route
-          path="/classic"
-          element={(
-            <LandingPage
-              onLogin={login}
-              authError={authError}
-              brandName={siteBrandName}
-            />
-          )}
-        />
-        <Route
-          path="/login"
-          element={(
-            <AuthPage
-              onLogin={login}
-              authError={authError}
-              view="login"
-              brandName={siteBrandName}
-            />
-          )}
-        />
-        <Route
-          path="/signup"
-          element={(
-            <AuthPage
-              onLogin={login}
-              authError={authError}
-              view="signup"
-              brandName={siteBrandName}
-            />
-          )}
-        />
-        <Route
-          path="/verify"
-          element={(
-            <AuthPage
-              onLogin={login}
-              authError={authError}
-              view="verify"
-              brandName={siteBrandName}
-            />
-          )}
-        />
-        <Route
-          path="/forgot"
-          element={(
-            <AuthPage
-              onLogin={login}
-              authError={authError}
-              view="forgot"
-              brandName={siteBrandName}
-            />
-          )}
-        />
-        <Route
-          path="/reset"
-          element={(
-            <AuthPage
-              onLogin={login}
-              authError={authError}
-              view="reset"
-              brandName={siteBrandName}
-            />
-          )}
-        />
-        <Route path="/about-us" element={<Navigate to="/about" replace />} />
-        <Route path="/risk-disclosure" element={<Navigate to="/risk" replace />} />
-        <Route path="/privacy-policy" element={<Navigate to="/privacy" replace />} />
-        <Route path="/terms-of-service" element={<Navigate to="/terms" replace />} />
-        <Route path="/crypto/*" element={<Navigate to="/" replace />} />
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
+      <>
+        <Routes>
+          <Route path="/" element={<CryptoCloneLayout brandName={siteBrandName} />}>
+            <Route index element={<CryptoCloneHome brandName={siteBrandName} />} />
+            <Route path="products" element={<CryptoCloneProducts />} />
+            <Route path="about" element={<CryptoCloneAbout brandName={siteBrandName} />} />
+            <Route path="privacy" element={<CryptoClonePrivacy brandName={siteBrandName} />} />
+            <Route path="terms" element={<CryptoCloneTerms brandName={siteBrandName} />} />
+            <Route path="risk" element={<CryptoCloneRisk brandName={siteBrandName} />} />
+          </Route>
+          <Route path="/crypto" element={<Navigate to="/" replace />} />
+          <Route
+            path="/classic"
+            element={(
+              <LandingPage
+                onLogin={login}
+                authError={authError}
+                brandName={siteBrandName}
+              />
+            )}
+          />
+          <Route
+            path="/login"
+            element={(
+              <AuthPage
+                onLogin={login}
+                authError={authError}
+                view="login"
+                brandName={siteBrandName}
+              />
+            )}
+          />
+          <Route
+            path="/signup"
+            element={(
+              <AuthPage
+                onLogin={login}
+                authError={authError}
+                view="signup"
+                brandName={siteBrandName}
+              />
+            )}
+          />
+          <Route
+            path="/verify"
+            element={(
+              <AuthPage
+                onLogin={login}
+                authError={authError}
+                view="verify"
+                brandName={siteBrandName}
+              />
+            )}
+          />
+          <Route
+            path="/forgot"
+            element={(
+              <AuthPage
+                onLogin={login}
+                authError={authError}
+                view="forgot"
+                brandName={siteBrandName}
+              />
+            )}
+          />
+          <Route
+            path="/reset"
+            element={(
+              <AuthPage
+                onLogin={login}
+                authError={authError}
+                view="reset"
+                brandName={siteBrandName}
+              />
+            )}
+          />
+          <Route path="/about-us" element={<Navigate to="/about" replace />} />
+          <Route path="/risk-disclosure" element={<Navigate to="/risk" replace />} />
+          <Route path="/privacy-policy" element={<Navigate to="/privacy" replace />} />
+          <Route path="/terms-of-service" element={<Navigate to="/terms" replace />} />
+          <Route path="/crypto/*" element={<Navigate to="/" replace />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+        <ChaportLiveChat />
+      </>
     );
   }
 
@@ -459,6 +463,8 @@ const AppContent: React.FC = () => {
           }}
         />
       )}
+
+      <ChaportLiveChat />
     </div>
   );
 };
