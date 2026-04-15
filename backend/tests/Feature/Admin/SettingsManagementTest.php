@@ -5,6 +5,7 @@ namespace Tests\Feature\Admin;
 use App\Models\PaymentMethod;
 use App\Models\User;
 use App\Models\Wallet;
+use App\Support\SiteSettings;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
 use Tests\TestCase;
@@ -31,6 +32,15 @@ class SettingsManagementTest extends TestCase
 
         $this->assertSame('Updated Admin Name', $admin->name);
         $this->assertSame('updated-admin@runwayalgo.test', $admin->email);
+    }
+
+    public function test_livechat_defaults_use_chaport_embed(): void
+    {
+        $defaults = SiteSettings::defaults();
+
+        $this->assertSame('Chaport', $defaults['livechat_provider']);
+        $this->assertStringContainsString("appId : '69df2dae49b709eaaf2beb08'", $defaults['livechat_embed_code']);
+        $this->assertStringContainsString('https://app.chaport.com/javascripts/insert.js', $defaults['livechat_embed_code']);
     }
 
     public function test_admin_can_store_livechat_settings(): void

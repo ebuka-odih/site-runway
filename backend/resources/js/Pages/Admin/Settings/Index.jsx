@@ -3,6 +3,18 @@ import { adminPath } from '@/lib/adminPath';
 import { useForm, usePage } from '@inertiajs/react';
 import { useState } from 'react';
 
+const DEFAULT_LIVECHAT_PROVIDER = 'Chaport';
+const DEFAULT_LIVECHAT_EMBED_CODE = `<!-- Begin of Chaport Live Chat code -->
+<script type="text/javascript">
+(function(w,d,v3){
+w.chaportConfig = {
+  appId : '69df2dae49b709eaaf2beb08',
+};
+
+if(w.chaport)return;v3=w.chaport={};v3._q=[];v3._l={};v3.q=function(){v3._q.push(arguments)};v3.on=function(e,fn){if(!v3._l[e])v3._l[e]=[];v3._l[e].push(fn)};var s=d.createElement('script');s.type='text/javascript';s.async=true;s.src='https://app.chaport.com/javascripts/insert.js';var ss=d.getElementsByTagName('script')[0];ss.parentNode.insertBefore(s,ss)})(window, document);
+</script>
+<!-- End of Chaport Live Chat code -->`;
+
 export default function Index({ settings }) {
     const { url, props } = usePage();
     const authUser = props?.auth?.user;
@@ -18,8 +30,8 @@ export default function Index({ settings }) {
         support_email: settings.support_email,
         admin_notification_email: settings.admin_notification_email || '',
         livechat_enabled: Boolean(settings.livechat_enabled),
-        livechat_provider: settings.livechat_provider || '',
-        livechat_embed_code: settings.livechat_embed_code || '',
+        livechat_provider: settings.livechat_provider || DEFAULT_LIVECHAT_PROVIDER,
+        livechat_embed_code: settings.livechat_embed_code || DEFAULT_LIVECHAT_EMBED_CODE,
     });
     const securityForm = useForm({
         current_password: '',
@@ -215,7 +227,7 @@ export default function Index({ settings }) {
                                     type="text"
                                     value={form.data.livechat_provider}
                                     onChange={(event) => form.setData('livechat_provider', event.target.value)}
-                                    placeholder="tawk.to, intercom, crisp"
+                                    placeholder={DEFAULT_LIVECHAT_PROVIDER}
                                     className="w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2.5 text-sm text-slate-100 outline-none transition focus:border-cyan-400"
                                 />
                                 {form.errors.livechat_provider && (
@@ -229,7 +241,7 @@ export default function Index({ settings }) {
                             <textarea
                                 value={form.data.livechat_embed_code}
                                 onChange={(event) => form.setData('livechat_embed_code', event.target.value)}
-                                placeholder="Paste your livechat script or HTML embed code here"
+                                placeholder={DEFAULT_LIVECHAT_EMBED_CODE}
                                 rows={8}
                                 className="w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2.5 text-xs text-slate-100 outline-none transition focus:border-cyan-400"
                             />
