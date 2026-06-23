@@ -163,7 +163,7 @@ export default function Layout({ brandName }: LayoutProps) {
                 </div>
                 <div>
                   <p className="text-xs uppercase tracking-[0.18em] text-slate-500">Head Office Address</p>
-                  <p className="mt-1 text-white">405 Lexington Avenue, New York City, NY 10174</p>
+                  <p className="mt-1 text-white">424 Main Street Buffalo, NY 14202 United State </p>
                 </div>
               </div>
             </div>
